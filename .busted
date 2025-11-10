@@ -1,0 +1,16 @@
+return {
+	default = {
+		ROOT = { 'spec' },
+		pattern = '_spec%.lua$',
+		exclude = {
+			'**/luarocks-3.9.1/**',
+			'**/lua-5.3.1/**',
+			'spec/._*',
+		},
+		helper = 'spec/setup.lua',
+		verbose = true,
+		coverage = false,
+		output = 'utfTerminal',
+		jobs = 4,
+	},
+}
