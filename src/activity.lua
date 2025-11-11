@@ -1,16 +1,28 @@
 local bint = require('.bint')(256)
-local json = require('json')
+
 
 local utils = require('utils')
 
 local activity = {}
 
-if not ListedOrders then ListedOrders = {} end
-if not ExecutedOrders then ExecutedOrders = {} end
-if not CancelledOrders then CancelledOrders = {} end
-if not SalesByAddress then SalesByAddress = {} end
-if not PurchasesByAddress then PurchasesByAddress = {} end
-if not AuctionBids then AuctionBids = {} end
+if not ListedOrders then
+	ListedOrders = {}
+end
+if not ExecutedOrders then
+	ExecutedOrders = {}
+end
+if not CancelledOrders then
+	CancelledOrders = {}
+end
+if not SalesByAddress then
+	SalesByAddress = {}
+end
+if not PurchasesByAddress then
+	PurchasesByAddress = {}
+end
+if not AuctionBids then
+	AuctionBids = {}
+end
 
 -- Normalize timestamp fields for a single order copy
 local function normalizeOrderTimestamps(oc)
@@ -74,7 +86,9 @@ end
 -- Decorate orders with normalized timestamps, auction fields, and type-specific extras
 local function decorateOrder(order, status)
 	local oc = utils.deepCopy(order)
-	if status then oc.Status = status end
+	if status then
+		oc.Status = status
+	end
 	oc = normalizeOrderTimestamps(oc)
 	oc = applyEnglishAuctionFields(oc)
 	if status == 'settled' then
@@ -85,7 +99,7 @@ local function decorateOrder(order, status)
 	elseif status == 'expired' and oc.ExpirationTime and not oc.EndedAt then
 		oc.EndedAt = oc.ExpirationTime
 	end
-	
+
 	return oc
 end
 
@@ -95,10 +109,15 @@ local function getListedSnapshot(now)
 	for _, order in ipairs(ListedOrders) do
 		local status, endedAt = computeListedStatus(order, now)
 		local oc = decorateOrder(order, status)
-		if endedAt then oc.EndedAt = endedAt end
-		if status == 'active' then table.insert(active, oc)
-		elseif status == 'ready-for-settlement' then table.insert(ready, oc)
-		elseif status == 'expired' then table.insert(expired, oc)
+		if endedAt then
+			oc.EndedAt = endedAt
+		end
+		if status == 'active' then
+			table.insert(active, oc)
+		elseif status == 'ready-for-settlement' then
+			table.insert(ready, oc)
+		elseif status == 'expired' then
+			table.insert(expired, oc)
 		end
 	end
 	return active, ready, expired
@@ -124,7 +143,6 @@ local function getCancelledSnapshot()
 	return cancelled
 end
 
-
 -- Reusable state updater to move expired orders from Listed to Expired
 -- updateOrderStates removed: we compute status on the fly for reads
 
@@ -135,15 +153,27 @@ function activity.getListedOrders(msg)
 	local now = tonumber(msg.Timestamp)
 	local active, ready = getListedSnapshot(now)
 	local ordersArray = {}
-	for _, oc in ipairs(active) do table.insert(ordersArray, oc) end
-	for _, oc in ipairs(ready) do table.insert(ordersArray, oc) end
+	for _, oc in ipairs(active) do
+		table.insert(ordersArray, oc)
+	end
+	for _, oc in ipairs(ready) do
+		table.insert(ordersArray, oc)
+	end
 
-	local paginatedOrders = utils.paginateTableWithCursor(ordersArray, page.cursor, 'CreatedAt', page.limit, page.sortBy, page.sortOrder, page.filters)
+	local paginatedOrders = utils.paginateTableWithCursor(
+		ordersArray,
+		page.cursor,
+		'CreatedAt',
+		page.limit,
+		page.sortBy,
+		page.sortOrder,
+		page.filters
+	)
 
 	ao.send({
 		Target = msg.From,
 		Action = 'Read-Success',
-		Data = json.encode(paginatedOrders)
+		Data = json.encode(paginatedOrders),
 	})
 end
 
@@ -156,16 +186,30 @@ function activity.getCompletedOrders(msg)
 	local settled = getExecutedSnapshot()
 	local _, _, expired = getListedSnapshot(now)
 	local ordersArray = {}
-	for _, oc in ipairs(cancelled) do table.insert(ordersArray, oc) end
-	for _, oc in ipairs(settled) do table.insert(ordersArray, oc) end
-	for _, oc in ipairs(expired) do table.insert(ordersArray, oc) end
+	for _, oc in ipairs(cancelled) do
+		table.insert(ordersArray, oc)
+	end
+	for _, oc in ipairs(settled) do
+		table.insert(ordersArray, oc)
+	end
+	for _, oc in ipairs(expired) do
+		table.insert(ordersArray, oc)
+	end
 
-	local paginatedOrders = utils.paginateTableWithCursor(ordersArray, page.cursor, 'CreatedAt', page.limit, page.sortBy, page.sortOrder, page.filters)
+	local paginatedOrders = utils.paginateTableWithCursor(
+		ordersArray,
+		page.cursor,
+		'CreatedAt',
+		page.limit,
+		page.sortBy,
+		page.sortOrder,
+		page.filters
+	)
 
 	ao.send({
 		Target = msg.From,
 		Action = 'Read-Success',
-		Data = json.encode(paginatedOrders)
+		Data = json.encode(paginatedOrders),
 	})
 end
 
@@ -173,25 +217,25 @@ end
 function activity.getOrderById(msg)
 	local orderId = msg.Tags.Orderid or msg.Tags.OrderId
 	local decodeCheck, data = utils.decodeMessageData(msg.Data)
-	
+
 	if (not decodeCheck or not data) and not orderId then
 		ao.send({
 			Target = msg.From,
 			Action = 'Input-Error',
-			Message = 'OrderId is required'
+			Message = 'OrderId is required',
 		})
 		return
 	end
 	if data and data.OrderId then
 		orderId = data.OrderId
 	end
-	
+
 	-- Final check		-- For English auctions, prefer Settlement.WinningBid; otherwise use recorded Price
 	if not orderId then
 		ao.send({
 			Target = msg.From,
 			Action = 'Input-Error',
-			Message = 'OrderId is required'
+			Message = 'OrderId is required',
 		})
 		return
 	end
@@ -199,15 +243,25 @@ function activity.getOrderById(msg)
 	local now = tonumber(msg.Timestamp)
 	local active, ready, expired = getListedSnapshot(now)
 	local listedById = {}
-	for _, oc in ipairs(active) do listedById[oc.OrderId] = oc end
-	for _, oc in ipairs(ready) do listedById[oc.OrderId] = oc end
-	for _, oc in ipairs(expired) do listedById[oc.OrderId] = oc end
+	for _, oc in ipairs(active) do
+		listedById[oc.OrderId] = oc
+	end
+	for _, oc in ipairs(ready) do
+		listedById[oc.OrderId] = oc
+	end
+	for _, oc in ipairs(expired) do
+		listedById[oc.OrderId] = oc
+	end
 
 	local executed = getExecutedSnapshot()
 	local cancelled = getCancelledSnapshot()
 	local executedById, cancelledById = {}, {}
-	for _, oc in ipairs(executed) do executedById[oc.OrderId] = oc end
-	for _, oc in ipairs(cancelled) do cancelledById[oc.OrderId] = oc end
+	for _, oc in ipairs(executed) do
+		executedById[oc.OrderId] = oc
+	end
+	for _, oc in ipairs(cancelled) do
+		cancelledById[oc.OrderId] = oc
+	end
 
 	local foundOrder = cancelledById[orderId] or executedById[orderId] or listedById[orderId]
 	local orderStatus = foundOrder and foundOrder.Status or nil
@@ -216,7 +270,7 @@ function activity.getOrderById(msg)
 		ao.send({
 			Target = msg.From,
 			Action = 'Order-Not-Found',
-			Message = 'Order with ID ' .. orderId .. ' not found'
+			Message = 'Order with ID ' .. orderId .. ' not found',
 		})
 		return
 	end
@@ -225,34 +279,46 @@ function activity.getOrderById(msg)
 	local response = foundOrder
 
 	if msg.Tags.Functioninvoke or msg.Tags.FunctionInvoke then
-		msg.reply({Data = json.encode(response)})
+		msg.reply({ Data = json.encode(response) })
 	else
 		ao.send({
 			Target = msg.From,
 			Action = 'Read-Success',
-			Data = json.encode(response)
+			Data = json.encode(response),
 		})
 	end
 end
 
 -- Internal helper: find order by id without messaging
 function activity.findOrderById(orderId, now)
-    if not orderId then return nil end
-    local nowNum = tonumber(now or 0)
-    local active, ready, expired = getListedSnapshot(nowNum)
-    local listedById = {}
-    for _, oc in ipairs(active) do listedById[oc.OrderId] = oc end
-    for _, oc in ipairs(ready) do listedById[oc.OrderId] = oc end
-    for _, oc in ipairs(expired) do listedById[oc.OrderId] = oc end
+	if not orderId then
+		return nil
+	end
+	local nowNum = tonumber(now or 0)
+	local active, ready, expired = getListedSnapshot(nowNum)
+	local listedById = {}
+	for _, oc in ipairs(active) do
+		listedById[oc.OrderId] = oc
+	end
+	for _, oc in ipairs(ready) do
+		listedById[oc.OrderId] = oc
+	end
+	for _, oc in ipairs(expired) do
+		listedById[oc.OrderId] = oc
+	end
 
-    local executed = getExecutedSnapshot()
-    local cancelled = getCancelledSnapshot()
-    local executedById, cancelledById = {}, {}
-    for _, oc in ipairs(executed) do executedById[oc.OrderId] = oc end
-    for _, oc in ipairs(cancelled) do cancelledById[oc.OrderId] = oc end
+	local executed = getExecutedSnapshot()
+	local cancelled = getCancelledSnapshot()
+	local executedById, cancelledById = {}, {}
+	for _, oc in ipairs(executed) do
+		executedById[oc.OrderId] = oc
+	end
+	for _, oc in ipairs(cancelled) do
+		cancelledById[oc.OrderId] = oc
+	end
 
-    local foundOrder = cancelledById[orderId] or executedById[orderId] or listedById[orderId]
-    return foundOrder
+	local foundOrder = cancelledById[orderId] or executedById[orderId] or listedById[orderId]
+	return foundOrder
 end
 
 -- Business logic for getting activity
@@ -283,8 +349,12 @@ function activity.getActivity(msg)
 			if order.CreatedAt and (startDate or endDate) then
 				local orderDate = bint(order.CreatedAt)
 
-				if startDate then startDate = bint(startDate) end
-				if endDate then endDate = bint(endDate) end
+				if startDate then
+					startDate = bint(startDate)
+				end
+				if endDate then
+					endDate = bint(endDate)
+				end
 
 				if startDate and orderDate < startDate then
 					isDateMatch = false
@@ -311,12 +381,20 @@ function activity.getActivity(msg)
 
 	local startDate = nil
 	local endDate = nil
-	if data.StartDate then startDate = data.StartDate end
-	if data.EndDate then endDate = data.EndDate end
+	if data.StartDate then
+		startDate = data.StartDate
+	end
+	if data.EndDate then
+		endDate = data.EndDate
+	end
 
 	local baseListed = {}
-	for _, oc in ipairs(active) do table.insert(baseListed, oc) end
-	for _, oc in ipairs(ready) do table.insert(baseListed, oc) end
+	for _, oc in ipairs(active) do
+		table.insert(baseListed, oc)
+	end
+	for _, oc in ipairs(ready) do
+		table.insert(baseListed, oc)
+	end
 	filteredListedOrders = filterOrders(baseListed, assetIdsSet, data.Address, startDate, endDate)
 	filteredExecutedOrders = filterOrders(executed, assetIdsSet, data.Address, startDate, endDate)
 	filteredCancelledOrders = filterOrders(cancelled, assetIdsSet, data.Address, startDate, endDate)
@@ -337,7 +415,7 @@ function activity.getActivity(msg)
 			ExecutedOrders = executedWithFields,
 			CancelledOrders = cancelledWithFields,
 			ExpiredOrders = expiredWithFields,
-		})
+		}),
 	})
 end
 
@@ -352,7 +430,9 @@ function activity.getOrderCountsByAddress(msg)
 			for k, v in pairs(data) do
 				table.insert(sortedData, { key = k, value = v })
 			end
-			table.sort(sortedData, function(a, b) return a.value > b.value end)
+			table.sort(sortedData, function(a, b)
+				return a.value > b.value
+			end)
 			local topN = {}
 			for i = 1, n do
 				topN[sortedData[i].key] = sortedData[i].value
@@ -369,8 +449,8 @@ function activity.getOrderCountsByAddress(msg)
 		Action = 'Read-Success',
 		Data = json.encode({
 			SalesByAddress = salesByAddress,
-			PurchasesByAddress = purchasesByAddress
-		})
+			PurchasesByAddress = purchasesByAddress,
+		}),
 	})
 end
 
@@ -380,120 +460,134 @@ function activity.getSalesByAddress(msg)
 		Target = msg.From,
 		Action = 'Read-Success',
 		Data = json.encode({
-			SalesByAddress = SalesByAddress
-		})
+			SalesByAddress = SalesByAddress,
+		}),
 	})
 end
 
 -- Business logic for updating executed orders
 function activity.recordExecutedOrder(executedOrder)
-    if not executedOrder or not executedOrder.Id then return end
+	if not executedOrder or not executedOrder.Id then
+		return
+	end
 
-    -- Search for the order in ListedOrders
-    local foundOrder = nil
-    for i, order in ipairs(ListedOrders) do
-        if order.OrderId == executedOrder.Id then
-            foundOrder = order
-            table.remove(ListedOrders, i)
-            break
-        end
-    end
+	-- Search for the order in ListedOrders
+	local foundOrder = nil
+	for i, order in ipairs(ListedOrders) do
+		if order.OrderId == executedOrder.Id then
+			foundOrder = order
+			table.remove(ListedOrders, i)
+			break
+		end
+	end
 
-    if not foundOrder then return end
+	if not foundOrder then
+		return
+	end
 
-    if foundOrder and foundOrder.OrderType == 'english' then
-        foundOrder.StartingPrice = foundOrder.Price
-    end
+	if foundOrder and foundOrder.OrderType == 'english' then
+		foundOrder.StartingPrice = foundOrder.Price
+	end
 
-    foundOrder.EndedAt = executedOrder.EndedAt or executedOrder.ExecutionTime
-    -- Merge execution payload fields to ensure buyer/price are recorded
-    foundOrder.DominantToken = executedOrder.DominantToken or foundOrder.DominantToken
-    foundOrder.SwapToken = executedOrder.SwapToken or foundOrder.SwapToken
-    foundOrder.Sender = executedOrder.Sender or foundOrder.Sender
-    foundOrder.Receiver = executedOrder.Receiver or foundOrder.Receiver
-    foundOrder.Quantity = executedOrder.Quantity or foundOrder.Quantity
-    foundOrder.Price = executedOrder.Price or foundOrder.Price
+	foundOrder.EndedAt = executedOrder.EndedAt or executedOrder.ExecutionTime
+	-- Merge execution payload fields to ensure buyer/price are recorded
+	foundOrder.DominantToken = executedOrder.DominantToken or foundOrder.DominantToken
+	foundOrder.SwapToken = executedOrder.SwapToken or foundOrder.SwapToken
+	foundOrder.Sender = executedOrder.Sender or foundOrder.Sender
+	foundOrder.Receiver = executedOrder.Receiver or foundOrder.Receiver
+	foundOrder.Quantity = executedOrder.Quantity or foundOrder.Quantity
+	foundOrder.Price = executedOrder.Price or foundOrder.Price
 
-    -- Add the order to ExecutedOrders
-    table.insert(ExecutedOrders, foundOrder)
+	-- Add the order to ExecutedOrders
+	table.insert(ExecutedOrders, foundOrder)
 
-    if foundOrder.Sender then
-        if not SalesByAddress[foundOrder.Sender] then
-            SalesByAddress[foundOrder.Sender] = 0
-        end
-        SalesByAddress[foundOrder.Sender] = SalesByAddress[foundOrder.Sender] + 1
-    end
+	if foundOrder.Sender then
+		if not SalesByAddress[foundOrder.Sender] then
+			SalesByAddress[foundOrder.Sender] = 0
+		end
+		SalesByAddress[foundOrder.Sender] = SalesByAddress[foundOrder.Sender] + 1
+	end
 
-    if foundOrder.Receiver then
-        if not PurchasesByAddress[foundOrder.Receiver] then
-            PurchasesByAddress[foundOrder.Receiver] = 0
-        end
-        PurchasesByAddress[foundOrder.Receiver] = PurchasesByAddress[foundOrder.Receiver] + 1
-    end
+	if foundOrder.Receiver then
+		if not PurchasesByAddress[foundOrder.Receiver] then
+			PurchasesByAddress[foundOrder.Receiver] = 0
+		end
+		PurchasesByAddress[foundOrder.Receiver] = PurchasesByAddress[foundOrder.Receiver] + 1
+	end
 end
 
 function activity.recordListedOrder(order)
-    if not order or not order.Id then return end
-    table.insert(ListedOrders, {
-        OrderId = order.Id,
-        DominantToken = order.DominantToken,
-        SwapToken = order.SwapToken,
-        Sender = order.Sender,
-        Receiver = nil,
-        Quantity = order.Quantity,
-        Price = order.Price,
-        CreatedAt = order.CreatedAt,
-        OrderType = order.OrderType,
-        MinimumPrice = order.MinimumPrice,
-        DecreaseInterval = order.DecreaseInterval,
-        DecreaseStep = order.DecreaseStep,
-        ExpirationTime = order.ExpirationTime
-    })
+	if not order or not order.Id then
+		return
+	end
+	table.insert(ListedOrders, {
+		OrderId = order.Id,
+		DominantToken = order.DominantToken,
+		SwapToken = order.SwapToken,
+		Sender = order.Sender,
+		Receiver = nil,
+		Quantity = order.Quantity,
+		Price = order.Price,
+		CreatedAt = order.CreatedAt,
+		OrderType = order.OrderType,
+		MinimumPrice = order.MinimumPrice,
+		DecreaseInterval = order.DecreaseInterval,
+		DecreaseStep = order.DecreaseStep,
+		ExpirationTime = order.ExpirationTime,
+	})
 end
 
 function activity.recordCancelledOrder(order)
-    if not order or not order.Id then return end
-    local foundOrder = nil
-    for i, o in ipairs(ListedOrders) do
-        if o.OrderId == order.Id then
-            foundOrder = o
-            table.remove(ListedOrders, i)
-            break
-        end
-    end
-    if not foundOrder then return end
-    foundOrder.EndedAt = order.EndedAt or order.CancellationTime
-    table.insert(CancelledOrders, foundOrder)
+	if not order or not order.Id then
+		return
+	end
+	local foundOrder = nil
+	for i, o in ipairs(ListedOrders) do
+		if o.OrderId == order.Id then
+			foundOrder = o
+			table.remove(ListedOrders, i)
+			break
+		end
+	end
+	if not foundOrder then
+		return
+	end
+	foundOrder.EndedAt = order.EndedAt or order.CancellationTime
+	table.insert(CancelledOrders, foundOrder)
 end
 
 function activity.recordAuctionBid(bid)
-    if not bid or not bid.OrderId then return end
-    local orderId = bid.OrderId
-    if not AuctionBids[orderId] then
-        AuctionBids[orderId] = { Bids = {}, HighestBid = nil, HighestBidder = nil }
-    end
-    table.insert(AuctionBids[orderId].Bids, {
-        Bidder = bid.Bidder,
-        Amount = bid.Amount,
-        Timestamp = bid.Timestamp,
-        OrderId = bid.OrderId
-    })
-    if not AuctionBids[orderId].HighestBid or bint(bid.Amount) > bint(AuctionBids[orderId].HighestBid) then
-        AuctionBids[orderId].HighestBid = bid.Amount
-        AuctionBids[orderId].HighestBidder = bid.Bidder
-    end
+	if not bid or not bid.OrderId then
+		return
+	end
+	local orderId = bid.OrderId
+	if not AuctionBids[orderId] then
+		AuctionBids[orderId] = { Bids = {}, HighestBid = nil, HighestBidder = nil }
+	end
+	table.insert(AuctionBids[orderId].Bids, {
+		Bidder = bid.Bidder,
+		Amount = bid.Amount,
+		Timestamp = bid.Timestamp,
+		OrderId = bid.OrderId,
+	})
+	if not AuctionBids[orderId].HighestBid or bint(bid.Amount) > bint(AuctionBids[orderId].HighestBid) then
+		AuctionBids[orderId].HighestBid = bid.Amount
+		AuctionBids[orderId].HighestBidder = bid.Bidder
+	end
 end
 
 function activity.recordAuctionSettlement(settlement)
-    if not settlement or not settlement.OrderId then return end
-    local orderId = settlement.OrderId
-    if AuctionBids[orderId] then
-        AuctionBids[orderId].Settlement = {
-            Winner = settlement.Winner,
-            Quantity = settlement.Quantity,
-            Timestamp = settlement.Timestamp
-        }
-    end
+	if not settlement or not settlement.OrderId then
+		return
+	end
+	local orderId = settlement.OrderId
+	if AuctionBids[orderId] then
+		AuctionBids[orderId].Settlement = {
+			Winner = settlement.Winner,
+			Quantity = settlement.Quantity,
+			Timestamp = settlement.Timestamp,
+		}
+	end
 end
 
 -- Business logic for getting volume
@@ -504,7 +598,13 @@ function activity.getVolume(msg)
 
 	local totalVolume = bint(0)
 	for _, order in ipairs(ExecutedOrders) do
-		if order.Receiver and order.Quantity and validNumber(order.Quantity) and order.Price and validNumber(order.Price) then
+		if
+			order.Receiver
+			and order.Quantity
+			and validNumber(order.Quantity)
+			and order.Price
+			and validNumber(order.Price)
+		then
 			local price = bint(math.floor(order.Price)) // bint(1000000000000)
 
 			local quantity = bint(math.floor(order.Quantity))
@@ -524,7 +624,7 @@ function activity.getVolume(msg)
 	ao.send({
 		Target = msg.From,
 		Action = 'Volume-Notice',
-		Volume = tostring(totalVolume)
+		Volume = tostring(totalVolume),
 	})
 end
 
@@ -544,21 +644,23 @@ function activity.getMostTradedTokens(msg)
 		table.insert(sortedTokens, { token = token, volume = volume })
 	end
 
-	table.sort(sortedTokens, function(a, b) return a.volume > b.volume end)
+	table.sort(sortedTokens, function(a, b)
+		return a.volume > b.volume
+	end)
 
 	local topN = tonumber(msg.Tags.Count) or 10
 	local result = {}
 	for i = 1, math.min(topN, #sortedTokens) do
 		result[i] = {
 			Token = sortedTokens[i].token,
-			Volume = tostring(sortedTokens[i].volume)
+			Volume = tostring(sortedTokens[i].volume),
 		}
 	end
 
 	ao.send({
 		Target = msg.From,
 		Action = 'Most-Traded-Tokens-Result',
-		Data = json.encode(result)
+		Data = json.encode(result),
 	})
 end
 
@@ -580,8 +682,8 @@ function activity.getActivityLengths(msg)
 			ExecutedOrders = #ExecutedOrders,
 			CancelledOrders = #CancelledOrders,
 			SalesByAddress = countTableEntries(SalesByAddress),
-			PurchasesByAddress = countTableEntries(PurchasesByAddress)
-		})
+			PurchasesByAddress = countTableEntries(PurchasesByAddress),
+		}),
 	})
 end
 
@@ -622,7 +724,9 @@ end
 
 -- Business logic for migrate activity
 function activity.migrateActivity(msg)
-	if msg.From ~= ao.id and msg.From ~= Owner then return end
+	if msg.From ~= ao.id and msg.From ~= Owner then
+		return
+	end
 	print('Starting migration process...')
 
 	local function sendBatch(orders, orderType, startIndex)
@@ -637,7 +741,7 @@ function activity.migrateActivity(msg)
 				Receiver = orders[i].Receiver or nil,
 				Quantity = orders[i].Quantity and tostring(orders[i].Quantity) or '0',
 				Price = orders[i].Price and tostring(orders[i].Price) or '0',
-				Timestamp = orders[i].Timestamp or ''
+				Timestamp = orders[i].Timestamp or '',
 			})
 		end
 
@@ -655,9 +759,9 @@ function activity.migrateActivity(msg)
 				Action = 'Migrate-Activity-Batch',
 				Tags = {
 					['Order-Type'] = orderType,
-					['Start-Index'] = tostring(startIndex)
+					['Start-Index'] = tostring(startIndex),
 				},
-				Data = encoded
+				Data = encoded,
 			})
 		end
 	end
@@ -741,7 +845,7 @@ function activity.migrateActivityBatch(msg)
 
 	ao.send({
 		Target = msg.From,
-		Action = 'Batch-Processed'
+		Action = 'Batch-Processed',
 	})
 end
 
@@ -778,7 +882,7 @@ function activity.recordMatch(args, currentOrderEntry, validPair, calculatedFill
 	local match = {
 		Id = currentOrderEntry.Id,
 		Quantity = calculatedFillAmount,
-		Price = tostring(currentOrderEntry.Price)
+		Price = tostring(currentOrderEntry.Price),
 	}
 
 	-- Record execution internally (no messaging)
@@ -793,7 +897,7 @@ function activity.recordMatch(args, currentOrderEntry, validPair, calculatedFill
 		Price = args.executionPrice or tostring(currentOrderEntry.Price),
 		CreatedAt = args.createdAt,
 		EndedAt = args.createdAt,
-		ExecutionTime = args.createdAt
+		ExecutionTime = args.createdAt,
 	})
 
 	return match
@@ -806,6 +910,6 @@ activity._internal = {
 	decorateOrder = decorateOrder,
 	getListedSnapshot = getListedSnapshot,
 	getExecutedSnapshot = getExecutedSnapshot,
-	getCancelledSnapshot = getCancelledSnapshot
+	getCancelledSnapshot = getCancelledSnapshot,
 }
 return activity

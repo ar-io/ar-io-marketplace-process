@@ -5,28 +5,20 @@ import {
   AO_LOADER_OPTIONS,
   DEFAULT_HANDLE_OPTIONS,
 } from './constants.js';
+import type { CreateAosLoaderParams, CreateAosLoaderResult } from './types.js';
 
 /**
  * Loads the aos wasm binary and returns the handle function with program memory
  *
- * @param {string} lua - The lua code to load into the aos
- * @param {any} wasm - The wasm module to load
- * @param {any} options - The options to pass to the aos loader
- * @param {any} handlerEnv - The handler environment to pass to the aos loader
- *
- * @returns {Promise<{handle: Function, memory: WebAssembly.Memory}>}
+ * @param params - The parameters for creating the AOS loader
+ * @returns Promise resolving to handle function and memory
  */
 export async function createAosLoader({
   lua,
   wasm = AOS_WASM,
   options = AO_LOADER_OPTIONS,
   handlerEnv = AO_LOADER_HANDLER_ENV,
-}: {
-  lua: string;
-  wasm?: any;
-  options?: any;
-  handlerEnv?: any;
-}) {
+}: CreateAosLoaderParams): Promise<CreateAosLoaderResult> {
   console.log('creating aos loader');
   const handle = await AoLoader(wasm, options);
   const evalRes = await handle(

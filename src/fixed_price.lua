@@ -1,6 +1,4 @@
 local bint = require('.bint')(256)
-local json = require('json')
-
 local utils = require('utils')
 local activity = require('activity')
 
@@ -23,7 +21,7 @@ local function updateVwapData(pairIndex, matches, args, currentToken)
 			Vwap = tostring(math.floor(vwap)),
 			Block = tostring(args.blockheight),
 			DominantToken = currentToken,
-			MatchLogs = matches
+			MatchLogs = matches,
 		}
 	end
 
@@ -74,7 +72,7 @@ function fixed_price.handleArioOrder(args, validPair, pairIndex)
 			['X-Group-ID'] = args.orderGroupId,
 			OrderType = 'fixed',
 			ExpirationTime = args.expirationTime,
-		}
+		},
 	})
 end
 
@@ -82,10 +80,10 @@ end
 function fixed_price.handleAntOrder(args, validPair, pairIndex)
 	local currentOrders = Orderbook[pairIndex].Orders
 	local matches = {}
-	local matchedOrderIndex = nil
+	local matchedOrderId = nil
 
 	-- Attempt to match with existing orders for immediate trade
-	for i, currentOrderEntry in ipairs(currentOrders) do
+	for orderId, currentOrderEntry in pairs(currentOrders) do
 		-- Check if order has expired
 		if currentOrderEntry.ExpirationTime and bint(currentOrderEntry.ExpirationTime) < bint(args.createdAt) then
 			-- Skip expired orders
@@ -122,7 +120,7 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 						Message = 'No amount to fill',
 						Quantity = args.quantity,
 						TransferToken = args.dominantToken,
-						OrderGroupId = args.orderGroupId
+						OrderGroupId = args.orderGroupId,
 					})
 					return
 				end
@@ -133,42 +131,48 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 
 				-- Accrue fee based on the actual sent amount vs calculated
 				local originalSendAmount = tostring(sentAmount)
-				utils.sendFeeToTreasury(originalSendAmount, calculatedSendAmount, args.dominantToken)
+				utils.sendFeeToTreasury(originalSendAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
 				-- Execute token transfers
-				utils.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
+				utils.executeTokenTransfers(
+					args,
+					currentOrderEntry,
+					validPair,
+					calculatedSendAmount,
+					calculatedFillAmount
+				)
 
 				-- Refund any excess ARIO sent over the required amount
 				if sentAmount > requiredAmount then
 					local refundAmount = sentAmount - requiredAmount
-					ao.send({
+					utils.Send(args.msg, {
 						Target = args.dominantToken,
 						Action = 'Transfer',
 						Tags = {
 							Recipient = args.sender,
-							Quantity = tostring(refundAmount)
-						}
+							Quantity = tostring(refundAmount),
+						},
 					})
 				end
 
-				-- Record the match
-				local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
-				table.insert(matches, match)
+			-- Record the match
+			local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
+			table.insert(matches, match)
 
-				-- Mark the order index for removal
-				matchedOrderIndex = i
-				break -- Only match with one order, no partial matching
-			end
-			-- If ARIO amount is less than price, skip and continue searching
+			-- Mark the order ID for removal
+			matchedOrderId = orderId
+			break -- Only match with one order, no partial matching
 		end
-
-		::continue::
+		-- If ARIO amount is less than price, skip and continue searching
 	end
 
-	-- Remove the matched order from the orderbook
-	if matchedOrderIndex then
-		table.remove(Orderbook[pairIndex].Orders, matchedOrderIndex)
-	end
+	::continue::
+end
+
+-- Remove the matched order from the orderbook
+if matchedOrderId then
+	Orderbook[pairIndex].Orders[matchedOrderId] = nil
+end
 
 	-- Update VWAP and get total volume
 	local sumVolume = updateVwapData(pairIndex, matches, args, args.dominantToken)
@@ -187,8 +191,8 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 				Quantity = tostring(sumVolume),
 				Price = args.price and tostring(args.price) or 'None',
 				Message = 'ANT order executed immediately!',
-				['X-Group-ID'] = args.orderGroupId or 'None'
-			}
+				['X-Group-ID'] = args.orderGroupId or 'None',
+			},
 		})
 	else
 		-- No matches found for ANT token - return error
@@ -198,7 +202,7 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 			Message = 'No matching orders found for immediate ANT trade - exact ARIO amount match required',
 			Quantity = args.quantity,
 			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end

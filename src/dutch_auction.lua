@@ -1,7 +1,6 @@
 local utils = require('utils')
 local activity = require('activity')
 local bint = require('.bint')(256)
-local json = require('json')
 
 local dutch_auction = {}
 
@@ -60,17 +59,17 @@ function dutch_auction.handleArioOrder(args, validPair, pairIndex)
 			Message = 'ARIO order added to orderbook for Dutch auction!',
 			['X-Group-ID'] = args.orderGroupId,
 			OrderType = 'dutch',
-		}
+		},
 	})
 end
 
 function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 	local currentOrders = Orderbook[pairIndex].Orders
 	local matches = {}
-	local matchedOrderIndex = nil
+	local matchedOrderId = nil
 
 	-- Attempt to match with existing Dutch orders for immediate trade
-	for i, currentOrderEntry in ipairs(currentOrders) do
+	for orderId, currentOrderEntry in pairs(currentOrders) do
 		-- Check if order has expired
 		if currentOrderEntry.ExpirationTime and bint(currentOrderEntry.ExpirationTime) < bint(args.createdAt) then
 			-- Skip expired orders
@@ -89,7 +88,7 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 
 		-- Calculate current price based on time passed since order creation
 		local timePassed = bint(args.createdAt) - bint(currentOrderEntry.DateCreated)
-		local intervalsPassed = math.floor((timePassed) / bint(currentOrderEntry.DecreaseInterval))
+		local intervalsPassed = math.floor(timePassed / bint(currentOrderEntry.DecreaseInterval))
 		local intervalsBint = bint(intervalsPassed)
 		local decreaseStepBint = bint(currentOrderEntry.DecreaseStep)
 		local priceReduction = intervalsBint * decreaseStepBint
@@ -110,7 +109,7 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 					Message = 'No amount to fill',
 					Quantity = args.quantity,
 					TransferToken = args.dominantToken,
-					OrderGroupId = args.orderGroupId
+					OrderGroupId = args.orderGroupId,
 				})
 				return
 			end
@@ -129,18 +128,18 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 					TransferToken = args.dominantToken, -- Send to ARIO token process (dominantToken)
 					OrderGroupId = args.orderGroupId,
 					RequiredAmount = tostring(requiredAmount),
-					SentAmount = tostring(sentAmount)
+					SentAmount = tostring(sentAmount),
 				})
 				return
 			end
 
 			args.executionPrice = tostring(currentPrice)
-			
+
 			-- Apply fees and calculate final amounts
 			local calculatedSendAmount = utils.calculateSendAmount(requiredAmount)
 			local calculatedFillAmount = utils.calculateFillAmount(fillAmount)
 
-			utils.sendFeeToTreasury(requiredAmount, calculatedSendAmount, args.dominantToken)
+			utils.sendFeeToTreasury(requiredAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
 			-- Execute token transfers
 			utils.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
@@ -148,32 +147,32 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 			-- Handle refund if sent amount was more than required
 			if sentAmount > requiredAmount then
 				local refundAmount = sentAmount - requiredAmount
-				ao.send({
+				utils.Send(args.msg, {
 					Target = args.dominantToken, -- ARIO token process (dominantToken)
 					Action = 'Transfer',
 					Tags = {
 						Recipient = args.sender,
-						Quantity = tostring(refundAmount)
-					}
+						Quantity = tostring(refundAmount),
+					},
 				})
 			end
 
-			-- Record the match
-			local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
-			table.insert(matches, match)
+		-- Record the match
+		local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
+		table.insert(matches, match)
 
-			-- Mark the order index for removal
-			matchedOrderIndex = i
-			break -- Only match with one order, no partial matching
-		end
-
-		:: continue ::
+		-- Mark the order ID for removal
+		matchedOrderId = orderId
+		break -- Only match with one order, no partial matching
 	end
 
-	-- Remove the matched order from the orderbook
-	if matchedOrderIndex then
-		table.remove(Orderbook[pairIndex].Orders, matchedOrderIndex)
-	end
+	::continue::
+end
+
+-- Remove the matched order from the orderbook
+if matchedOrderId then
+	Orderbook[pairIndex].Orders[matchedOrderId] = nil
+end
 
 	-- Send success response if any matches occurred
 	if #matches > 0 then
@@ -190,8 +189,8 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 				Price = args.price and tostring(args.price) or 'None',
 				Message = 'ANT order executed immediately in Dutch auction!',
 				['X-Group-ID'] = args.orderGroupId or 'None',
-				OrderType = 'dutch'
-			}
+				OrderType = 'dutch',
+			},
 		})
 	else
 		-- No matches found for ANT token - return error
@@ -201,7 +200,7 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 			Message = 'No matching Dutch auction order found for immediate ANT trade',
 			Quantity = args.quantity,
 			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end

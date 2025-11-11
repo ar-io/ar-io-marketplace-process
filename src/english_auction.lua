@@ -1,5 +1,4 @@
 local bint = require('.bint')(256)
-local json = require('json')
 
 local utils = require('utils')
 local activity = require('activity')
@@ -7,7 +6,9 @@ local activity = require('activity')
 local english_auction = {}
 
 -- Initialize bid storage if it doesn't exist
-if not EnglishAuctionBids then EnglishAuctionBids = {} end
+if not EnglishAuctionBids then
+	EnglishAuctionBids = {}
+end
 
 -- Helper function to get auction bids for a specific order
 local function getAuctionBids(orderId)
@@ -15,7 +16,7 @@ local function getAuctionBids(orderId)
 		EnglishAuctionBids[orderId] = {
 			Bids = {},
 			HighestBid = nil,
-			HighestBidder = nil
+			HighestBidder = nil,
 		}
 	end
 	return EnglishAuctionBids[orderId]
@@ -45,7 +46,7 @@ local function validateBidAmount(bidAmount, currentHighestBid, minimumBid)
 		if bint(bidAmount) <= bint(currentHighestBid) then
 			return false, 'Bids equal to or lower than the current bid are not allowed'
 		end
-		
+
 		-- Minimum Bid Increment: The next bid must be at least 1 ARIO higher than the current highest bid
 		local minimumIncrement = bint(1)
 		if bint(bidAmount) <= bint(currentHighestBid) + minimumIncrement then
@@ -62,18 +63,18 @@ local function validateBidAmount(bidAmount, currentHighestBid, minimumBid)
 end
 
 -- Helper function to return previous highest bid
-local function returnPreviousBid(orderId, previousBidder, previousAmount, biddingToken)
+local function returnPreviousBid(orderId, previousBidder, previousAmount, biddingToken, msg)
 	if previousBidder and previousAmount and biddingToken then
 		-- Send refund transfer to previous bidder
-		ao.send({
+		utils.Send(msg, {
 			Target = biddingToken,
 			Action = 'Transfer',
 			Tags = {
 				Recipient = previousBidder,
-				Quantity = tostring(previousAmount)
-			}
+				Quantity = tostring(previousAmount),
+			},
 		})
-		
+
 		-- Notify previous bidder of refund
 		ao.send({
 			Target = previousBidder,
@@ -82,8 +83,8 @@ local function returnPreviousBid(orderId, previousBidder, previousAmount, biddin
 				Status = 'Success',
 				OrderId = orderId,
 				Amount = tostring(previousAmount),
-				Message = 'Your previous bid has been returned as a higher bid was placed'
-			}
+				Message = 'Your previous bid has been returned as a higher bid was placed',
+			},
 		})
 	end
 end
@@ -98,31 +99,31 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 			Message = 'Order ID is required for bidding',
 			Quantity = args.quantity,
 			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
-	
+
 	local currentOrders = Orderbook[pairIndex].Orders
 	local targetOrder = nil
 
 	-- Find the English auction order to bid on
-	for _, order in ipairs(currentOrders) do
-				if order.OrderType == 'english' and order.Id == (args.requestedOrderId or args.orderId) then
+	for orderId, order in pairs(currentOrders) do
+		if order.OrderType == 'english' and order.Id == (args.requestedOrderId or args.orderId) then
 			targetOrder = order
-						break
+			break
 		end
 	end
 
 	-- Check if the auction exists
 	if not targetOrder then
-				utils.handleError({
+		utils.handleError({
 			Target = args.sender,
 			Action = 'Order-Error',
 			Message = 'English auction not found',
 			Quantity = args.quantity,
 			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -131,26 +132,26 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 	local activityData = activity.findOrderById(targetOrder.Id, args.createdAt)
 	print('activityData', activityData.Status)
 	if not activityData or activityData.Status ~= 'active' then
-				utils.handleError({
+		utils.handleError({
 			Target = args.sender,
 			Action = 'Order-Error',
 			Message = 'Bidding allowed only on active orders',
 			Quantity = args.quantity,
 			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
 
 	-- Check if auction has expired
 	if not isAuctionActive(targetOrder.ExpirationTime, args.createdAt) then
-				utils.handleError({
+		utils.handleError({
 			Target = args.sender,
 			Action = 'Order-Error',
 			Message = 'Auction has expired',
 			Quantity = args.quantity,
 			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -158,37 +159,40 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 	-- Get existing auction bids for validation
 	local targetAuctionId = args.requestedOrderId or args.orderId
 	local existingBids = getExistingAuctionBids(targetAuctionId)
-		
+
 	-- Validate bid amount - use args.quantity for ARIO-dominant orders (buying ANT)
 	local bidAmount = args.quantity -- The amount of ARIO tokens sent by the user
 
 	-- Determine minimum starting price from the target order for first bid validation
 	local minimumStartingPrice = targetOrder.Price
 
-	local isValidBid, bidError = validateBidAmount(
-		bidAmount,
-		existingBids and existingBids.HighestBid or nil,
-		minimumStartingPrice
-	)
-	
+	local isValidBid, bidError =
+		validateBidAmount(bidAmount, existingBids and existingBids.HighestBid or nil, minimumStartingPrice)
+
 	if not isValidBid then
 		utils.handleError({
 			Target = args.sender,
 			Action = 'Validation-Error',
 			Message = bidError,
 			Quantity = args.quantity,
-			TransferToken = args.dominantToken,	
-			OrderGroupId = args.orderGroupId
+			TransferToken = args.dominantToken,
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
 
 	-- Get auction bids (only after validation passes)
 	local auctionBids = getAuctionBids(targetAuctionId)
-		
+
 	-- Return previous highest bid if it exists
 	if auctionBids.HighestBidder and auctionBids.HighestBid then
-		returnPreviousBid(targetAuctionId, auctionBids.HighestBidder, auctionBids.HighestBid, args.dominantToken)
+		returnPreviousBid(
+			targetAuctionId,
+			auctionBids.HighestBidder,
+			auctionBids.HighestBid,
+			args.dominantToken,
+			args.msg
+		)
 	end
 
 	-- Store the new bid
@@ -196,15 +200,15 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 		Bidder = args.sender,
 		Amount = tostring(bidAmount), -- Use the quantity sent by user
 		Timestamp = args.createdAt,
-		OrderId = targetAuctionId
+		OrderId = targetAuctionId,
 	}
-	
+
 	table.insert(auctionBids.Bids, newBid)
-		
+
 	-- Update highest bid
 	auctionBids.HighestBid = tostring(bidAmount) -- Use the quantity sent by user
 	auctionBids.HighestBidder = args.sender
-	
+
 	-- Record bid internally
 	activity.recordAuctionBid({
 		OrderId = targetAuctionId,
@@ -213,7 +217,7 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 		Timestamp = args.createdAt,
 		DominantToken = args.dominantToken,
 		SwapToken = args.swapToken,
-		BidType = 'english_auction'
+		BidType = 'english_auction',
 	})
 
 	-- Notify sender of successful bid placement
@@ -229,8 +233,8 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 			BidAmount = tostring(bidAmount), -- Use the quantity sent by user
 			Message = 'Bid placed successfully on English auction!',
 			['X-Group-ID'] = args.orderGroupId,
-			OrderType = 'english'
-		}
+			OrderType = 'english',
+		},
 	})
 end
 
@@ -238,7 +242,7 @@ end
 function english_auction.settleAuction(args)
 	local orderId = args.orderId
 	local auctionBids = getExistingAuctionBids(orderId)
-	
+
 	-- Check if auction has bids
 	if not auctionBids or not auctionBids.HighestBidder then
 		utils.handleError({
@@ -247,7 +251,7 @@ function english_auction.settleAuction(args)
 			Message = 'No bids found for auction',
 			Quantity = '0',
 			TransferToken = nil,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -258,15 +262,12 @@ function english_auction.settleAuction(args)
 	local targetPairIndex = nil
 
 	for pairIndex, pairData in ipairs(Orderbook) do
-		for orderIndex, order in ipairs(pairData.Orders) do
-			if order.OrderType == 'english' and order.Id == orderId then
-				targetOrder = order
-				targetOrderIndex = orderIndex
-				targetPairIndex = pairIndex
-				break
-			end
+		local order = pairData.Orders[orderId]
+		if order and order.OrderType == 'english' and order.Id == orderId then
+			targetOrder = order
+			targetPairIndex = pairIndex
+			break
 		end
-		if targetOrder then break end
 	end
 
 	if not targetOrder then
@@ -276,7 +277,7 @@ function english_auction.settleAuction(args)
 			Message = 'Auction order not found',
 			Quantity = '0',
 			TransferToken = nil,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -289,7 +290,7 @@ function english_auction.settleAuction(args)
 			Message = 'Auction has not expired yet',
 			Quantity = '0',
 			TransferToken = nil,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -298,7 +299,7 @@ function english_auction.settleAuction(args)
 	-- For English auction settlement: seller gets ARIO tokens, buyer gets ANT tokens
 	-- The Orderbook pair is [ANT_token_process, ARIO_token_process]
 	-- We need validPair to be [ARIO_token_process, ANT_token_process] for correct transfers
-	local validPair = {Orderbook[targetPairIndex].Pair[2], Orderbook[targetPairIndex].Pair[1]} -- Swap the order to get [ARIO, ANT]
+	local validPair = { Orderbook[targetPairIndex].Pair[2], Orderbook[targetPairIndex].Pair[1] } -- Swap the order to get [ARIO, ANT]
 	local winningBidAmount = bint(auctionBids.HighestBid)
 	local quantity = bint(targetOrder.Quantity)
 
@@ -306,7 +307,7 @@ function english_auction.settleAuction(args)
 	local calculatedSendAmount = utils.calculateSendAmount(winningBidAmount)
 	local calculatedFillAmount = utils.calculateFillAmount(quantity)
 
-	utils.sendFeeToTreasury(winningBidAmount, calculatedSendAmount, validPair[1])
+	utils.sendFeeToTreasury(winningBidAmount, calculatedSendAmount, validPair[1], args.msg)
 
 	-- Execute token transfers
 	utils.executeTokenTransfers({
@@ -316,7 +317,8 @@ function english_auction.settleAuction(args)
 		originalSendAmount = winningBidAmount, -- to compute and accrue fee
 		orderId = orderId,
 		orderGroupId = args.orderGroupId,
-		swapToken = targetOrder.Token -- ANT token process for the second transfer
+		swapToken = targetOrder.Token, -- ANT token process for the second transfer
+		msg = args.msg, -- Pass msg context for intent tracking
 	}, targetOrder, validPair, calculatedSendAmount, calculatedFillAmount)
 
 	-- Record the settlement
@@ -327,7 +329,7 @@ function english_auction.settleAuction(args)
 		Quantity = tostring(quantity),
 		Timestamp = args.timestamp,
 		DominantToken = args.dominantToken,
-		SwapToken = args.swapToken
+		SwapToken = args.swapToken,
 	}
 
 	activity.recordAuctionSettlement(settlement)
@@ -343,11 +345,11 @@ function english_auction.settleAuction(args)
 		Price = tostring(auctionBids.HighestBid),
 		CreatedAt = targetOrder.DateCreated,
 		EndedAt = args.timestamp,
-		ExecutionTime = args.timestamp
+		ExecutionTime = args.timestamp,
 	})
 
 	-- Remove the auction from orderbook
-	table.remove(Orderbook[targetPairIndex].Orders, targetOrderIndex)
+	Orderbook[targetPairIndex].Orders[orderId] = nil
 
 	-- Clear auction bids
 	EnglishAuctionBids[orderId] = nil
@@ -362,8 +364,8 @@ function english_auction.settleAuction(args)
 			WinningBid = auctionBids.HighestBid,
 			Quantity = tostring(quantity),
 			Message = 'You won the English auction!',
-			['X-Group-ID'] = args.orderGroupId
-		}
+			['X-Group-ID'] = args.orderGroupId,
+		},
 	})
 
 	-- Notify settler
@@ -376,15 +378,15 @@ function english_auction.settleAuction(args)
 			Winner = auctionBids.HighestBidder,
 			WinningBid = auctionBids.HighestBid,
 			Message = 'Auction settled successfully!',
-			['X-Group-ID'] = args.orderGroupId
-		}
+			['X-Group-ID'] = args.orderGroupId,
+		},
 	})
 end
 
 -- Helper function to handle ARIO token orders: we are selling ANT token, so we need to add to orderbook
 function english_auction.handleArioOrder(args, validPair, pairIndex)
 	-- Add the new order to the orderbook (buy now functionality)
-	table.insert(Orderbook[pairIndex].Orders, {
+	Orderbook[pairIndex].Orders[args.orderId] = {
 		Id = args.orderId,
 		Quantity = tostring(args.quantity),
 		OriginalQuantity = tostring(args.quantity),
@@ -394,7 +396,7 @@ function english_auction.handleArioOrder(args, validPair, pairIndex)
 		Price = args.price and tostring(args.price),
 		ExpirationTime = args.expirationTime,
 		OrderType = 'english',
-	})
+	}
 
 	-- Record listed order internally
 	activity.recordListedOrder({
@@ -426,7 +428,7 @@ function english_auction.handleArioOrder(args, validPair, pairIndex)
 			['X-Group-ID'] = args.orderGroupId,
 			OrderType = 'english',
 			ExpirationTime = args.expirationTime,
-		}
+		},
 	})
 end
 

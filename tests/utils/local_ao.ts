@@ -5,14 +5,15 @@ import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   DEFAULT_HANDLE_OPTIONS,
 } from './constants.js';
-import AoLoader from '@permaweb/ao-loader';
 import { AOProcess } from '@ar.io/sdk';
-import { connect } from '@permaweb/aoconnect';
 import { createAosLoader } from './index.js';
-
-export type AoClient = Awaited<ReturnType<typeof connect>>;
-
-export type HandleFunction = Awaited<ReturnType<typeof AoLoader>>;
+import type {
+  AoClient,
+  HandleFunction,
+  HandlerEnv,
+  LocalAOInitParams,
+  CreateLocalProcessParams,
+} from './types.js';
 
 /**
  * @description Drop in replacement class representing the return type of the `connect` function from `@permaweb/aoconnect` (@type{AoClient})
@@ -36,12 +37,12 @@ export type HandleFunction = Awaited<ReturnType<typeof AoLoader>>;
  * ```
  */
 export class LocalAO implements Partial<AoClient> {
-  wasmModule: any;
+  wasmModule: Buffer | ArrayBuffer;
   handle: HandleFunction;
   currentMemory: ArrayBufferLike | null;
   startMemory: ArrayBufferLike | null;
 
-  handlerEnv: typeof AO_LOADER_HANDLER_ENV;
+  handlerEnv: HandlerEnv;
 
   nonce: string;
   resultsCache: Map<string, Awaited<ReturnType<AoClient['result']>>> =
@@ -53,9 +54,9 @@ export class LocalAO implements Partial<AoClient> {
     memory = null,
     nonce = '0'.padStart(43, '0'),
   }: {
-    wasmModule: any;
+    wasmModule: Buffer | ArrayBuffer;
     handle: HandleFunction;
-    handlerEnv: typeof AO_LOADER_HANDLER_ENV;
+    handlerEnv: HandlerEnv;
     memory: ArrayBufferLike | null;
     nonce?: string;
   }) {
@@ -73,13 +74,7 @@ export class LocalAO implements Partial<AoClient> {
     aoLoaderOptions,
     handlerEnv = AO_LOADER_HANDLER_ENV,
     memory = null,
-  }: {
-    lua: string;
-    wasmModule: any;
-    aoLoaderOptions: typeof AO_LOADER_OPTIONS;
-    handlerEnv?: typeof AO_LOADER_HANDLER_ENV;
-    memory?: ArrayBufferLike | null;
-  }): Promise<LocalAO> {
+  }: LocalAOInitParams): Promise<LocalAO> {
     const { handle, memory: startMemory } = await createAosLoader({
       lua,
       wasm: wasmModule,
@@ -95,7 +90,7 @@ export class LocalAO implements Partial<AoClient> {
     });
   }
 
-  async reset() {
+  async reset(): Promise<void> {
     this.currentMemory = this.startMemory;
     this.nonce = '0'.padStart(43, '0');
     this.resultsCache.clear();
@@ -103,7 +98,7 @@ export class LocalAO implements Partial<AoClient> {
 
   async dryrun(
     params: Parameters<AoClient['dryrun']>[0],
-    handlerEnvOverrides?: typeof AO_LOADER_HANDLER_ENV,
+    handlerEnvOverrides?: HandlerEnv,
   ): ReturnType<AoClient['dryrun']> {
     const res = await this.handle(
       this.currentMemory,
@@ -128,7 +123,7 @@ export class LocalAO implements Partial<AoClient> {
 
   async message(
     params: Parameters<AoClient['message']>[0],
-    handlerEnvOverrides?: typeof AO_LOADER_HANDLER_ENV,
+    handlerEnvOverrides?: HandlerEnv,
   ): Promise<string> {
     const newNonce = (parseInt(this.nonce) + 1).toString().padStart(43, '0');
 
@@ -168,7 +163,7 @@ export async function createLocalProcess({
   wasmModule = AOS_WASM,
   aoLoaderOptions = AO_LOADER_OPTIONS,
   handlerEnv = AO_LOADER_HANDLER_ENV,
-} = {}) {
+}: CreateLocalProcessParams = {}): Promise<AOProcess> {
   return new AOProcess({
     processId,
     ao: (await LocalAO.init({

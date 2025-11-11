@@ -1,11 +1,11 @@
 local bint = require('.bint')(256)
 
 local utils = require('utils')
-local json = require('json')
 local fixed_price = require('fixed_price')
 local dutch_auction = require('dutch_auction')
 local english_auction = require('english_auction')
 local activity = require('activity')
+local json = require('json')
 
 if Name ~= 'ANT Marketplace' then
 	Name = 'ANT Marketplace'
@@ -39,8 +39,10 @@ function ucm.getPairIndex(pair)
 	local pairIndex = -1
 
 	for i, existingOrders in ipairs(Orderbook) do
-		if (existingOrders.Pair[1] == pair[1] and existingOrders.Pair[2] == pair[2]) or
-			(existingOrders.Pair[1] == pair[2] and existingOrders.Pair[2] == pair[1]) then
+		if
+			(existingOrders.Pair[1] == pair[1] and existingOrders.Pair[2] == pair[2])
+			or (existingOrders.Pair[1] == pair[2] and existingOrders.Pair[2] == pair[1])
+		then
 			pairIndex = i
 			break
 		end
@@ -59,7 +61,7 @@ local function validateAntDominantOrder(args, validPair)
 			Message = 'ANT tokens can only be sold in quantities of exactly 1',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -72,7 +74,7 @@ local function validateAntDominantOrder(args, validPair)
 			Message = 'Price is required when selling ANT tokens',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -86,7 +88,7 @@ local function validateAntDominantOrder(args, validPair)
 			Message = expirationError,
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -100,7 +102,7 @@ local function validateAntDominantOrder(args, validPair)
 			Message = priceError,
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -120,7 +122,7 @@ local function validateArioDominantOrder(args, validPair)
 			Message = 'Requested order ID is required',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -139,7 +141,7 @@ local function validateOrderParams(args)
 			Message = pairError or 'Error validating pair',
 			Quantity = args.quantity,
 			TransferToken = nil,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
@@ -153,11 +155,10 @@ local function validateOrderParams(args)
 			Message = arioError or 'Invalid trade - ARIO must be involved',
 			Quantity = args.quantity,
 			TransferToken = nil,
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
-
 
 	-- 3. Check quantity is positive integer
 	if not utils.checkValidAmount(args.quantity) then
@@ -167,20 +168,23 @@ local function validateOrderParams(args)
 			Message = 'Quantity must be an integer greater than zero',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
 
 	-- 4. Check order type is supported
-	if not args.orderType or args.orderType ~= "fixed" and args.orderType ~= "dutch" and args.orderType ~= "english" then
+	if
+		not args.orderType
+		or args.orderType ~= 'fixed' and args.orderType ~= 'dutch' and args.orderType ~= 'english'
+	then
 		utils.handleError({
 			Target = args.sender,
 			Action = 'Validation-Error',
 			Message = 'Order type must be "fixed" or "dutch" or "english"',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
@@ -194,7 +198,7 @@ local function validateOrderParams(args)
 		end
 
 		-- Dutch auction specific validation
-		if args.orderType == "dutch" then
+		if args.orderType == 'dutch' then
 			local isValidDutch, dutchError = dutch_auction.validateDutchParams(args)
 			if not isValidDutch then
 				utils.handleError({
@@ -203,12 +207,11 @@ local function validateOrderParams(args)
 					Message = dutchError,
 					Quantity = args.quantity,
 					TransferToken = validPair[1],
-					OrderGroupId = args.orderGroupId
+					OrderGroupId = args.orderGroupId,
 				})
 				return nil
 			end
 		end
-
 	else
 		-- ARIO dominant: validate ARIO-specific requirements
 		if not validateArioDominantOrder(args, validPair) then
@@ -233,11 +236,11 @@ local function ensurePairExists(validPair)
 end
 
 local function handleAntOrderAuctions(args, validPair, pairIndex)
-	if args.orderType == "fixed" then
+	if args.orderType == 'fixed' then
 		fixed_price.handleAntOrder(args, validPair, pairIndex)
-	elseif args.orderType == "dutch" then
+	elseif args.orderType == 'dutch' then
 		dutch_auction.handleAntOrder(args, validPair, pairIndex)
-	elseif args.orderType == "english" then
+	elseif args.orderType == 'english' then
 		english_auction.handleAntOrder(args, validPair, pairIndex)
 	else
 		utils.handleError({
@@ -246,16 +249,15 @@ local function handleAntOrderAuctions(args, validPair, pairIndex)
 			Message = 'Order type not implemented yet',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 	end
 end
 
 local function handleArioOrderAuctions(args, validPair, pairIndex)
-
 	-- Check if the desired token is already being sold (prevent duplicate sell orders)
 	local currentOrders = Orderbook[pairIndex].Orders
-	for _, existingOrder in ipairs(currentOrders) do
+	for orderId, existingOrder in pairs(currentOrders) do
 		if existingOrder.Token == args.dominantToken then
 			utils.handleError({
 				Target = args.sender,
@@ -263,17 +265,17 @@ local function handleArioOrderAuctions(args, validPair, pairIndex)
 				Message = 'This ANT token is already being sold - cannot create duplicate sell order',
 				Quantity = args.quantity,
 				TransferToken = validPair[1],
-				OrderGroupId = args.orderGroupId
+				OrderGroupId = args.orderGroupId,
 			})
 			return
 		end
 	end
 
-	if args.orderType == "fixed" then
+	if args.orderType == 'fixed' then
 		fixed_price.handleArioOrder(args, validPair, pairIndex)
-	elseif args.orderType == "dutch" then
+	elseif args.orderType == 'dutch' then
 		dutch_auction.handleArioOrder(args, validPair, pairIndex)
-	elseif args.orderType == "english" then
+	elseif args.orderType == 'english' then
 		english_auction.handleArioOrder(args, validPair, pairIndex)
 	else
 		utils.handleError({
@@ -282,7 +284,7 @@ local function handleArioOrderAuctions(args, validPair, pairIndex)
 			Message = 'Order type not implemented yet',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 	end
 end
@@ -321,10 +323,9 @@ function ucm.createOrder(args)
 			Message = 'Order type not implemented yet',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 		return
-
 	else
 		-- Pair not found in orderbook (shouldn't happen after creation)
 		utils.handleError({
@@ -333,7 +334,7 @@ function ucm.createOrder(args)
 			Message = 'Pair not found',
 			Quantity = args.quantity,
 			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId
+			OrderGroupId = args.orderGroupId,
 		})
 	end
 end
@@ -345,126 +346,192 @@ end
 -- Cancel an order
 -- Accepts the original msg so we can keep consistent behavior and responses
 function ucm.cancelOrder(msg)
-	local decodeCheck, data = utils.decodeMessageData(msg.Data)
+	-- Parse parameters from tags (Train-Case)
+	local orderId = msg.Tags['Order-Id']
+	local groupId = msg.Tags['X-Group-ID'] or 'None'
 
-	if decodeCheck and data then
-		if not data.OrderId then
-			ao.send({
-				Target = msg.From,
-				Action = 'Input-Error',
-				Tags = { Status = 'Error', Message = 'Invalid arguments, required { OrderId }' }
-			})
-			return
-		end
+	assert(orderId, 'Invalid arguments, required { Order-Id }')
 
-		local activityData = activity.findOrderById(data.OrderId, msg.Timestamp)
-		if not activityData then
-			ao.send({
-				Target = msg.From,
-				Action = 'Action-Response',
-				Tags = { Status = 'Error', Message = 'Order not found', ['X-Group-ID'] = data['X-Group-ID'] or 'None', Handler = 'Cancel-Order' }
-			})
-			return
-		end
+	local activityData = activity.findOrderById(orderId, msg.Timestamp)
+	assert(activityData, 'Order not found')
 
-		-- Check if the sender is the order creator
-		if msg.From ~= activityData.Sender then
-			ao.send({
-				Target = msg.From,
-				Action = 'Action-Response',
-				Tags = { Status = 'Error', Message = 'Unauthorized to cancel this order', ['X-Group-ID'] = data['X-Group-ID'] or 'None', Handler = 'Cancel-Order' }
-			})
-			return
-		end
+	-- Check if the sender is the order creator
+	assert(msg.From == activityData.Sender, 'Unauthorized to cancel this order')
 
-		-- Block cancellation of English auctions that have bids
-		if activityData.OrderType == 'english' and activityData.Bids and #activityData.Bids > 0 then
-			ao.send({
-				Target = msg.From,
-				Action = 'Action-Response',
+	-- Block cancellation of English auctions that have bids
+	assert(
+		not (activityData.OrderType == 'english' and activityData.Bids and #activityData.Bids > 0),
+		'You cannot cancel an English auction that has bids'
+	)
+
+	-- Only allow cancelling active or expired orders
+	assert(
+		activityData.Status == 'active' or activityData.Status == 'expired',
+		'Order cannot be cancelled because it is not active or expired'
+	)
+
+	-- Find and remove order from orderbook
+	local orderFound = false
+	for pairIdx, pairData in ipairs(Orderbook) do
+		local currentOrderEntry = pairData.Orders[orderId]
+		if currentOrderEntry then
+			-- Return funds to the creator
+			utils.Send(msg, {
+				Target = currentOrderEntry.Token,
+				Action = 'Transfer',
 				Tags = {
-					Status = 'Error',
-					Message = 'You cannot cancel an English auction that has bids',
-					['X-Group-ID'] = data['X-Group-ID'] or 'None',
-					Handler = 'Cancel-Order'
-				}
+					Recipient = currentOrderEntry.Creator,
+					Quantity = currentOrderEntry.Quantity,
+				},
 			})
-			return
+
+			-- Remove the order from the orderbook
+			Orderbook[pairIdx].Orders[orderId] = nil
+			orderFound = true
+			break
 		end
+	end
 
-		-- Only allow cancelling active or expired orders
-		if activityData.Status ~= 'active' and activityData.Status ~= 'expired' then
-			ao.send({
-				Target = msg.From,
-				Action = 'Action-Response',
-				Tags = { Status = 'Error', Message = 'Order cannot be cancelled because it is not active or expired', ['X-Group-ID'] = data['X-Group-ID'] or 'None', Handler = 'Cancel-Order' }
-			})
-			return
-		end
+	if orderFound then
+		-- Record cancellation internally
+		activity.recordCancelledOrder({
+			Id = orderId,
+			DominantToken = activityData.DominantToken,
+			SwapToken = activityData.SwapToken,
+			Sender = msg.From,
+			Receiver = nil,
+			Quantity = tostring(activityData.Quantity),
+			Price = tostring(activityData.Price),
+			CreatedAt = msg.Timestamp,
+			EndedAt = msg.Timestamp,
+			CancellationTime = msg.Timestamp,
+		})
 
-		-- Find and remove order from orderbook
-		local orderFound = false
-		for pairIdx, pairData in ipairs(Orderbook) do
-			for orderIdx, currentOrderEntry in ipairs(pairData.Orders) do
-				if data.OrderId == currentOrderEntry.Id then
-					-- Return funds to the creator
-					ao.send({
-						Target = currentOrderEntry.Token,
-						Action = 'Transfer',
-						Tags = {
-							Recipient = currentOrderEntry.Creator,
-							Quantity = currentOrderEntry.Quantity
-						}
-					})
-
-					-- Remove the order from the orderbook
-					table.remove(Orderbook[pairIdx].Orders, orderIdx)
-					orderFound = true
-					break
-				end
-			end
-			if orderFound then break end
-		end
-
-		if orderFound then
-			ao.send({
-				Target = msg.From,
-				Action = 'Action-Response',
-				Tags = { Status = 'Success', Message = 'Order cancelled', ['X-Group-ID'] = data['X-Group-ID'] or 'None', Handler = 'Cancel-Order' }
-			})
-
-			-- Record cancellation internally
-			activity.recordCancelledOrder({
-				Id = data.OrderId,
-				DominantToken = activityData.DominantToken,
-				SwapToken = activityData.SwapToken,
-				Sender = msg.From,
-				Receiver = nil,
-				Quantity = tostring(activityData.Quantity),
-				Price = tostring(activityData.Price),
-				CreatedAt = msg.Timestamp,
-				EndedAt = msg.Timestamp,
-				CancellationTime = msg.Timestamp
-			})
-		else
-			ao.send({
-				Target = msg.From,
-				Action = 'Action-Response',
-				Tags = { Status = 'Error', Message = 'Order not found in orderbook', ['X-Group-ID'] = data['X-Group-ID'] or 'None', Handler = 'Cancel-Order' }
-			})
-		end
-	else
-		ao.send({
-			Target = msg.From,
-			Action = 'Input-Error',
-			Tags = {
-				Status = 'Error',
-				Message = string.format('Failed to parse data, received: %s. %s',
-					msg.Data,
-					'Data must be an object - { OrderId }')
-			}
+		return json.encode({
+			Status = 'Success',
+			Message = 'Order cancelled',
+			['X-Group-ID'] = groupId,
+			['Order-Id'] = orderId,
 		})
 	end
+
+	assert(orderFound, 'Order not found in orderbook')
+end
+
+-- Handler: Info
+function ucm.info(msg)
+	return json.encode({
+		Name = Name,
+		Orderbook = Orderbook,
+	})
+end
+
+-- Handler: Get-Orderbook-By-Pair
+function ucm.getOrderbookByPair(msg)
+	if not msg.Tags.DominantToken or not msg.Tags.SwapToken then
+		return
+	end
+	local pairIndex = ucm.getPairIndex({ msg.Tags.DominantToken, msg.Tags.SwapToken })
+
+	if pairIndex > -1 then
+		return json.encode({ Orderbook = Orderbook[pairIndex] })
+	end
+end
+
+-- Handler: Read-Orders
+function ucm.readOrders(msg)
+	if msg.From ~= ao.id then
+		return
+	end
+
+	local readOrders = {}
+	local pairIndex = ucm.getPairIndex({ msg.Tags.DominantToken, msg.Tags.SwapToken })
+
+	if pairIndex > -1 then
+		for orderId, order in pairs(Orderbook[pairIndex].Orders) do
+			if not msg.Tags.Creator or order.Creator == msg.Tags.Creator then
+				table.insert(readOrders, {
+					id = order.Id,
+					creator = order.Creator,
+					quantity = order.Quantity,
+					price = order.Price,
+					CreatedAt = order.CreatedAt,
+				})
+			end
+		end
+
+		return json.encode(readOrders)
+	end
+end
+
+-- Handler: Read-Pair
+function ucm.readPair(msg)
+	local pairIndex = ucm.getPairIndex({ msg.Tags.DominantToken, msg.Tags.SwapToken })
+	if pairIndex > -1 then
+		return json.encode({
+			Pair = tostring(pairIndex),
+			Orderbook = Orderbook[pairIndex],
+		})
+	end
+end
+
+-- Handler: Settle-Auction
+function ucm.settleAuctionHandler(msg)
+	-- Parse parameters from tags (Train-Case)
+	local orderId = msg.Tags['Order-Id']
+	local dominantToken = msg.Tags['Dominant-Token']
+	local swapToken = msg.Tags['Swap-Token']
+
+	assert(orderId, 'Order-Id is required')
+
+	-- Use internal activity lookup instead of messaging
+	local foundOrder = activity.findOrderById(orderId, msg.Timestamp)
+	assert(foundOrder, 'Order not found')
+
+	assert(
+		foundOrder.Status == 'ready-for-settlement',
+		'Order is not ready for settlement. Status: ' .. tostring(foundOrder.Status)
+	)
+
+	local settleArgs = {
+		orderId = orderId,
+		sender = msg.From,
+		timestamp = msg.Timestamp,
+		orderGroupId = msg.Tags['X-Group-ID'] or 'None',
+		dominantToken = dominantToken,
+		swapToken = swapToken,
+		msg = msg, -- Pass msg context for intent tracking
+	}
+
+	ucm.settleAuction(settleArgs)
+	return json.encode({ Status = 'Success', Message = 'Auction settled', ['Order-Id'] = orderId })
+end
+
+-- Handler: Withdraw-Fees
+function ucm.withdrawFeesHandler(msg)
+	-- Only the process owner can withdraw fees
+	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can withdraw fees')
+
+	local amount = AccruedFeesAmount
+	assert(amount and amount > 0, 'No fees available to withdraw')
+
+	-- transfer fees to requester
+	ao.send({
+		Target = ARIO_TOKEN_PROCESS_ID,
+		Action = 'Transfer',
+		Tags = {
+			Recipient = msg.From,
+			Quantity = tostring(amount),
+		},
+	})
+
+	AccruedFeesAmount = 0
+
+	return json.encode({
+		Status = 'Success',
+		Message = 'Fees withdrawn',
+		Amount = tostring(amount),
+	})
 end
 
 return ucm

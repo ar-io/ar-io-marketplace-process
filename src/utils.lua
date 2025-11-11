@@ -1,13 +1,161 @@
 local json = require('json')
 local bint = require('.bint')(256)
+local intents = require('intents')
+local crypto = require('crypto')
 
 local utils = {}
-if not AccruedFeesAmount then AccruedFeesAmount = 0 end
+if not AccruedFeesAmount then
+	AccruedFeesAmount = 0
+end
 
 -- CHANGEME
 ARIO_TOKEN_PROCESS_ID = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
 
 TREASURY_ADDRESS = 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks'
+
+--- Get all keys from a table
+--- @param t table The table to get keys from
+--- @return table keys Array of keys
+function utils.keys(t)
+	assert(type(t) == 'table', 'argument needs to be a table')
+	local keys = {}
+	for key in pairs(t) do
+		table.insert(keys, key)
+	end
+	return keys
+end
+
+--- Converts a string to camelCase
+--- @param str string The string to convert
+--- @return string camelCaseString The camelCase string
+function utils.camelCase(str)
+	-- Remove any leading or trailing spaces
+	str = string.gsub(str, '^%s*(.-)%s*$', '%1')
+	-- Convert PascalCase to camelCase
+	str = string.gsub(str, '^%u', string.lower)
+	-- Handle kebab-case, snake_case, and space-separated words
+	str = string.gsub(str, '[-_%s](%w)', function(s)
+		return string.upper(s)
+	end)
+	return str
+end
+
+--- Error handler for xpcall
+--- @param err any The error
+--- @return string stackTrace The error with stack trace
+function utils.errorHandler(err)
+	return debug.traceback(err)
+end
+
+--- Checks if an address is a valid Arweave address
+--- @param address string The address to check
+--- @return boolean isValid Whether the address is valid
+function utils.isValidArweaveAddress(address)
+	return type(address) == 'string' and #address == 43 and string.match(address, '^[%w-_]+$') ~= nil
+end
+
+--- Checks if an address is a valid Ethereum address
+--- @param address string The address to check
+--- @return boolean isValid Whether the address is valid
+function utils.isValidEthAddress(address)
+	return type(address) == 'string' and #address == 42 and string.match(address, '^0x[%x]+$') ~= nil
+end
+
+--- Checks if an address is a valid unsafe address (less strict validation)
+--- @param address string The address to check
+--- @return boolean isValid Whether the address is valid
+function utils.isValidUnsafeAddress(address)
+	if not address then
+		return false
+	end
+	local match = string.match(address, '^[%w_-]+$')
+	return match ~= nil and #address >= 1 and #address <= 128
+end
+
+--- Checks if an address is a valid AO address (Arweave or Ethereum)
+--- @param address string|nil The address to check
+--- @param allowUnsafe boolean|nil Whether to allow unsafe addresses
+--- @return boolean isValid Whether the address is valid
+function utils.isValidAOAddress(address, allowUnsafe)
+	allowUnsafe = allowUnsafe or false
+	if not address then
+		return false
+	end
+	if allowUnsafe then
+		return utils.isValidUnsafeAddress(address)
+	end
+	return utils.isValidArweaveAddress(address) or utils.isValidEthAddress(address)
+end
+
+--- Converts an Ethereum address to EIP-55 checksum format
+--- @param address string The Ethereum address to format
+--- @return string formattedAddress The EIP-55 formatted address
+function utils.formatEIP55Address(address)
+	local hex = string.lower(string.sub(address, 3))
+	local hash = crypto.digest.keccak256(hex)
+	local hashHex = hash.asHex()
+	local checksumAddress = '0x'
+
+	for i = 1, #hashHex do
+		local hexChar = string.sub(hashHex, i, i)
+		local hexCharValue = tonumber(hexChar, 16)
+		local char = string.sub(hex, i, i)
+		if hexCharValue > 7 then
+			char = string.upper(char)
+		end
+		checksumAddress = checksumAddress .. char
+	end
+
+	return checksumAddress
+end
+
+--- Formats an address to EIP-55 checksum format if Ethereum, otherwise returns as-is
+--- @param address string The address to format
+--- @return string formattedAddress The formatted address
+function utils.formatAddress(address)
+	if utils.isValidEthAddress(address) then
+		return utils.formatEIP55Address(address)
+	end
+	return address
+end
+
+--- Validates a message structure
+--- @param msg table The message to validate
+function utils.validateMessage(msg)
+	local ignoredKeys = {
+		Tags = true,
+		reply = true,
+		forward = true,
+		Data = true,
+	}
+
+	for k, v in pairs(msg) do
+		if not ignoredKeys[k] then
+			assert(type(k) == 'string', string.format('Key %s must be a string', k))
+			assert(type(v) == 'string', string.format('Value %s must be a string', v))
+		end
+	end
+
+	if msg.Tags then
+		for k, v in pairs(msg.Tags) do
+			assert(type(k) == 'string', string.format('Key %s must be a string', k))
+			assert(type(v) == 'string', string.format('Value %s must be a string', v))
+		end
+	end
+end
+
+--- Splits a string by a delimiter
+--- @param input string The string to split
+--- @param delimiter string|nil The delimiter, defaults to ","
+--- @return table parts The split string parts
+function utils.splitString(input, delimiter)
+	delimiter = delimiter or ','
+	local result = {}
+	for token in (input or ''):gmatch(string.format('([^%s]+)', delimiter)) do
+		table.insert(result, token)
+	end
+	return result
+end
 
 function utils.checkValidAddress(address)
 	if not address or type(address) ~= 'string' then
@@ -82,7 +230,53 @@ function utils.calculateFeeAmount(amount)
 end
 
 function utils.calculateFillAmount(amount)
-	return tostring(math.floor(tostring(amount)))
+	return tostring(math.floor(tonumber(amount) or 0))
+end
+
+--- Send wrapper that auto-creates child intents for Transfer actions
+--- @param msg Message The original message context
+--- @param sendParams SendParams The parameters to pass to ao.send
+function utils.Send(msg, sendParams)
+	-- Validate message structure
+	utils.validateMessage(sendParams)
+
+	-- Extract parent intent from context
+	local parentIntentId = msg.Tags and msg.Tags['X-Intent-Id']
+
+	if sendParams.Action == 'Transfer' and parentIntentId then
+		-- Validate parent intent exists
+		local parent = intents.getById(parentIntentId)
+		if parent then
+			-- Create child intent
+			local childIntent = intents.createChild(
+				parentIntentId,
+				msg,
+				sendParams.Target, -- token process we expect Debit-Notice from
+				{
+					Recipient = sendParams.Tags and sendParams.Tags.Recipient or nil,
+					Quantity = sendParams.Tags and sendParams.Tags.Quantity or nil,
+					Token = sendParams.Target,
+				}
+			)
+
+			-- Add child intent ID to transfer
+			sendParams.Tags = sendParams.Tags or {}
+			sendParams.Tags['X-Intent-Id'] = childIntent.IntentId
+
+			-- Update parent status to "settling" if currently active
+			if parent.Status == 'active' then
+				intents.updateStatus(parentIntentId, 'settling')
+			end
+		end
+	end
+
+	-- Use msg.reply if available, otherwise use ao.send
+	-- Reference: https://github.com/permaweb/aos/blob/main/blueprints/patch-legacy-reply.lua
+	if msg.reply then
+		msg.reply(sendParams)
+	else
+		ao.send(sendParams)
+	end
 end
 
 function utils.printTable(t, indent)
@@ -97,14 +291,14 @@ function utils.printTable(t, indent)
 		for k, v in pairs(tbl) do
 			tab = tab .. string.rep('  ', indentLevel)
 			if not isArray then
-				tab = tab .. '\'' .. tostring(k) .. '\': '
+				tab = tab .. "'" .. tostring(k) .. "': "
 			end
 
 			if type(v) == 'table' then
 				tab = tab .. serialize(v, indentLevel) .. sep
 			else
 				if type(v) == 'string' then
-					tab = tab .. '\'' .. tostring(v) .. '\'' .. sep
+					tab = tab .. "'" .. tostring(v) .. "'" .. sep
 				else
 					tab = tab .. tostring(v) .. sep
 				end
@@ -125,51 +319,59 @@ function utils.printTable(t, indent)
 end
 
 function utils.checkTables(t1, t2)
-	if t1 == t2 then return true end
-	if type(t1) ~= 'table' or type(t2) ~= 'table' then return false end
+	if t1 == t2 then
+		return true
+	end
+	if type(t1) ~= 'table' or type(t2) ~= 'table' then
+		return false
+	end
 	for k, v in pairs(t1) do
-		if not utils.checkTables(v, t2[k]) then return false end
+		if not utils.checkTables(v, t2[k]) then
+			return false
+		end
 	end
 	for k in pairs(t2) do
-		if t1[k] == nil then return false end
+		if t1[k] == nil then
+			return false
+		end
 	end
 	return true
 end
 
 local testResults = {
-    total = 0,
-    passed = 0,
-    failed = 0,
+	total = 0,
+	passed = 0,
+	failed = 0,
 }
 
 function utils.test(description, fn, expected)
-    local colors = {
-        red = '\27[31m',
-        green = '\27[32m',
-        blue = '\27[34m',
-        reset = '\27[0m',
-    }
+	local colors = {
+		red = '\27[31m',
+		green = '\27[32m',
+		blue = '\27[34m',
+		reset = '\27[0m',
+	}
 
-    testResults.total = testResults.total + 1
-    local testIndex = testResults.total
+	testResults.total = testResults.total + 1
+	local testIndex = testResults.total
 
-    print('\n' .. colors.blue .. 'Running test ' .. testIndex .. '... ' .. description .. colors.reset)
-    local status, result = pcall(fn)
-    if not status then
-        testResults.failed = testResults.failed + 1
-        print(colors.red .. 'Failed - ' .. description .. ' - ' .. result .. colors.reset .. '\n')
-    else
-        if utils.checkTables(result, expected) then
-            testResults.passed = testResults.passed + 1
-            print(colors.green .. 'Passed - ' .. description .. colors.reset)
-        else
-            testResults.failed = testResults.failed + 1
+	print('\n' .. colors.blue .. 'Running test ' .. testIndex .. '... ' .. description .. colors.reset)
+	local status, result = pcall(fn)
+	if not status then
+		testResults.failed = testResults.failed + 1
+		print(colors.red .. 'Failed - ' .. description .. ' - ' .. result .. colors.reset .. '\n')
+	else
+		if utils.checkTables(result, expected) then
+			testResults.passed = testResults.passed + 1
+			print(colors.green .. 'Passed - ' .. description .. colors.reset)
+		else
+			testResults.failed = testResults.failed + 1
 			if type(result) == 'table' and type(expected) == 'table' then
-            	print(colors.red .. 'Failed - ' .. description .. colors.reset .. '\n')
-            	print(colors.red .. 'Expected' .. colors.reset)
-            	utils.printTable(expected)
-            	print('\n' .. colors.red .. 'Got' .. colors.reset)
-            	utils.printTable(result)
+				print(colors.red .. 'Failed - ' .. description .. colors.reset .. '\n')
+				print(colors.red .. 'Expected' .. colors.reset)
+				utils.printTable(expected)
+				print('\n' .. colors.red .. 'Got' .. colors.reset)
+				utils.printTable(result)
 			else
 				print(colors.red .. 'Failed - ' .. description .. colors.reset .. '\n')
 				print(colors.red .. 'Expected' .. colors.reset)
@@ -177,27 +379,27 @@ function utils.test(description, fn, expected)
 				print('\n' .. colors.red .. 'Got' .. colors.reset)
 				print(result)
 			end
-        end
-    end
+		end
+	end
 end
 
 function utils.testSummary()
-    local colors = {
-        red = '\27[31m',
-        green = '\27[32m',
-        reset = '\27[0m',
-    }
+	local colors = {
+		red = '\27[31m',
+		green = '\27[32m',
+		reset = '\27[0m',
+	}
 
-    print('\nTest Summary')
-    print('Total tests (' .. testResults.total .. ')')
-    print('Result: ' .. testResults.passed .. '/' .. testResults.total .. ' tests passed')
-    if testResults.passed == testResults.total then
-        print(colors.green .. 'All tests passed!' .. colors.reset)
-    else
-        print(colors.green .. 'Tests passed: ' .. testResults.passed .. '/' .. testResults.total .. colors.reset)
-        print(colors.red .. 'Tests failed: ' .. testResults.failed .. '/' .. testResults.total .. colors.reset .. '\n')
-        os.exit(1)
-    end
+	print('\nTest Summary')
+	print('Total tests (' .. testResults.total .. ')')
+	print('Result: ' .. testResults.passed .. '/' .. testResults.total .. ' tests passed')
+	if testResults.passed == testResults.total then
+		print(colors.green .. 'All tests passed!' .. colors.reset)
+	else
+		print(colors.green .. 'Tests passed: ' .. testResults.passed .. '/' .. testResults.total .. colors.reset)
+		print(colors.red .. 'Tests failed: ' .. testResults.failed .. '/' .. testResults.total .. colors.reset .. '\n')
+		os.exit(1)
+	end
 end
 
 function utils.checkValidExpirationTime(expirationTime, timestamp)
@@ -228,74 +430,91 @@ function utils.checkValidExpirationTime(expirationTime, timestamp)
 	return true, nil
 end
 
-
-function utils.handleError(args) -- Target, TransferToken, Quantity
+function utils.handleError(args) -- Target, TransferToken, Quantity, msg
 	-- If there is a valid quantity then return the funds
 	if args.TransferToken and args.Quantity and utils.checkValidAmount(args.Quantity) then
-		ao.send({
+		local msg = args.msg or { Tags = {} }
+		utils.Send(msg, {
 			Target = args.TransferToken,
 			Action = 'Transfer',
 			Tags = {
 				Recipient = args.Target,
-				Quantity = tostring(args.Quantity)
-			}
+				Quantity = tostring(args.Quantity),
+			},
 		})
 	end
-	ao.send({ Target = args.Target, Action = args.Action, Tags = { Status = 'Error', Message = args.Message, ['X-Group-ID'] = args.OrderGroupId } })
+	ao.send({
+		Target = args.Target,
+		Action = args.Action,
+		Tags = { Status = 'Error', Message = args.Message, ['X-Group-ID'] = args.OrderGroupId },
+	})
+end
+
+-- Helper function to refund deposits on validation failures
+function utils.refundAndError(msg, sender, message, action)
+	utils.handleError({
+		Target = sender,
+		Action = action or 'Validation-Error',
+		Message = message,
+		Quantity = msg.Tags.Quantity,
+		TransferToken = msg.From,
+		OrderGroupId = msg.Tags['X-Group-ID'] or 'None',
+		msg = msg,
+	})
 end
 
 -- Helper function to execute token transfers
 function utils.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
 	-- Optionally record fee (difference between original send amount and calculated amount)
 	if args and args.originalSendAmount then
-		local ok1, orig = pcall(function() return bint(args.originalSendAmount) end)
-		local ok2, calc = pcall(function() return bint(calculatedSendAmount) end)
+		local ok1, orig = pcall(function()
+			return bint(args.originalSendAmount)
+		end)
+		local ok2, calc = pcall(function()
+			return bint(calculatedSendAmount)
+		end)
 		if ok1 and ok2 and orig > calc then
 			local fee = orig - calc
 			AccruedFeesAmount = AccruedFeesAmount + tonumber(tostring(fee))
 		end
 	end
 
+	-- Get msg context for intent tracking
+	local msg = args.msg or { Tags = {} }
+
 	-- Transfer tokens to the seller (order creator)
-	ao.send({
+	utils.Send(msg, {
 		Target = validPair[1],
 		Action = 'Transfer',
 		Tags = {
 			Recipient = currentOrderEntry.Creator,
-			Quantity = tostring(calculatedSendAmount)
-		}
+			Quantity = tostring(calculatedSendAmount),
+		},
 	})
 
 	-- Transfer swap tokens to the buyer (order sender)
-	ao.send({
+	utils.Send(msg, {
 		Target = args.swapToken,
 		Action = 'Transfer',
 		Tags = {
 			Recipient = args.sender,
-			Quantity = tostring(calculatedFillAmount)
-		}
+			Quantity = tostring(calculatedFillAmount),
+		},
 	})
 end
 
---- @class PaginationTag
---- @field cursor string nil The cursor to paginate from
---- @field limit number The limit of results to return
---- @field sortBy string nil The field to sort by
---- @field sortOrder string The order to sort by
---- @field filters table nil Optional filters to apply
-
 --- Parses the pagination tags from a message
---- @param msg table The message provided to a handler (see ao docs for more info)
---- @return PaginationTags paginationTags - the pagination tags
+--- @param msg Message The message provided to a handler (see ao docs for more info)
+--- @return PaginationTags paginationTags The pagination tags
 function utils.parsePaginationTags(msg)
 	local cursor = msg.Tags.Cursor
-	local limit = tonumber(msg.Tags["Limit"]) or 100
-	assert(limit <= 1000, "Limit must be less than or equal to 1000")
-	local sortOrder = msg.Tags["Sort-Order"] and string.lower(msg.Tags["Sort-Order"]) or "desc"
-	assert(sortOrder == "asc" or sortOrder == "desc", "Invalid sortOrder: expected 'asc' or 'desc'")
-	local sortBy = msg.Tags["Sort-By"]
+	local limit = tonumber(msg.Tags['Limit']) or 100
+	assert(limit <= 1000, 'Limit must be less than or equal to 1000')
+	local sortOrder = msg.Tags['Sort-Order'] and string.lower(msg.Tags['Sort-Order']) or 'desc'
+	assert(sortOrder == 'asc' or sortOrder == 'desc', "Invalid sortOrder: expected 'asc' or 'desc'")
+	local sortBy = msg.Tags['Sort-By']
 	local filters = utils.safeDecodeJson(msg.Tags.Filters)
-	assert(msg.Tags.Filters == nil or filters ~= nil, "Invalid JSON supplied in Filters tag")
+	assert(msg.Tags.Filters == nil or filters ~= nil, 'Invalid JSON supplied in Filters tag')
 	return {
 		cursor = cursor,
 		limit = limit,
@@ -307,16 +526,16 @@ end
 
 --- Paginate a table with a cursor
 --- @param tableArray table The table to paginate
---- @param cursor string number nil The cursor to paginate from (optional)
---- @param cursorField string nil The field to use as the cursor or nil for lists of primitives
+--- @param cursor string|nil The cursor to paginate from (optional)
+--- @param cursorField string|nil The field to use as the cursor or nil for lists of primitives
 --- @param limit number The limit of items to return
---- @param sortBy string nil The field to sort by. Nil if sorting by the primitive items themselves.
---- @param sortOrder string The order to sort by ("asc" or "desc")
---- @param filters table nil Optional filter table
---- @return PaginatedTable paginatedTable - the paginated table result
+--- @param sortBy string|nil The field to sort by. Nil if sorting by the primitive items themselves.
+--- @param sortOrder "asc"|"desc" The order to sort by
+--- @param filters table|nil Optional filter table
+--- @return PaginatedTable paginatedTable The paginated table result
 function utils.paginateTableWithCursor(tableArray, cursor, cursorField, limit, sortBy, sortOrder, filters)
 	local filterFn = nil
-	if type(filters) == "table" then
+	if type(filters) == 'table' then
 		filterFn = utils.createFilterFunction(filters)
 	end
 
@@ -326,17 +545,17 @@ function utils.paginateTableWithCursor(tableArray, cursor, cursorField, limit, s
 			end)
 		or tableArray
 
-	assert(sortOrder == "asc" or sortOrder == "desc", "Invalid sortOrder: expected 'asc' or 'desc'")
-	
+	assert(sortOrder == 'asc' or sortOrder == 'desc', "Invalid sortOrder: expected 'asc' or 'desc'")
+
 	-- Default to sorting by CreatedAt if no sortBy is specified
 	if not sortBy then
-		sortBy = "CreatedAt"
+		sortBy = 'CreatedAt'
 	end
-	
+
 	local sortFields = { { order = sortOrder, field = sortBy } }
 	if cursorField ~= nil and cursorField ~= sortBy then
 		-- Tie-breaker to guarantee deterministic pagination
-		table.insert(sortFields, { order = "asc", field = cursorField })
+		table.insert(sortFields, { order = 'asc', field = cursorField })
 	end
 	local sortedArray = utils.sortTableByFields(filteredArray, sortFields)
 
@@ -356,7 +575,7 @@ function utils.paginateTableWithCursor(tableArray, cursor, cursorField, limit, s
 
 	if cursor then
 		-- Advance using consistent cursor field
-		local cursorKey = cursorField or sortBy or "CreatedAt"
+		local cursorKey = cursorField or sortBy or 'CreatedAt'
 		local lastIndex = nil
 		for i, obj in ipairs(sortedArray) do
 			local value = cursorKey and obj[cursorKey] or obj
@@ -415,7 +634,7 @@ function utils.deepCopy(original, excludedFields)
 		return nil
 	end
 
-	if type(original) ~= "table" then
+	if type(original) ~= 'table' then
 		return original
 	end
 
@@ -423,7 +642,7 @@ function utils.deepCopy(original, excludedFields)
 	if not excludedFields or #excludedFields == 0 then
 		local copy = {}
 		for key, value in pairs(original) do
-			if type(value) == "table" then
+			if type(value) == 'table' then
 				copy[key] = utils.deepCopy(value) -- Recursive copy for nested tables
 			else
 				copy[key] = value
@@ -438,7 +657,7 @@ function utils.deepCopy(original, excludedFields)
 	-- Helper function to check if a key path is excluded
 	local function isExcluded(keyPath)
 		for excludedKey in pairs(excluded) do
-			if keyPath == excludedKey or keyPath:match("^" .. excludedKey .. "%.") then
+			if keyPath == excludedKey or keyPath:match('^' .. excludedKey .. '%.') then
 				return true
 			end
 		end
@@ -447,7 +666,7 @@ function utils.deepCopy(original, excludedFields)
 
 	-- Recursive function to deep copy with nested field exclusion
 	local function deepCopyHelper(orig, path)
-		if type(orig) ~= "table" then
+		if type(orig) ~= 'table' then
 			return orig
 		end
 
@@ -456,7 +675,7 @@ function utils.deepCopy(original, excludedFields)
 
 		-- Check if all keys are numeric and sequential
 		for key in pairs(orig) do
-			if type(key) ~= "number" or key % 1 ~= 0 then
+			if type(key) ~= 'number' or key % 1 ~= 0 then
 				isArray = false
 				break
 			end
@@ -472,7 +691,7 @@ function utils.deepCopy(original, excludedFields)
 
 			local index = 1
 			for _, key in ipairs(numericKeys) do
-				local keyPath = path and (path .. "." .. key) or tostring(key)
+				local keyPath = path and (path .. '.' .. key) or tostring(key)
 				if not isExcluded(keyPath) then
 					result[index] = deepCopyHelper(orig[key], keyPath) -- Sequentially reindex
 					index = index + 1
@@ -481,7 +700,7 @@ function utils.deepCopy(original, excludedFields)
 		else
 			-- Handle non-array tables (dictionaries)
 			for key, value in pairs(orig) do
-				local keyPath = path and (path .. "." .. key) or key
+				local keyPath = path and (path .. '.' .. key) or key
 				if not isExcluded(keyPath) then
 					result[key] = deepCopyHelper(value, keyPath)
 				end
@@ -533,7 +752,7 @@ function utils.sortTableByFields(prevTable, fields)
 
 		-- Sort non-nil values
 		table.sort(nonNilValues, function(a, b)
-			if fields[1].order == "asc" then
+			if fields[1].order == 'asc' then
 				return a < b
 			else
 				return a > b
@@ -559,8 +778,8 @@ function utils.sortTableByFields(prevTable, fields)
 	-- Helper function to retrieve a nested field value by path
 	local function getNestedValue(tbl, fieldPath)
 		local current = tbl
-		for segment in fieldPath:gmatch("[^.]+") do
-			if type(current) == "table" then
+		for segment in fieldPath:gmatch('[^.]+') do
+			if type(current) == 'table' then
 				current = current[segment]
 			else
 				return nil
@@ -586,7 +805,7 @@ function utils.sortTableByFields(prevTable, fields)
 			end
 
 			-- Validate order
-			if order ~= "asc" and order ~= "desc" then
+			if order ~= 'asc' and order ~= 'desc' then
 				error("Invalid sort order. Expected 'asc' or 'desc'")
 			end
 
@@ -598,7 +817,7 @@ function utils.sortTableByFields(prevTable, fields)
 			elseif aField ~= nil and bField ~= nil then
 				-- Compare based on the specified order
 				if aField ~= bField then
-					if order == "asc" then
+					if order == 'asc' then
 						return aField < bField
 					else
 						return aField > bField
@@ -641,24 +860,211 @@ function utils.filterArray(array, filterFn)
 	return result
 end
 
-function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken)
-    if not TREASURY_ADDRESS or TREASURY_ADDRESS == 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks' then
-        return
-    end
+function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg)
+	if not TREASURY_ADDRESS or TREASURY_ADDRESS == 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks' then
+		return
+	end
 
-    local feeAmount = bint(originalAmount) - bint(calculatedAmount)
+	local feeAmount = bint(originalAmount) - bint(calculatedAmount)
 
-    if feeAmount > bint(0) then
-        ao.send({
-            Target = feeToken,
-            Action = 'Transfer',
-            Tags = {
-                Recipient = TREASURY_ADDRESS,
-                Quantity = tostring(feeAmount)
-            }
-        })
-    end
+	if feeAmount > bint(0) then
+		local msgContext = msg or { Tags = {} }
+		utils.Send(msgContext, {
+			Target = feeToken,
+			Action = 'Transfer',
+			Tags = {
+				Recipient = TREASURY_ADDRESS,
+				Quantity = tostring(feeAmount),
+			},
+		})
+	end
 end
 
+--- Pre-process handler execution - formats addresses
+---
+--- This function is called BEFORE every handler executes. It's separated from the
+--- handler wrapper to allow hot-reloading: by requiring this function dynamically
+--- at execution time, we can update the pre-processing logic without remounting handlers.
+---
+--- Current responsibilities:
+--- - Format Ethereum addresses to EIP-55 checksum format
+--- - Format known address tags (Recipient, etc.)
+--- - Normalize address formats across Arweave and Ethereum ecosystems
+---
+--- Design note: This function mutates the msg object in-place for performance.
+--- It does not return a value as the msg object is modified directly.
+---
+--- @param msg Message The incoming message
+function utils.onBeforeHandler(msg)
+	-- Format addresses using EIP-55 format for Ethereum compatibility
+	-- Arweave addresses pass through unchanged
+	msg.From = utils.formatAddress(msg.From)
+
+	-- List of known tags that contain addresses
+	-- Add to this list as new address-containing tags are identified
+	local knownAddressTags = {
+		'Recipient',
+	}
+
+	for _, tName in ipairs(knownAddressTags) do
+		-- Format all incoming addresses in tags
+		msg.Tags[tName] = msg.Tags[tName] and utils.formatAddress(msg.Tags[tName]) or nil
+		-- aos assigns tag values to the base message level as well, so format there too
+		msg[tName] = msg[tName] and utils.formatAddress(msg[tName]) or nil
+	end
+end
+
+--- Post-process handler execution - sends notices
+---
+--- This function is called AFTER every handler executes. Like onBeforeHandler, it's
+--- separated to allow hot-reloading of post-processing logic without remounting handlers.
+---
+--- Current responsibilities:
+--- - Send error notices when handlers fail (xpcall caught an error)
+--- - Send success notices when handlers return results
+--- - Forward tags from the original message to responses (X-Intent-Id, etc.)
+---
+--- Design note: This function handles both success and failure cases uniformly,
+--- providing a consistent response format across all handlers. The handler result
+--- is passed through to allow for potential chaining or additional processing.
+---
+--- Future considerations: This is where you'd add:
+--- - Metrics/logging for handler execution
+--- - State change notifications (if needed)
+--- - Rate limiting or throttling logic
+--- - Custom response transformations
+---
+--- @param msg Message The incoming message
+--- @param tagValue string The action/tag value for the handler (e.g., "Create-Order")
+--- @param handlerStatus boolean Whether handler executed successfully (from xpcall)
+--- @param handlerRes any The result from the handler (error message if failed, return value if succeeded)
+--- @return any handlerRes The handler result (passed through for potential chaining)
+function utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
+	local notices = require('notices')
+	local resultNotice = nil
+
+	if not handlerStatus then
+		-- Handler threw an error - handlerRes contains the error message with stack trace
+		-- Send an Invalid-{Action}-Notice with the error details
+		resultNotice = notices.addForwardedTags(msg, {
+			Target = msg.From,
+			Action = 'Invalid-' .. tagValue .. '-Notice',
+			Error = tagValue .. '-Error',
+			['Message-Id'] = msg.Id,
+			Data = handlerRes, -- Error message from xpcall
+		})
+	elseif handlerRes then
+		-- Handler succeeded and returned a result
+		-- Send a {Action}-Notice with the result data
+		resultNotice = notices.addForwardedTags(msg, {
+			Target = msg.From,
+			Action = tagValue .. '-Notice',
+			Data = type(handlerRes) == 'string' and handlerRes or json.encode(handlerRes),
+		})
+	end
+	-- If handlerRes is nil/false, no notice is sent (silent success)
+
+	if resultNotice then
+		utils.Send(msg, resultNotice)
+	end
+
+	return handlerRes
+end
+
+--- Creates a handler for a specific tag with pre/post processing
+---
+--- This is the core of our hot-reloadable handler wrapper system. It wraps user-defined
+--- handler functions with standardized pre/post processing while allowing that processing
+--- logic to be updated at runtime without remounting handlers.
+---
+--- HOW IT WORKS:
+--- 1. The handler is mounted ONCE when this function is called (during process initialization)
+--- 2. On EVERY message, the wrapper function executes and dynamically requires 'utils'
+--- 3. This dynamic require pulls the LATEST version of onBeforeHandler/onAfterHandler
+--- 4. To update handler behavior, simply reload the utils module: package.loaded['utils'] = nil
+---
+--- WHY THIS PATTERN:
+--- - Long-running AO processes need to update logic without redeploying
+--- - Handlers.add() is expensive and mounts persist in the Handlers.list
+--- - Remounting handlers creates duplicate entries and ordering issues
+--- - Dynamic require at execution time bypasses Lua's module caching for the wrapper
+---
+--- TRADEOFFS:
+--- - Small performance cost: require() call on every message (minimal, Lua caches modules)
+--- - Slight memory cost: uses _utils to avoid shadowing the outer utils variable
+--- - Big benefit: Can fix bugs, add features, or change behavior without process restart
+---
+--- USAGE PATTERN:
+--- ```lua
+--- utils.createHandler("Action", "Create-Order", function(msg)
+---   -- Your handler logic here
+---   return { orderId = "123" }
+--- end)
+--- ```
+---
+--- HOT-RELOAD PATTERN:
+--- ```lua
+--- -- In aos console or via message
+--- package.loaded['utils'] = nil
+--- utils = require('utils')
+--- -- Next message will use updated onBeforeHandler/onAfterHandler
+--- ```
+---
+--- @param tagName string The tag name to match (e.g., "Action")
+--- @param tagValue string The tag value to match (e.g., "Create-Order")
+--- @param handler function The handler function to execute
+--- @param position "add" | "prepend" | "append" | nil Where to add the handler in Handlers.list
+--- @example
+--- ```lua
+--- utils.createHandler("Action", "Info", function(msg)
+---   return { Name = "Marketplace" }
+--- end)
+--- ```
+function utils.createHandler(tagName, tagValue, handler, position)
+	assert(type(position) == 'string' or type(position) == 'nil', 'Position must be a string or nil')
+	assert(
+		position == nil or position == 'add' or position == 'prepend' or position == 'append',
+		"Position must be one of 'add', 'prepend', 'append'"
+	)
+
+	return Handlers[position or 'add'](
+		utils.camelCase(tagValue),
+		Handlers.utils.continue(Handlers.utils.hasMatchingTag(tagName, tagValue)),
+		function(msg)
+			-- CRITICAL: Dynamically require at execution time to allow hot-reloading
+			-- This pulls the LATEST version of onBeforeHandler/onAfterHandler each time
+			-- Use _utils to avoid shadowing the outer 'utils' variable
+			local _utils = require('utils')
+
+			-- Pre-process: format addresses, normalize input
+			-- This call uses the dynamically-loaded version, so updates apply immediately
+			_utils.onBeforeHandler(msg)
+
+			-- Execute the user-defined handler with error handling
+			-- xpcall catches errors and provides stack traces via errorHandler
+			local handlerStatus, handlerRes = xpcall(function()
+				return handler(msg)
+			end, _utils.errorHandler)
+
+			-- Post-process: send success/error notices
+			-- Like onBeforeHandler, this uses the dynamically-loaded version
+			return _utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
+		end
+	)
+end
+
+--- Creates an action handler (convenience wrapper for createHandler with "Action" tag)
+--- @param action string The action value to match
+--- @param msgHandler function The handler function to execute
+--- @param position "add" | "prepend" | "append" | nil Where to add the handler
+--- @example
+--- ```lua
+--- utils.createActionHandler("Info", function(msg)
+---   return { Name = "Marketplace" }
+--- end)
+--- ```
+function utils.createActionHandler(action, msgHandler, position)
+	return utils.createHandler('Action', action, msgHandler, position)
+end
 
 return utils

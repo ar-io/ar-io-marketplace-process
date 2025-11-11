@@ -11,7 +11,7 @@ describe('utils', function()
 			send = function(msg)
 				table.insert(sentMessages, msg)
 			end,
-			id = "test"
+			id = 'test',
 		}
 	end
 
@@ -66,129 +66,129 @@ describe('utils', function()
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64M',
 				expected = true,
-				description = 'valid 43-character alphanumeric address'
+				description = 'valid 43-character alphanumeric address',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9_wB0npVviewTkUbh2Yk64M',
 				expected = true,
-				description = 'valid address with underscores'
+				description = 'valid address with underscores',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64M',
 				expected = true,
-				description = 'valid address with hyphens'
+				description = 'valid address with hyphens',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64M',
 				expected = true,
-				description = 'valid address with mixed alphanumeric, underscore, and hyphen'
+				description = 'valid address with mixed alphanumeric, underscore, and hyphen',
 			},
 			{
 				input = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ',
 				expected = true,
-				description = 'valid 43-character address with only letters'
+				description = 'valid 43-character address with only letters',
 			},
 			{
 				input = '1234567890123456789012345678901234567890123',
 				expected = true,
-				description = 'valid 43-character address with only numbers'
+				description = 'valid 43-character address with only numbers',
 			},
 			{
 				input = '___________________________________________',
 				expected = true,
-				description = 'valid 43-character address with only underscores'
+				description = 'valid 43-character address with only underscores',
 			},
 			{
 				input = '-------------------------------------------',
 				expected = true,
-				description = 'valid 43-character address with only hyphens'
+				description = 'valid 43-character address with only hyphens',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64M',
 				expected = true,
-				description = 'valid address with mixed case letters'
+				description = 'valid address with mixed case letters',
 			},
 			{
 				input = '_aXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64M',
 				expected = true,
-				description = 'valid address starting with underscore'
+				description = 'valid address starting with underscore',
 			},
 			{
 				input = '-aXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64M',
 				expected = true,
-				description = 'valid address starting with hyphen'
+				description = 'valid address starting with hyphen',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64_',
 				expected = true,
-				description = 'valid address ending with underscore'
+				description = 'valid address ending with underscore',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64-',
 				expected = true,
-				description = 'valid address ending with hyphen'
+				description = 'valid address ending with hyphen',
 			},
 			-- Invalid addresses
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64',
 				expected = false,
-				description = 'address that is too short (42 characters)'
+				description = 'address that is too short (42 characters)',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9-wB0npVviewTkUbh2Yk64Mx',
 				expected = false,
-				description = 'address that is too long (44 characters)'
+				description = 'address that is too long (44 characters)',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9 wB0npVviewTkUbh2Yk64M',
 				expected = false,
-				description = 'address containing spaces'
+				description = 'address containing spaces',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9@wB0npVviewTkUbh2Yk64M',
 				expected = false,
-				description = 'address containing special symbols'
+				description = 'address containing special symbols',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9.wB0npVviewTkUbh2Yk64M',
 				expected = false,
-				description = 'address containing dots'
+				description = 'address containing dots',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9\nwB0npVviewTkUbh2Yk64M',
 				expected = false,
-				description = 'address containing newline character'
+				description = 'address containing newline character',
 			},
 			{
 				input = 'SaXnsUgxJLkJRghWQOUs9\twB0npVviewTkUbh2Yk64M',
 				expected = false,
-				description = 'address containing tab character'
+				description = 'address containing tab character',
 			},
 			{
 				input = nil,
 				expected = false,
-				description = 'nil input'
+				description = 'nil input',
 			},
 			{
 				input = '',
 				expected = false,
-				description = 'empty string'
+				description = 'empty string',
 			},
 			{
 				input = 123456789,
 				expected = false,
-				description = 'non-string input (number)'
+				description = 'non-string input (number)',
 			},
 			{
 				input = {},
 				expected = false,
-				description = 'non-string input (table)'
+				description = 'non-string input (table)',
 			},
 			{
 				input = true,
 				expected = false,
-				description = 'non-string input (boolean)'
-			}
+				description = 'non-string input (boolean)',
+			},
 		}
 
 		for _, testCase in ipairs(testCases) do
@@ -203,7 +203,11 @@ describe('utils', function()
 			-- Valid positive amounts
 			{ input = '1', expected = true, description = 'positive amount as string' },
 			{ input = 1, expected = true, description = 'positive amount as number' },
-			{ input = '5000000000000000000000000', expected = true, description = 'very large positive amount as string' },
+			{
+				input = '5000000000000000000000000',
+				expected = true,
+				description = 'very large positive amount as string',
+			},
 			-- Zero and negative
 			{ input = '0', expected = false, description = 'zero amount as string' },
 			{ input = '-1', expected = false, description = 'negative amount as string' },
@@ -219,13 +223,43 @@ describe('utils', function()
 	describe('checkValidExpirationTime', function()
 		local testCases = {
 			{ exp = nil, ts = '1000', expected = { true, nil }, description = 'nil expiration allowed' },
-			{ exp = '0', ts = '1000', expected = { false, 'Expiration time must be a valid positive integer' }, description = 'zero is invalid' },
-			{ exp = '-1', ts = '1000', expected = { false, 'Expiration time must be a valid positive integer' }, description = 'negative is invalid' },
-			{ exp = 'abc', ts = '1000', expected = { false, 'Expiration time must be a valid positive integer' }, description = 'non-numeric expiration' },
-			{ exp = '1000', ts = '1000', expected = { false, 'Expiration time must be greater than current timestamp' }, description = 'equal to current timestamp' },
-			{ exp = '999', ts = '1000', expected = { false, 'Expiration time must be greater than current timestamp' }, description = 'less than current timestamp' },
+			{
+				exp = '0',
+				ts = '1000',
+				expected = { false, 'Expiration time must be a valid positive integer' },
+				description = 'zero is invalid',
+			},
+			{
+				exp = '-1',
+				ts = '1000',
+				expected = { false, 'Expiration time must be a valid positive integer' },
+				description = 'negative is invalid',
+			},
+			{
+				exp = 'abc',
+				ts = '1000',
+				expected = { false, 'Expiration time must be a valid positive integer' },
+				description = 'non-numeric expiration',
+			},
+			{
+				exp = '1000',
+				ts = '1000',
+				expected = { false, 'Expiration time must be greater than current timestamp' },
+				description = 'equal to current timestamp',
+			},
+			{
+				exp = '999',
+				ts = '1000',
+				expected = { false, 'Expiration time must be greater than current timestamp' },
+				description = 'less than current timestamp',
+			},
 			{ exp = '1001', ts = '1000', expected = { true, nil }, description = 'greater than current timestamp' },
-			{ exp = '1001', ts = 'abc', expected = { false, 'Expiration time must be a valid timestamp' }, description = 'invalid current timestamp' },
+			{
+				exp = '1001',
+				ts = 'abc',
+				expected = { false, 'Expiration time must be a valid timestamp' },
+				description = 'invalid current timestamp',
+			},
 		}
 
 		for _, tc in ipairs(testCases) do
@@ -247,7 +281,9 @@ describe('utils', function()
 
 		it('single field match', function()
 			local filterFn = utils.createFilterFunction({ status = 'active' })
-			local result = utils.filterArray(items, function(_, v) return filterFn(v) end)
+			local result = utils.filterArray(items, function(_, v)
+				return filterFn(v)
+			end)
 			assert.are.same({
 				{ id = 'a', status = 'active', count = 1 },
 				{ id = 'c', status = 'active', count = 2 },
@@ -257,7 +293,9 @@ describe('utils', function()
 
 		it('multi-field match', function()
 			local filterFn = utils.createFilterFunction({ status = 'active', count = 2 })
-			local result = utils.filterArray(items, function(_, v) return filterFn(v) end)
+			local result = utils.filterArray(items, function(_, v)
+				return filterFn(v)
+			end)
 			assert.are.same({
 				{ id = 'c', status = 'active', count = 2 },
 			}, result)
@@ -265,19 +303,25 @@ describe('utils', function()
 
 		it('non-matching filter returns empty', function()
 			local filterFn = utils.createFilterFunction({ status = 'pending' })
-			local result = utils.filterArray(items, function(_, v) return filterFn(v) end)
+			local result = utils.filterArray(items, function(_, v)
+				return filterFn(v)
+			end)
 			assert.are.same({}, result)
 		end)
 
 		it('empty filter allows all', function()
 			local filterFn = utils.createFilterFunction({})
-			local result = utils.filterArray(items, function(_, v) return filterFn(v) end)
+			local result = utils.filterArray(items, function(_, v)
+				return filterFn(v)
+			end)
 			assert.are.same(items, result)
 		end)
 
 		it('type sensitive comparisons', function()
 			local filterFn = utils.createFilterFunction({ count = 2 })
-			local result = utils.filterArray(items, function(_, v) return filterFn(v) end)
+			local result = utils.filterArray(items, function(_, v)
+				return filterFn(v)
+			end)
 			assert.are.same({
 				{ id = 'b', status = 'inactive', count = 2 },
 				{ id = 'c', status = 'active', count = 2 },
@@ -313,7 +357,11 @@ describe('utils', function()
 
 	describe('decodeMessageData', function()
 		local testCases = {
-			{ input = json.encode({ a = 1, b = 'x' }), expected = { true, { a = 1, b = 'x' } }, description = 'valid JSON object' },
+			{
+				input = json.encode({ a = 1, b = 'x' }),
+				expected = { true, { a = 1, b = 'x' } },
+				description = 'valid JSON object',
+			},
 			{ input = json.encode({ 1, 2, 3 }), expected = { true, { 1, 2, 3 } }, description = 'valid JSON array' },
 			{ input = '{"a":1,', expected = { false, nil }, description = 'malformed JSON' },
 			{ input = '', expected = { false, nil }, description = 'empty string' },
@@ -371,10 +419,7 @@ describe('utils', function()
 
 		it('excludes nested array index via dot path', function()
 			local src = { users = { { id = 'a' }, { id = 'b' }, { id = 'c' } } }
-			assert.are.same(
-				{ users = { { id = 'a' }, { id = 'c' } } },
-				utils.deepCopy(src, { 'users.2' })
-			)
+			assert.are.same({ users = { { id = 'a' }, { id = 'c' } } }, utils.deepCopy(src, { 'users.2' }))
 		end)
 	end)
 
@@ -388,15 +433,19 @@ describe('utils', function()
 				swapToken = BUY_TOKEN,
 				target = 'ignored',
 			}
-			for k, v in pairs(overrides or {}) do base[k] = v end
+			for k, v in pairs(overrides or {}) do
+				base[k] = v
+			end
 			return base
 		end
 
 		local function makeOrderEntry(overrides)
 			local base = {
-				Creator = 'seller-addr'
+				Creator = 'seller-addr',
 			}
-			for k, v in pairs(overrides or {}) do base[k] = v end
+			for k, v in pairs(overrides or {}) do
+				base[k] = v
+			end
 			return base
 		end
 
@@ -409,7 +458,11 @@ describe('utils', function()
 				calcSend = '995',
 				calcFill = '1',
 				expectedMessages = {
-					{ Target = SELL_TOKEN, Action = 'Transfer', Tags = { Recipient = 'seller-addr', Quantity = '995' } },
+					{
+						Target = SELL_TOKEN,
+						Action = 'Transfer',
+						Tags = { Recipient = 'seller-addr', Quantity = '995' },
+					},
 					{ Target = BUY_TOKEN, Action = 'Transfer', Tags = { Recipient = 'buyer-addr', Quantity = '1' } },
 				},
 				expectedFeeDelta = 0,
@@ -422,7 +475,11 @@ describe('utils', function()
 				calcSend = '995',
 				calcFill = '1',
 				expectedMessages = {
-					{ Target = SELL_TOKEN, Action = 'Transfer', Tags = { Recipient = 'seller-addr', Quantity = '995' } },
+					{
+						Target = SELL_TOKEN,
+						Action = 'Transfer',
+						Tags = { Recipient = 'seller-addr', Quantity = '995' },
+					},
 					{ Target = BUY_TOKEN, Action = 'Transfer', Tags = { Recipient = 'buyer-addr', Quantity = '1' } },
 				},
 				expectedFeeDelta = 5,
@@ -435,7 +492,11 @@ describe('utils', function()
 				calcSend = '995',
 				calcFill = '1',
 				expectedMessages = {
-					{ Target = SELL_TOKEN, Action = 'Transfer', Tags = { Recipient = 'seller-addr', Quantity = '995' } },
+					{
+						Target = SELL_TOKEN,
+						Action = 'Transfer',
+						Tags = { Recipient = 'seller-addr', Quantity = '995' },
+					},
 					{ Target = BUY_TOKEN, Action = 'Transfer', Tags = { Recipient = 'buyer-addr', Quantity = '1' } },
 				},
 				expectedFeeDelta = 0,
@@ -448,7 +509,11 @@ describe('utils', function()
 				calcSend = '995',
 				calcFill = '1',
 				expectedMessages = {
-					{ Target = SELL_TOKEN, Action = 'Transfer', Tags = { Recipient = 'seller-addr', Quantity = '995' } },
+					{
+						Target = SELL_TOKEN,
+						Action = 'Transfer',
+						Tags = { Recipient = 'seller-addr', Quantity = '995' },
+					},
 					{ Target = BUY_TOKEN, Action = 'Transfer', Tags = { Recipient = 'buyer-addr', Quantity = '1' } },
 				},
 				expectedFeeDelta = 0,
@@ -469,30 +534,60 @@ describe('utils', function()
 
 	describe('filterArray', function()
 		it('empty input returns empty array', function()
-			assert.are.same({}, utils.filterArray({}, function() return true end))
+			assert.are.same(
+				{},
+				utils.filterArray({}, function()
+					return true
+				end)
+			)
 		end)
 
 		local items = { 1, 2, 3, 4, 5 }
 
 		it('match all', function()
-			assert.are.same({ 1, 2, 3, 4, 5 }, utils.filterArray(items, function() return true end))
+			assert.are.same(
+				{ 1, 2, 3, 4, 5 },
+				utils.filterArray(items, function()
+					return true
+				end)
+			)
 		end)
 
 		it('match none', function()
-			assert.are.same({}, utils.filterArray(items, function() return false end))
+			assert.are.same(
+				{},
+				utils.filterArray(items, function()
+					return false
+				end)
+			)
 		end)
 
 		it('value-based predicate keeps evens', function()
-			assert.are.same({ 2, 4 }, utils.filterArray(items, function(_, v) return v % 2 == 0 end))
+			assert.are.same(
+				{ 2, 4 },
+				utils.filterArray(items, function(_, v)
+					return v % 2 == 0
+				end)
+			)
 		end)
 
 		it('index-based predicate keeps odd indices', function()
-			assert.are.same({ 1, 3, 5 }, utils.filterArray(items, function(i) return i % 2 == 1 end))
+			assert.are.same(
+				{ 1, 3, 5 },
+				utils.filterArray(items, function(i)
+					return i % 2 == 1
+				end)
+			)
 		end)
 
 		it('preserves order of passing elements', function()
 			local input = { 'a', 'b', 'c', 'd' }
-			assert.are.same({ 'a', 'c' }, utils.filterArray(input, function(_, v) return v ~= 'b' and v ~= 'd' end))
+			assert.are.same(
+				{ 'a', 'c' },
+				utils.filterArray(input, function(_, v)
+					return v ~= 'b' and v ~= 'd'
+				end)
+			)
 		end)
 	end)
 
@@ -514,14 +609,14 @@ describe('utils', function()
 					{
 						Target = validTransferToken,
 						Action = 'Transfer',
-						Tags = { Recipient = validTarget, Quantity = '1000' }
+						Tags = { Recipient = validTarget, Quantity = '1000' },
 					},
 					{
 						Target = validTarget,
 						Action = 'Some-Error',
-						Tags = { Status = 'Error', Message = 'Something went wrong', ['X-Group-ID'] = nil }
-					}
-				}
+						Tags = { Status = 'Error', Message = 'Something went wrong', ['X-Group-ID'] = nil },
+					},
+				},
 			},
 			{
 				description = 'no refund when transfer token missing; only error notice sent',
@@ -535,9 +630,9 @@ describe('utils', function()
 					{
 						Target = validTarget,
 						Action = 'Another-Error',
-						Tags = { Status = 'Error', Message = 'Missing transfer token', ['X-Group-ID'] = nil }
-					}
-				}
+						Tags = { Status = 'Error', Message = 'Missing transfer token', ['X-Group-ID'] = nil },
+					},
+				},
 			},
 			{
 				description = 'no refund when quantity invalid (zero); only error notice sent',
@@ -552,9 +647,9 @@ describe('utils', function()
 					{
 						Target = validTarget,
 						Action = 'Zero-Qty-Error',
-						Tags = { Status = 'Error', Message = 'Zero quantity', ['X-Group-ID'] = nil }
-					}
-				}
+						Tags = { Status = 'Error', Message = 'Zero quantity', ['X-Group-ID'] = nil },
+					},
+				},
 			},
 			{
 				description = 'no refund when quantity missing; only error notice sent',
@@ -568,9 +663,9 @@ describe('utils', function()
 					{
 						Target = validTarget,
 						Action = 'No-Qty-Error',
-						Tags = { Status = 'Error', Message = 'No quantity provided', ['X-Group-ID'] = nil }
-					}
-				}
+						Tags = { Status = 'Error', Message = 'No quantity provided', ['X-Group-ID'] = nil },
+					},
+				},
 			},
 			{
 				description = 'error notice includes X-Group-ID when provided',
@@ -584,9 +679,9 @@ describe('utils', function()
 					{
 						Target = validTarget,
 						Action = 'Grouped-Error',
-						Tags = { Status = 'Error', Message = 'Grouped message', ['X-Group-ID'] = 'group-123' }
-					}
-				}
+						Tags = { Status = 'Error', Message = 'Grouped message', ['X-Group-ID'] = 'group-123' },
+					},
+				},
 			},
 		}
 
@@ -624,7 +719,9 @@ describe('utils', function()
 	describe('paginateTableWithCursor', function()
 		local function clone(tbl)
 			local c = {}
-			for i, v in ipairs(tbl) do c[i] = v end
+			for i, v in ipairs(tbl) do
+				c[i] = v
+			end
 			return c
 		end
 
@@ -644,7 +741,7 @@ describe('utils', function()
 				sortBy = 'CreatedAt',
 				sortOrder = 'desc',
 				nextCursor = nil,
-				hasMore = false
+				hasMore = false,
 			}, res)
 		end)
 
@@ -689,8 +786,9 @@ describe('utils', function()
 				{ Id = 'C', CreatedAt = 1000 },
 			}
 			local res1 = utils.paginateTableWithCursor(items, nil, 'Id', 2, 'CreatedAt', 'desc', nil)
-			local res2 = utils.paginateTableWithCursor(items, res1.items[#res1.items].Id, 'Id', 2, 'CreatedAt', 'desc', nil)
-			
+			local res2 =
+				utils.paginateTableWithCursor(items, res1.items[#res1.items].Id, 'Id', 2, 'CreatedAt', 'desc', nil)
+
 			assert.are.same({
 				items = {
 					{ Id = 'A', CreatedAt = 1000 },
@@ -703,7 +801,7 @@ describe('utils', function()
 				nextCursor = 'B',
 				hasMore = true,
 			}, res1)
-			
+
 			assert.are.same({
 				items = {
 					{ Id = 'C', CreatedAt = 1000 },
@@ -766,37 +864,37 @@ describe('utils', function()
 				limit = 100,
 				sortBy = nil,
 				sortOrder = 'desc',
-				filters = nil
+				filters = nil,
 			}, result)
 		end)
 
 		it('respects cursor, limit, sort order asc, sort by and filters', function()
 			local result = utils.parsePaginationTags(msg({
 				Cursor = 'abc',
-				["Limit"] = '10',
-				["Sort-Order"] = 'ASC',
-				["Sort-By"] = 'CreatedAt',
-				Filters = json.encode({ Status = 'active' })
+				['Limit'] = '10',
+				['Sort-Order'] = 'ASC',
+				['Sort-By'] = 'CreatedAt',
+				Filters = json.encode({ Status = 'active' }),
 			}))
 			assert.are.same({
 				cursor = 'abc',
 				limit = 10,
 				sortBy = 'CreatedAt',
 				sortOrder = 'asc',
-				filters = { Status = 'active' }
+				filters = { Status = 'active' },
 			}, result)
 		end)
 
 		it('limit exceeds 1000 should assert', function()
 			local ok, err = pcall(function()
-				return utils.parsePaginationTags(msg({ ["Limit"] = '1001' }))
+				return utils.parsePaginationTags(msg({ ['Limit'] = '1001' }))
 			end)
 			assert.is_false(ok)
 		end)
 
 		it('invalid sort order should assert', function()
 			local ok, err = pcall(function()
-				return utils.parsePaginationTags(msg({ ["Sort-Order"] = 'invalid' }))
+				return utils.parsePaginationTags(msg({ ['Sort-Order'] = 'invalid' }))
 			end)
 			assert.is_false(ok)
 		end)
@@ -814,7 +912,11 @@ describe('utils', function()
 			{ input = nil, expected = nil, description = 'nil input returns nil' },
 			{ input = '', expected = nil, description = 'empty string returns nil' },
 			{ input = '{"a":1,', expected = nil, description = 'malformed JSON returns nil' },
-			{ input = json.encode({ a = 1, b = 'x' }), expected = { a = 1, b = 'x' }, description = 'valid JSON object' },
+			{
+				input = json.encode({ a = 1, b = 'x' }),
+				expected = { a = 1, b = 'x' },
+				description = 'valid JSON object',
+			},
 			{ input = json.encode({ 1, 2, 3 }), expected = { 1, 2, 3 }, description = 'valid JSON array' },
 			{ input = 123, expected = nil, description = 'non-string input returns nil' },
 		}
@@ -835,7 +937,7 @@ describe('utils', function()
 			resetMocks()
 			utils.sendFeeToTreasury('1000', '995', 'ARIO_TOKEN')
 			assert.are.same({
-				{ Target = 'ARIO_TOKEN', Action = 'Transfer', Tags = { Recipient = TEST_TREASURY, Quantity = '5' } }
+				{ Target = 'ARIO_TOKEN', Action = 'Transfer', Tags = { Recipient = TEST_TREASURY, Quantity = '5' } },
 			}, sentMessages)
 		end)
 
@@ -958,11 +1060,36 @@ describe('utils', function()
 		end)
 
 		local testCases = {
-			{ dominant = TEST_ARIO_ID, swap = 'OTHER_TOKEN', expected = { true, nil }, description = 'dominant token is ARIO' },
-			{ dominant = 'OTHER_TOKEN', swap = TEST_ARIO_ID, expected = { true, nil }, description = 'swap token is ARIO' },
-			{ dominant = TEST_ARIO_ID, swap = TEST_ARIO_ID, expected = { true, nil }, description = 'both tokens are ARIO' },
-			{ dominant = 'TOKEN_A', swap = 'TOKEN_B', expected = { false, 'At least one token in the trade must be ARIO' }, description = 'neither token is ARIO' },
-			{ dominant = nil, swap = TEST_ARIO_ID, expected = { true, nil }, description = 'nil dominant but ARIO in swap' },
+			{
+				dominant = TEST_ARIO_ID,
+				swap = 'OTHER_TOKEN',
+				expected = { true, nil },
+				description = 'dominant token is ARIO',
+			},
+			{
+				dominant = 'OTHER_TOKEN',
+				swap = TEST_ARIO_ID,
+				expected = { true, nil },
+				description = 'swap token is ARIO',
+			},
+			{
+				dominant = TEST_ARIO_ID,
+				swap = TEST_ARIO_ID,
+				expected = { true, nil },
+				description = 'both tokens are ARIO',
+			},
+			{
+				dominant = 'TOKEN_A',
+				swap = 'TOKEN_B',
+				expected = { false, 'At least one token in the trade must be ARIO' },
+				description = 'neither token is ARIO',
+			},
+			{
+				dominant = nil,
+				swap = TEST_ARIO_ID,
+				expected = { true, nil },
+				description = 'nil dominant but ARIO in swap',
+			},
 		}
 
 		for _, tc in ipairs(testCases) do
@@ -1014,5 +1141,223 @@ describe('utils', function()
 			end)
 		end
 	end)
-end)
 
+	describe('camelCase', function()
+		it('should convert snake_case to camelCase', function()
+			assert.are.equal(utils.camelCase('start_end'), 'startEnd')
+			assert.are.equal(utils.camelCase('multiple_words_example'), 'multipleWordsExample')
+		end)
+
+		it('should convert kebab-case to camelCase', function()
+			assert.are.equal(utils.camelCase('start-end'), 'startEnd')
+			assert.are.equal(utils.camelCase('multiple-words-example'), 'multipleWordsExample')
+		end)
+
+		it('should convert space-separated words to camelCase', function()
+			assert.are.equal(utils.camelCase('start end'), 'startEnd')
+			assert.are.equal(utils.camelCase('multiple words example'), 'multipleWordsExample')
+		end)
+
+		it('should convert PascalCase to camelCase', function()
+			assert.are.equal(utils.camelCase('StartEnd'), 'startEnd')
+			assert.are.equal(utils.camelCase('MultipleWordsExample'), 'multipleWordsExample')
+		end)
+
+		it('should handle mixed cases', function()
+			assert.are.equal(utils.camelCase('Start_end-Test'), 'startEndTest')
+			assert.are.equal(utils.camelCase('Multiple_Words-example Test'), 'multipleWordsExampleTest')
+		end)
+
+		it('should handle already camelCase strings', function()
+			assert.are.equal(utils.camelCase('startEnd'), 'startEnd')
+			assert.are.equal(utils.camelCase('multipleWordsExample'), 'multipleWordsExample')
+		end)
+
+		it('should handle single character strings', function()
+			assert.are.equal(utils.camelCase('a'), 'a')
+			assert.are.equal(utils.camelCase('A'), 'a')
+		end)
+
+		it('should handle empty strings', function()
+			assert.are.equal(utils.camelCase(''), '')
+		end)
+	end)
+
+	describe('isValidEthAddress', function()
+		local testEthAddress = '0xFCAd0B19bB29D4674531d6f115237E16AfCE377c'
+
+		it('should validate eth address', function()
+			assert.is_true(utils.isValidEthAddress(testEthAddress))
+		end)
+
+		it('should fail on non-hexadecimal character', function()
+			-- invalid non-hexadecimal G character
+			assert.is_false(utils.isValidEthAddress('0xFCAd0B19bB29D4674531d6f115237E16AfCE377G'))
+		end)
+
+		it('should return false on an invalid-length address', function()
+			assert.is_false(utils.isValidEthAddress('0xFCAd0B19bB29D4674531d6f115237E16AfCE37'))
+		end)
+
+		it('should return false on passing in non-string value', function()
+			assert.is_false(utils.isValidEthAddress(3))
+		end)
+	end)
+
+	describe('isValidArweaveAddress', function()
+		it('should return false for invalid Arweave IDs', function()
+			local invalid = utils.isValidArweaveAddress('invalid-arweave-id-123')
+			assert.is_false(invalid)
+		end)
+
+		it('should return true for a valid Arweave ID', function()
+			local valid = utils.isValidArweaveAddress('0E7Ai_rEQ326_vLtgB81XHViFsLlcwQNqlT9ap24uQI')
+			assert.is_true(valid)
+		end)
+
+		it('should return false for addresses that are too short', function()
+			assert.is_false(utils.isValidArweaveAddress('shortaddress'))
+		end)
+
+		it('should return false for addresses that are too long', function()
+			assert.is_false(utils.isValidArweaveAddress('ThisAddressIsWayTooLongToBeAValidArweaveAddress123'))
+		end)
+
+		it('should return false for nil', function()
+			assert.is_false(utils.isValidArweaveAddress(nil))
+		end)
+	end)
+
+	describe('isValidAOAddress', function()
+		local testEthAddress = '0xFCAd0B19bB29D4674531d6f115237E16AfCE377c'
+
+		it('should return false for invalid Arweave IDs', function()
+			local invalid = utils.isValidAOAddress('invalid-arweave-id-123', false)
+			assert.is_false(invalid)
+		end)
+
+		it('should return true for a valid Arweave ID', function()
+			local valid = utils.isValidAOAddress('0E7Ai_rEQ326_vLtgB81XHViFsLlcwQNqlT9ap24uQI', false)
+			assert.is_true(valid)
+		end)
+
+		it('should validate eth address', function()
+			assert.is_true(utils.isValidAOAddress(testEthAddress, false))
+		end)
+
+		it('should return false for nil without allowUnsafe', function()
+			assert.is_false(utils.isValidAOAddress(nil, false))
+		end)
+
+		it('should return false for nil with allowUnsafe', function()
+			assert.is_false(utils.isValidAOAddress(nil, true))
+		end)
+
+		it('should allow unsafe addresses when allowUnsafe is true', function()
+			assert.is_true(utils.isValidAOAddress('short', true))
+			assert.is_true(utils.isValidAOAddress('medium_length_address', true))
+			assert.is_true(utils.isValidAOAddress(string.rep('a', 128), true))
+		end)
+
+		it('should reject invalid unsafe addresses even when allowUnsafe is true', function()
+			assert.is_false(utils.isValidAOAddress('has spaces', true))
+			assert.is_false(utils.isValidAOAddress('has@special', true))
+			assert.is_false(utils.isValidAOAddress(string.rep('a', 129), true)) -- too long
+		end)
+	end)
+
+	describe('formatEIP55Address', function()
+		it('should format Ethereum addresses to EIP-55 checksum format', function()
+			-- Test with known checksummed address
+			local lowercase = '0xfcad0b19bb29d4674531d6f115237e16afce377c'
+			local checksummed = utils.formatEIP55Address(lowercase)
+			assert.are.equal('0xFCAd0B19bB29D4674531d6f115237E16AfCE377c', checksummed)
+		end)
+
+		it('should handle already checksummed addresses', function()
+			local checksummed = '0xFCAd0B19bB29D4674531d6f115237E16AfCE377c'
+			local result = utils.formatEIP55Address(checksummed)
+			assert.are.equal(checksummed, result)
+		end)
+	end)
+
+	describe('formatAddress', function()
+		it('should format Ethereum addresses to EIP-55', function()
+			local ethAddress = '0xfcad0b19bb29d4674531d6f115237e16afce377c'
+			local formatted = utils.formatAddress(ethAddress)
+			assert.are.equal('0xFCAd0B19bB29D4674531d6f115237E16AfCE377c', formatted)
+		end)
+
+		it('should not modify Arweave addresses', function()
+			local arweaveAddress = '0E7Ai_rEQ326_vLtgB81XHViFsLlcwQNqlT9ap24uQI'
+			local formatted = utils.formatAddress(arweaveAddress)
+			assert.are.equal(arweaveAddress, formatted)
+		end)
+
+		it('should not modify invalid addresses', function()
+			local invalidAddress = 'invalid-address'
+			local formatted = utils.formatAddress(invalidAddress)
+			assert.are.equal(invalidAddress, formatted)
+		end)
+	end)
+
+	describe('splitString', function()
+		it('should split by default comma delimiter', function()
+			local result = utils.splitString('a,b,c')
+			assert.are.same({ 'a', 'b', 'c' }, result)
+		end)
+
+		it('should split by custom delimiter', function()
+			local result = utils.splitString('a|b|c', '|')
+			assert.are.same({ 'a', 'b', 'c' }, result)
+		end)
+
+		it('should handle empty string', function()
+			local result = utils.splitString('')
+			assert.are.same({}, result)
+		end)
+
+		it('should handle nil string', function()
+			local result = utils.splitString(nil)
+			assert.are.same({}, result)
+		end)
+
+		it('should handle string with no delimiters', function()
+			local result = utils.splitString('single')
+			assert.are.same({ 'single' }, result)
+		end)
+
+		it('should handle multiple consecutive delimiters', function()
+			local result = utils.splitString('a,,b')
+			-- Note: consecutive delimiters create empty strings in between
+			assert.is_true(#result >= 2)
+		end)
+	end)
+
+	describe('keys', function()
+		it('should extract all keys from a table', function()
+			local t = { a = 1, b = 2, c = 3 }
+			local keys = utils.keys(t)
+			table.sort(keys)
+			assert.are.same({ 'a', 'b', 'c' }, keys)
+		end)
+
+		it('should handle empty table', function()
+			local keys = utils.keys({})
+			assert.are.same({}, keys)
+		end)
+
+		it('should handle array-like tables', function()
+			local t = { 'a', 'b', 'c' }
+			local keys = utils.keys(t)
+			table.sort(keys)
+			assert.are.same({ 1, 2, 3 }, keys)
+		end)
+
+		it('should throw error for non-table argument', function()
+			assert.has_error(function()
+				utils.keys('not a table')
+			end, 'argument needs to be a table')
+		end)
+	end)
+end)
