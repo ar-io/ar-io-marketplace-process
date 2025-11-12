@@ -3,7 +3,10 @@ import { MarketplaceProcess } from '../utils/marketplace_process.js';
 import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
 import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
-import { BUNDLED_MARKETPLACE_SOURCE_CODE, PROCESS_OWNER } from '../utils/constants.js';
+import {
+  BUNDLED_MARKETPLACE_SOURCE_CODE,
+  PROCESS_OWNER,
+} from '../utils/constants.js';
 
 describe('Auction Mechanisms', () => {
   let marketplaceProcess: MarketplaceProcess;
@@ -310,9 +313,8 @@ describe('Auction Mechanisms', () => {
       // Check it appears in listed orders (would after Credit-Notice)
       const listedOrders = await marketplaceProcess.getListedOrders();
       console.dir({ listedOrdersAfterIntent: listedOrders }, { depth: null });
-      
+
       assert(listedOrders, 'Listed orders should be defined');
     });
   });
 });
-

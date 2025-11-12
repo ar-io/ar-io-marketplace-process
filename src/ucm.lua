@@ -1,11 +1,11 @@
 local bint = require('.bint')(256)
 
 local utils = require('utils')
-local fixed_price = require('fixed_price')
-local dutch_auction = require('dutch_auction')
-local english_auction = require('english_auction')
 local activity = require('activity')
 local json = require('json')
+
+-- Note: fixed_price, dutch_auction, and english_auction are lazy-loaded
+-- within functions to avoid circular dependencies
 
 if Name ~= 'ANT Marketplace' then
 	Name = 'ANT Marketplace'
@@ -34,6 +34,91 @@ if not Orderbook then
 end
 
 local ucm = {}
+
+--- Transfer wrapper that handles intent tracking for marketplace transfers
+--- @param msg Message The original message context
+--- @param sendParams SendParams The parameters to pass to ao.send (must have Action = 'Transfer')
+function ucm.transfer(msg, sendParams)
+	local utils = require('utils')
+	local intents = require('intents')
+
+	assert(sendParams.Action == 'Transfer', 'ucm.transfer only handles Transfer actions')
+
+	-- Extract parent intent from context
+	local parentIntentId = msg.Tags and msg.Tags['X-Intent-Id']
+
+	if parentIntentId then
+		-- Validate parent intent exists
+		local parent = intents.getById(parentIntentId)
+		if parent then
+			-- Create child intent
+			local childIntent = intents.createChild(
+				parentIntentId,
+				msg,
+				sendParams.Target, -- token process we expect Debit-Notice from
+				{
+					Recipient = sendParams.Tags and sendParams.Tags.Recipient or nil,
+					Quantity = sendParams.Tags and sendParams.Tags.Quantity or nil,
+					Token = sendParams.Target,
+				}
+			)
+
+			-- Add child intent ID to transfer
+			sendParams.Tags = sendParams.Tags or {}
+			sendParams.Tags['X-Intent-Id'] = childIntent.IntentId
+
+			-- Update parent status to "settling" if currently active
+			if parent.Status == 'active' then
+				intents.updateStatus(parentIntentId, 'settling')
+			end
+		end
+	end
+
+	-- Use utils.Send to actually send the message
+	utils.Send(msg, sendParams)
+end
+
+-- Helper function to execute token transfers for order matching
+function ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
+	local utils = require('utils')
+
+	-- Optionally record fee (difference between original send amount and calculated amount)
+	if args and args.originalSendAmount then
+		local ok1, orig = pcall(function()
+			return bint(args.originalSendAmount)
+		end)
+		local ok2, calc = pcall(function()
+			return bint(calculatedSendAmount)
+		end)
+		if ok1 and ok2 and orig > calc then
+			local fee = orig - calc
+			AccruedFeesAmount = AccruedFeesAmount + tonumber(tostring(fee))
+		end
+	end
+
+	-- Get msg context for intent tracking
+	local msg = args.msg or { Tags = {} }
+
+	-- Transfer tokens to the seller (order creator)
+	ucm.transfer(msg, {
+		Target = validPair[1],
+		Action = 'Transfer',
+		Tags = {
+			Recipient = currentOrderEntry.Creator,
+			Quantity = tostring(calculatedSendAmount),
+		},
+	})
+
+	-- Transfer swap tokens to the buyer (order sender)
+	ucm.transfer(msg, {
+		Target = args.swapToken,
+		Action = 'Transfer',
+		Tags = {
+			Recipient = args.sender,
+			Quantity = tostring(calculatedFillAmount),
+		},
+	})
+end
 
 function ucm.getPairIndex(pair)
 	local pairIndex = -1
@@ -199,6 +284,7 @@ local function validateOrderParams(args)
 
 		-- Dutch auction specific validation
 		if args.orderType == 'dutch' then
+			local dutch_auction = require('dutch_auction')
 			local isValidDutch, dutchError = dutch_auction.validateDutchParams(args)
 			if not isValidDutch then
 				utils.handleError({
@@ -237,10 +323,13 @@ end
 
 local function handleAntOrderAuctions(args, validPair, pairIndex)
 	if args.orderType == 'fixed' then
+		local fixed_price = require('fixed_price')
 		fixed_price.handleAntOrder(args, validPair, pairIndex)
 	elseif args.orderType == 'dutch' then
+		local dutch_auction = require('dutch_auction')
 		dutch_auction.handleAntOrder(args, validPair, pairIndex)
 	elseif args.orderType == 'english' then
+		local english_auction = require('english_auction')
 		english_auction.handleAntOrder(args, validPair, pairIndex)
 	else
 		utils.handleError({
@@ -272,10 +361,13 @@ local function handleArioOrderAuctions(args, validPair, pairIndex)
 	end
 
 	if args.orderType == 'fixed' then
+		local fixed_price = require('fixed_price')
 		fixed_price.handleArioOrder(args, validPair, pairIndex)
 	elseif args.orderType == 'dutch' then
+		local dutch_auction = require('dutch_auction')
 		dutch_auction.handleArioOrder(args, validPair, pairIndex)
 	elseif args.orderType == 'english' then
+		local english_auction = require('english_auction')
 		english_auction.handleArioOrder(args, validPair, pairIndex)
 	else
 		utils.handleError({
@@ -340,6 +432,7 @@ function ucm.createOrder(args)
 end
 
 function ucm.settleAuction(args)
+	local english_auction = require('english_auction')
 	english_auction.settleAuction(args)
 end
 
@@ -376,7 +469,7 @@ function ucm.cancelOrder(msg)
 		local currentOrderEntry = pairData.Orders[orderId]
 		if currentOrderEntry then
 			-- Return funds to the creator
-			utils.Send(msg, {
+			ucm.transfer(msg, {
 				Target = currentOrderEntry.Token,
 				Action = 'Transfer',
 				Tags = {
@@ -516,7 +609,10 @@ function ucm.withdrawFeesHandler(msg)
 	assert(amount and amount > 0, 'No fees available to withdraw')
 
 	-- transfer fees to requester
-	ao.send({
+	-- Note: Withdraw-Fees does not use intent tracking as it's an admin operation
+	-- and not part of a multi-step workflow
+	local utils = require('utils')
+	utils.Send(msg, {
 		Target = ARIO_TOKEN_PROCESS_ID,
 		Action = 'Transfer',
 		Tags = {

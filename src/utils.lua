@@ -1,11 +1,27 @@
 local json = require('json')
 local bint = require('.bint')(256)
-local intents = require('intents')
 local crypto = require('crypto')
 
 local utils = {}
 if not AccruedFeesAmount then
 	AccruedFeesAmount = 0
+end
+
+--- Add forwarded tags (X-* tags) from one message to another
+--- @param oldMsg table The source message
+--- @param newMsg table The destination message
+--- @return table newMsg The destination message with forwarded tags
+function utils.addForwardedTags(oldMsg, newMsg)
+	if oldMsg.Cast then
+		return newMsg
+	end
+	for tagName, tagValue in pairs(oldMsg) do
+		-- Tags beginning with "X-" are forwarded
+		if string.sub(tagName, 1, 2) == 'X-' then
+			newMsg[tagName] = tagValue
+		end
+	end
+	return newMsg
 end
 
 -- CHANGEME
@@ -233,42 +249,13 @@ function utils.calculateFillAmount(amount)
 	return tostring(math.floor(tonumber(amount) or 0))
 end
 
---- Send wrapper that auto-creates child intents for Transfer actions
+--- Send wrapper for ao.send/msg.reply
 --- @param msg Message The original message context
 --- @param sendParams SendParams The parameters to pass to ao.send
+--- Note: For transfers with intent tracking, use ucm.transfer instead
 function utils.Send(msg, sendParams)
 	-- Validate message structure
 	utils.validateMessage(sendParams)
-
-	-- Extract parent intent from context
-	local parentIntentId = msg.Tags and msg.Tags['X-Intent-Id']
-
-	if sendParams.Action == 'Transfer' and parentIntentId then
-		-- Validate parent intent exists
-		local parent = intents.getById(parentIntentId)
-		if parent then
-			-- Create child intent
-			local childIntent = intents.createChild(
-				parentIntentId,
-				msg,
-				sendParams.Target, -- token process we expect Debit-Notice from
-				{
-					Recipient = sendParams.Tags and sendParams.Tags.Recipient or nil,
-					Quantity = sendParams.Tags and sendParams.Tags.Quantity or nil,
-					Token = sendParams.Target,
-				}
-			)
-
-			-- Add child intent ID to transfer
-			sendParams.Tags = sendParams.Tags or {}
-			sendParams.Tags['X-Intent-Id'] = childIntent.IntentId
-
-			-- Update parent status to "settling" if currently active
-			if parent.Status == 'active' then
-				intents.updateStatus(parentIntentId, 'settling')
-			end
-		end
-	end
 
 	-- Use msg.reply if available, otherwise use ao.send
 	-- Reference: https://github.com/permaweb/aos/blob/main/blueprints/patch-legacy-reply.lua
@@ -434,7 +421,8 @@ function utils.handleError(args) -- Target, TransferToken, Quantity, msg
 	-- If there is a valid quantity then return the funds
 	if args.TransferToken and args.Quantity and utils.checkValidAmount(args.Quantity) then
 		local msg = args.msg or { Tags = {} }
-		utils.Send(msg, {
+		local ucm = require('ucm')
+		ucm.transfer(msg, {
 			Target = args.TransferToken,
 			Action = 'Transfer',
 			Tags = {
@@ -460,46 +448,6 @@ function utils.refundAndError(msg, sender, message, action)
 		TransferToken = msg.From,
 		OrderGroupId = msg.Tags['X-Group-ID'] or 'None',
 		msg = msg,
-	})
-end
-
--- Helper function to execute token transfers
-function utils.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
-	-- Optionally record fee (difference between original send amount and calculated amount)
-	if args and args.originalSendAmount then
-		local ok1, orig = pcall(function()
-			return bint(args.originalSendAmount)
-		end)
-		local ok2, calc = pcall(function()
-			return bint(calculatedSendAmount)
-		end)
-		if ok1 and ok2 and orig > calc then
-			local fee = orig - calc
-			AccruedFeesAmount = AccruedFeesAmount + tonumber(tostring(fee))
-		end
-	end
-
-	-- Get msg context for intent tracking
-	local msg = args.msg or { Tags = {} }
-
-	-- Transfer tokens to the seller (order creator)
-	utils.Send(msg, {
-		Target = validPair[1],
-		Action = 'Transfer',
-		Tags = {
-			Recipient = currentOrderEntry.Creator,
-			Quantity = tostring(calculatedSendAmount),
-		},
-	})
-
-	-- Transfer swap tokens to the buyer (order sender)
-	utils.Send(msg, {
-		Target = args.swapToken,
-		Action = 'Transfer',
-		Tags = {
-			Recipient = args.sender,
-			Quantity = tostring(calculatedFillAmount),
-		},
 	})
 end
 
@@ -869,7 +817,8 @@ function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg
 
 	if feeAmount > bint(0) then
 		local msgContext = msg or { Tags = {} }
-		utils.Send(msgContext, {
+		local ucm = require('ucm')
+		ucm.transfer(msgContext, {
 			Target = feeToken,
 			Action = 'Transfer',
 			Tags = {
@@ -940,13 +889,12 @@ end
 --- @param handlerRes any The result from the handler (error message if failed, return value if succeeded)
 --- @return any handlerRes The handler result (passed through for potential chaining)
 function utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
-	local notices = require('notices')
 	local resultNotice = nil
 
 	if not handlerStatus then
 		-- Handler threw an error - handlerRes contains the error message with stack trace
 		-- Send an Invalid-{Action}-Notice with the error details
-		resultNotice = notices.addForwardedTags(msg, {
+		resultNotice = utils.addForwardedTags(msg, {
 			Target = msg.From,
 			Action = 'Invalid-' .. tagValue .. '-Notice',
 			Error = tagValue .. '-Error',
@@ -956,7 +904,7 @@ function utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
 	elseif handlerRes then
 		-- Handler succeeded and returned a result
 		-- Send a {Action}-Notice with the result data
-		resultNotice = notices.addForwardedTags(msg, {
+		resultNotice = utils.addForwardedTags(msg, {
 			Target = msg.From,
 			Action = tagValue .. '-Notice',
 			Data = type(handlerRes) == 'string' and handlerRes or json.encode(handlerRes),

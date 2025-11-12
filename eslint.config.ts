@@ -5,7 +5,6 @@ import tsParser from '@typescript-eslint/parser';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 export default [
   {
     files: ['**/*.ts', '**/*.tsx'],

@@ -6,3 +6,4 @@ logs
 .npmrc
 .idea
 coverage/
+._*

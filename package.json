@@ -5,7 +5,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "bundle": "tsx ../../scripts/bundle-marketplace-process.ts",
+    "bundle": "tsx scripts/bundle-marketplace-process.ts",
     "test": "yarn format:fix && yarn test:unit && yarn test:integration",
     "test:unit": "rm -rf coverage && mkdir -p coverage && busted . && luacov",
     "test:integration": "pnpm bundle && tsx --test --experimental-wasm-memory64 tests/integration/*.test.ts",
@@ -24,7 +24,9 @@
     "@typescript-eslint/eslint-plugin": "^8.29.0",
     "@typescript-eslint/parser": "^8.46.4",
     "c8": "^10.1.3",
+    "chalk": "^5.6.2",
     "changesets": "^1.0.2",
+    "cli-table3": "^0.6.5",
     "eslint": "^9.25.1",
     "eslint-plugin-header": "^3.1.1",
     "husky": "^9.1.7",

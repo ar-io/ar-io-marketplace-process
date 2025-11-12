@@ -3,7 +3,10 @@ import { MarketplaceProcess } from '../utils/marketplace_process.js';
 import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
 import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
-import { BUNDLED_MARKETPLACE_SOURCE_CODE, PROCESS_OWNER } from '../utils/constants.js';
+import {
+  BUNDLED_MARKETPLACE_SOURCE_CODE,
+  PROCESS_OWNER,
+} from '../utils/constants.js';
 
 describe('UCM (Universal Continuous Market)', () => {
   let marketplaceProcess: MarketplaceProcess;
@@ -30,7 +33,10 @@ describe('UCM (Universal Continuous Market)', () => {
 
   describe('Get-Orderbook-By-Pair', () => {
     it('should return empty orderbook for non-existent pair', async () => {
-      const result = await marketplaceProcess.getOrderbookByPair(TEST_ANT_TOKEN, TEST_ARIO_TOKEN);
+      const result = await marketplaceProcess.getOrderbookByPair(
+        TEST_ANT_TOKEN,
+        TEST_ARIO_TOKEN,
+      );
 
       console.dir({ emptyOrderbook: result }, { depth: null });
 
@@ -52,7 +58,9 @@ describe('UCM (Universal Continuous Market)', () => {
 
   describe('Cancel-Order', () => {
     it('should return error for non-existent order', async () => {
-      const result = await marketplaceProcess.cancelOrder('non-existent-order-id');
+      const result = await marketplaceProcess.cancelOrder(
+        'non-existent-order-id',
+      );
 
       console.dir({ cancelNonExistentOrder: result }, { depth: null });
 
@@ -99,17 +107,21 @@ describe('UCM (Universal Continuous Market)', () => {
       // Should refund and send error since X-Intent-Id is missing
       assert(result, 'Result should be defined');
       assert(result.Messages, 'Should have messages');
-      
+
       // Look for error or refund message
-      const hasError = result.Messages.some((m: any) => 
-        m.Tags.some((t: any) => t.name === 'Action' && (t.value === 'Validation-Error' || t.value === 'Transfer'))
+      const hasError = result.Messages.some((m: any) =>
+        m.Tags.some(
+          (t: any) =>
+            t.name === 'Action' &&
+            (t.value === 'Validation-Error' || t.value === 'Transfer'),
+        ),
       );
       assert(hasError, 'Should have error or refund message');
     });
 
     it('should reject Credit-Notice from non-dominant token', async () => {
       const wrongToken = 'wrong-token-'.padEnd(43, '9');
-      
+
       const messageId = await marketplaceProcess.process.ao.message({
         tags: [
           { name: 'Action', value: 'Credit-Notice' },
@@ -183,21 +195,33 @@ describe('UCM (Universal Continuous Market)', () => {
       const listedBefore = await marketplaceProcess.getListedOrders();
       const completedBefore = await marketplaceProcess.getCompletedOrders();
 
-      console.dir({ initialState: { listedBefore, completedBefore } }, { depth: null });
+      console.dir(
+        { initialState: { listedBefore, completedBefore } },
+        { depth: null },
+      );
 
       assert(listedBefore, 'Listed orders should be defined');
       assert(completedBefore, 'Completed orders should be defined');
-      
+
       const listedData = JSON.parse(listedBefore.Data);
       const completedData = JSON.parse(completedBefore.Data);
-      
-      assert.strictEqual(listedData.items.length, 0, 'Should start with no listed orders');
-      assert.strictEqual(completedData.items.length, 0, 'Should start with no completed orders');
+
+      assert.strictEqual(
+        listedData.items.length,
+        0,
+        'Should start with no listed orders',
+      );
+      assert.strictEqual(
+        completedData.items.length,
+        0,
+        'Should start with no completed orders',
+      );
     });
 
     it('should track order counts by address', async () => {
       const testAddress = 'test-seller-'.padEnd(43, '5');
-      const result = await marketplaceProcess.getOrderCountsByAddress(testAddress);
+      const result =
+        await marketplaceProcess.getOrderCountsByAddress(testAddress);
 
       console.dir({ orderCounts: result }, { depth: null });
 
@@ -206,4 +230,3 @@ describe('UCM (Universal Continuous Market)', () => {
     });
   });
 });
-

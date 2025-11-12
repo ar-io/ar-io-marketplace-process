@@ -1,7 +1,3 @@
 {
-  "recommendations": [
-    "JohnnyMorganz.stylua",
-    "sumneko.lua",
-    "biomejs.biome"
-  ]
+  "recommendations": ["JohnnyMorganz.stylua", "sumneko.lua", "biomejs.biome"]
 }

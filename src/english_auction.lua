@@ -3,6 +3,9 @@ local bint = require('.bint')(256)
 local utils = require('utils')
 local activity = require('activity')
 
+-- Note: ucm is lazy-loaded within functions to avoid circular dependency
+-- (ucm requires english_auction, and english_auction requires ucm)
+
 local english_auction = {}
 
 -- Initialize bid storage if it doesn't exist
@@ -66,7 +69,8 @@ end
 local function returnPreviousBid(orderId, previousBidder, previousAmount, biddingToken, msg)
 	if previousBidder and previousAmount and biddingToken then
 		-- Send refund transfer to previous bidder
-		utils.Send(msg, {
+		local ucm = require('ucm')
+		ucm.transfer(msg, {
 			Target = biddingToken,
 			Action = 'Transfer',
 			Tags = {
@@ -310,7 +314,8 @@ function english_auction.settleAuction(args)
 	utils.sendFeeToTreasury(winningBidAmount, calculatedSendAmount, validPair[1], args.msg)
 
 	-- Execute token transfers
-	utils.executeTokenTransfers({
+	local ucm = require('ucm')
+	ucm.executeTokenTransfers({
 		sender = auctionBids.HighestBidder,
 		quantity = tostring(quantity),
 		price = auctionBids.HighestBid,

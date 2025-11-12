@@ -1,14 +1,16 @@
 package.path = package.path .. ';../src/?.lua'
 
-local intents = require('intents')
+-- Mock global Intents table BEFORE requiring the module
+_G.Intents = {}
 
--- Mock global Intents table
-Intents = {}
+local intents = require('intents')
 
 describe('Intent Management', function()
 	before_each(function()
-		-- Reset Intents before each test
-		Intents = {}
+		-- Clear all intent entries
+		for k in pairs(_G.Intents) do
+			_G.Intents[k] = nil
+		end
 	end)
 
 	describe('createParent', function()

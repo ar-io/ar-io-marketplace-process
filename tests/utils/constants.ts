@@ -18,7 +18,7 @@ export const AOS_WASM: Buffer = fs.readFileSync(
   ),
 );
 export const BUNDLED_MARKETPLACE_SOURCE_CODE: string = fs.readFileSync(
-  path.join(__dirname, '../../../dist/aos-bundled.lua'),
+  path.join(__dirname, '../../dist/aos-bundled.lua'),
   'utf-8',
 );
 

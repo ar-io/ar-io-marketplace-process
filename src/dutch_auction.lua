@@ -2,6 +2,9 @@ local utils = require('utils')
 local activity = require('activity')
 local bint = require('.bint')(256)
 
+-- Note: ucm is lazy-loaded within functions to avoid circular dependency
+-- (ucm requires dutch_auction, and dutch_auction requires ucm)
+
 local dutch_auction = {}
 
 function dutch_auction.calculateDecreaseStep(args)
@@ -141,13 +144,14 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 
 			utils.sendFeeToTreasury(requiredAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
-			-- Execute token transfers
-			utils.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
+		-- Execute token transfers
+		local ucm = require('ucm')
+		ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
 
 			-- Handle refund if sent amount was more than required
 			if sentAmount > requiredAmount then
 				local refundAmount = sentAmount - requiredAmount
-				utils.Send(args.msg, {
+				ucm.transfer(args.msg, {
 					Target = args.dominantToken, -- ARIO token process (dominantToken)
 					Action = 'Transfer',
 					Tags = {

@@ -234,4 +234,3 @@ export interface CreateAosLoaderResult {
   handle: HandleFunction;
   memory: ArrayBufferLike;
 }
-

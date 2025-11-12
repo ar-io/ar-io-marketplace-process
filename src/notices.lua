@@ -1,18 +1,5 @@
 local notices = {}
 
-function notices.addForwardedTags(oldMsg, newMsg)
-	if oldMsg.Cast then
-		return newMsg
-	end
-	for tagName, tagValue in pairs(oldMsg) do
-		-- Tags beginning with "X-" are forwarded
-		if string.sub(tagName, 1, 2) == 'X-' then
-			newMsg[tagName] = tagValue
-		end
-	end
-	return newMsg
-end
-
 -- Handler: Credit-Notice - Validates and creates orders
 function notices.creditNoticeHandler(msg)
 	local utils = require('utils')

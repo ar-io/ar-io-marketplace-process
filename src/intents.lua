@@ -1,4 +1,6 @@
 local intents = {}
+local utils = require('utils')
+local json = require('json')
 
 -- Initialize global Intents storage if it doesn't exist
 if not Intents then
@@ -244,8 +246,6 @@ end
 
 -- Handler: Get-Paginated-Intents
 function intents.getPaginatedIntentsHandler(msg)
-	local json = require('json')
-	local utils = require('utils')
 	local page = utils.parsePaginationTags(msg)
 
 	local intentsArray = intents.getAllIntents()

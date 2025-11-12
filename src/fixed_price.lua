@@ -2,6 +2,9 @@ local bint = require('.bint')(256)
 local utils = require('utils')
 local activity = require('activity')
 
+-- Note: ucm is lazy-loaded within functions to avoid circular dependency
+-- (ucm requires fixed_price, and fixed_price requires ucm)
+
 local fixed_price = {}
 
 -- Helper function to update VWAP data
@@ -134,7 +137,8 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 				utils.sendFeeToTreasury(originalSendAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
 				-- Execute token transfers
-				utils.executeTokenTransfers(
+				local ucm = require('ucm')
+				ucm.executeTokenTransfers(
 					args,
 					currentOrderEntry,
 					validPair,
@@ -145,7 +149,8 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 				-- Refund any excess ARIO sent over the required amount
 				if sentAmount > requiredAmount then
 					local refundAmount = sentAmount - requiredAmount
-					utils.Send(args.msg, {
+					local ucm = require('ucm')
+					ucm.transfer(args.msg, {
 						Target = args.dominantToken,
 						Action = 'Transfer',
 						Tags = {
@@ -155,24 +160,24 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 					})
 				end
 
-			-- Record the match
-			local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
-			table.insert(matches, match)
+				-- Record the match
+				local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
+				table.insert(matches, match)
 
-			-- Mark the order ID for removal
-			matchedOrderId = orderId
-			break -- Only match with one order, no partial matching
+				-- Mark the order ID for removal
+				matchedOrderId = orderId
+				break -- Only match with one order, no partial matching
+			end
+			-- If ARIO amount is less than price, skip and continue searching
 		end
-		-- If ARIO amount is less than price, skip and continue searching
+
+		::continue::
 	end
 
-	::continue::
-end
-
--- Remove the matched order from the orderbook
-if matchedOrderId then
-	Orderbook[pairIndex].Orders[matchedOrderId] = nil
-end
+	-- Remove the matched order from the orderbook
+	if matchedOrderId then
+		Orderbook[pairIndex].Orders[matchedOrderId] = nil
+	end
 
 	-- Update VWAP and get total volume
 	local sumVolume = updateVwapData(pairIndex, matches, args, args.dominantToken)

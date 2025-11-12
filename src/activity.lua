@@ -2,6 +2,7 @@ local bint = require('.bint')(256)
 
 
 local utils = require('utils')
+local json = require('json')
 
 local activity = {}
 

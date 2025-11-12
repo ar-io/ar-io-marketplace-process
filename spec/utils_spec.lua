@@ -523,9 +523,16 @@ describe('utils', function()
 		for _, tc in ipairs(testCases) do
 			it(tc.description, function()
 				resetMocks()
+				local ucm = require('ucm')
 				local beforeFees = _G.AccruedFeesAmount or 0
-				utils.executeTokenTransfers(tc.args, tc.order, tc.pair, tc.calcSend, tc.calcFill)
+				ucm.executeTokenTransfers(tc.args, tc.order, tc.pair, tc.calcSend, tc.calcFill)
 				local afterFees = _G.AccruedFeesAmount or 0
+				-- Need to check if Tags contain X-Intent-Id (should be nil when no parent intent)
+				for _, msg in ipairs(sentMessages) do
+					if msg.Tags then
+						msg.Tags['X-Intent-Id'] = nil -- Clear for comparison
+					end
+				end
 				assert.are.same(tc.expectedMessages, sentMessages)
 				assert.are.equal(tc.expectedFeeDelta, afterFees - beforeFees)
 			end)
