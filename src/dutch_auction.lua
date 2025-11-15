@@ -162,18 +162,11 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 			local ucm = require('ucm')
 			ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
 
-			-- Handle refund if sent amount was more than required
-			if sentAmount > requiredAmount then
-				local refundAmount = sentAmount - requiredAmount
-				ucm.transfer(args.msg, {
-					Target = args.dominantToken, -- ARIO token process (dominantToken)
-					Action = 'Transfer',
-					Tags = {
-						Recipient = args.sender,
-						Quantity = tostring(refundAmount),
-					},
-				})
-			end
+		-- Handle refund if sent amount was more than required
+		if sentAmount > requiredAmount then
+			local refundAmount = sentAmount - requiredAmount
+			ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+		end
 
 			-- Mark order as executed and update fields
 			currentOrderEntry.status = ORDER_STATUSES.EXECUTED

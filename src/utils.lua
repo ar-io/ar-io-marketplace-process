@@ -408,14 +408,7 @@ function utils.handleError(args) -- target, transferToken, quantity, msg
 	local msg = args.msg or { Tags = {} }
 	if args.transferToken and args.quantity and utils.checkValidAmount(args.quantity) then
 		local ucm = require('ucm')
-		ucm.transfer(msg, {
-			Target = args.transferToken,
-			Action = 'Transfer',
-			Tags = {
-				Recipient = args.target,
-				Quantity = tostring(args.quantity),
-			},
-		})
+		ucm.transfer(args.target, tostring(args.quantity), args.transferToken, msg)
 	end
 	utils.Send(msg, {
 		Target = args.target,
@@ -821,14 +814,7 @@ function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg
 	if feeAmount > bint(0) then
 		local msgContext = msg or { Tags = {} }
 		local ucm = require('ucm')
-		ucm.transfer(msgContext, {
-			Target = feeToken,
-			Action = 'Transfer',
-			Tags = {
-				Recipient = TREASURY_ADDRESS,
-				Quantity = tostring(feeAmount),
-			},
-		})
+		ucm.transfer(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
 	end
 end
 

@@ -167,18 +167,11 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 					calculatedFillAmount
 				)
 
-				-- Refund any excess ARIO sent over the required amount
-				if sentAmount > requiredAmount then
-					local refundAmount = sentAmount - requiredAmount
-					ucm.transfer(args.msg, {
-						Target = args.dominantToken,
-						Action = 'Transfer',
-						Tags = {
-							Recipient = args.sender,
-							Quantity = tostring(refundAmount),
-						},
-					})
-				end
+			-- Refund any excess ARIO sent over the required amount
+			if sentAmount > requiredAmount then
+				local refundAmount = sentAmount - requiredAmount
+				ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+			end
 
 			-- Mark order as executed and update fields
 			currentOrderEntry.status = ORDER_STATUSES.EXECUTED

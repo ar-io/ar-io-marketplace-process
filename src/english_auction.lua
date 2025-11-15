@@ -49,14 +49,7 @@ function english_auction.returnPreviousBid(orderId, previousBidder, previousAmou
 	if previousBidder and previousAmount and biddingToken then
 		-- Send refund transfer to previous bidder
 		local ucm = require('ucm')
-		ucm.transfer(msg, {
-			Target = biddingToken,
-			Action = 'Transfer',
-			Tags = {
-				Recipient = previousBidder,
-				Quantity = tostring(previousAmount),
-			},
-		})
+		ucm.transfer(previousBidder, tostring(previousAmount), biddingToken, msg)
 
 		-- Notify previous bidder of refund
 		utils.Send(msg, {

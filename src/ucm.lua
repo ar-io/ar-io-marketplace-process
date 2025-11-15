@@ -102,45 +102,32 @@ function ucm.pruneOrderbook(now, msg)
 end
 
 --- Transfer wrapper that handles intent tracking for marketplace transfers
---- @param msg Message The original message context
---- @param sendParams SendParams The parameters to pass to ao.send (must have Action = 'Transfer')
-function ucm.transfer(msg, sendParams)
+--- @param recipient string The recipient address
+--- @param quantity string The amount to transfer
+--- @param token string The token process ID
+--- @param handledMsg Message The original message context
+function ucm.transfer(recipient, quantity, token, handledMsg)
 	local intents = require('intents')
 
-	assert(sendParams.Action == 'Transfer', 'ucm.transfer only handles Transfer actions')
+	-- Construct send parameters for transfer
+	local sendParams = {
+		Target = token,
+		Action = 'Transfer',
+		Tags = {
+			Recipient = recipient,
+			Quantity = quantity,
+		},
+	}
 
-	-- Extract parent intent from context
-	local parentIntentId = msg.Tags and msg.Tags['X-Intent-Id']
-
-	if parentIntentId then
-		-- Validate parent intent exists
-		local parent = intents.getById(parentIntentId)
-		if parent then
-			-- Create child intent
-			local childIntent = intents.createChild(
-				parentIntentId,
-				msg,
-				sendParams.Target, -- token process we expect Debit-Notice from
-				{
-					Recipient = sendParams.Tags and sendParams.Tags.Recipient or nil,
-					Quantity = sendParams.Tags and sendParams.Tags.Quantity or nil,
-					Token = sendParams.Target,
-				}
-			)
-
-			-- Add child intent ID to transfer
-			sendParams.Tags = sendParams.Tags or {}
-			sendParams.Tags['X-Intent-Id'] = childIntent.intentId
-
-			-- Update parent status to "settling" if currently active
-			if parent.status == 'active' then
-				intents.updateStatus(parentIntentId, 'settling')
-			end
-		end
-	end
+	-- Add intent tracking
+	sendParams = intents.createSendWithIntent(sendParams, handledMsg, {
+		Recipient = recipient,
+		Quantity = quantity,
+		Token = token,
+	})
 
 	-- Use utils.Send to actually send the message
-	utils.Send(msg, sendParams)
+	utils.Send(handledMsg, sendParams)
 end
 
 -- Helper function to execute token transfers for order matching
@@ -164,25 +151,11 @@ function ucm.executeTokenTransfers(args, currentOrderEntry, _, calculatedSendAmo
 
 	-- Transfer tokens to the seller (order creator)
 	-- The buyer is sending dominantToken, so we transfer that to the seller
-	ucm.transfer(msg, {
-		Target = args.dominantToken,
-		Action = 'Transfer',
-		Tags = {
-			Recipient = currentOrderEntry.creator,
-			Quantity = tostring(calculatedSendAmount),
-		},
-	})
+	ucm.transfer(currentOrderEntry.creator, tostring(calculatedSendAmount), args.dominantToken, msg)
 
 	-- Transfer swap tokens to the buyer (order sender)
 	-- The seller is sending swapToken, so we transfer that to the buyer
-	ucm.transfer(msg, {
-		Target = args.swapToken,
-		Action = 'Transfer',
-		Tags = {
-			Recipient = args.sender,
-			Quantity = tostring(calculatedFillAmount),
-		},
-	})
+	ucm.transfer(args.sender, tostring(calculatedFillAmount), args.swapToken, msg)
 end
 
 --- Get a trading pair from the orderbook (directional)
@@ -594,14 +567,7 @@ function ucm.cancelOrderHandler(msg)
 	currentOrderEntry.endedAt = msg.Timestamp
 
 	-- Return funds to the creator
-	ucm.transfer(msg, {
-		Target = currentOrderEntry.token,
-		Action = 'Transfer',
-		Tags = {
-			Recipient = currentOrderEntry.creator,
-			Quantity = currentOrderEntry.quantity,
-		},
-	})
+	ucm.transfer(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
 
 	-- Remove the order from the orderbook and index
 	if pairData then

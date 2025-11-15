@@ -132,6 +132,42 @@ function intents.getById(intentId)
 	return Intents[intentId]
 end
 
+--- Create a send operation with intent tracking
+--- Creates a child intent if a parent intent exists and updates parent status
+--- @param sendParams table The send parameters (Target, Action, Tags, etc.)
+--- @param handledMsg Message The original message context
+--- @param forwardedTags table<string, any> Optional tags to forward with the child intent
+--- @return table sendParams The send parameters with intent tracking added
+function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
+	-- Extract parent intent from context
+	local parentIntentId = handledMsg.Tags and handledMsg.Tags['X-Intent-Id']
+
+	if parentIntentId then
+		-- Validate parent intent exists
+		local parent = intents.getById(parentIntentId)
+		if parent then
+			-- Create child intent
+			local childIntent = intents.createChild(
+				parentIntentId,
+				handledMsg,
+				sendParams.Target, -- process we expect response from
+				forwardedTags or {}
+			)
+
+			-- Add child intent ID to send params
+			sendParams.Tags = sendParams.Tags or {}
+			sendParams.Tags['X-Intent-Id'] = childIntent.intentId
+
+			-- Update parent status to "settling" if currently active
+			if parent.status == constants.INTENT_STATUSES.ACTIVE then
+				intents.updateStatus(parentIntentId, constants.INTENT_STATUSES.SETTLING)
+			end
+		end
+	end
+
+	return sendParams
+end
+
 --- Get all pending parent intents
 --- @return ParentIntent[] pending Array of pending parent intents
 function intents.getPending()
