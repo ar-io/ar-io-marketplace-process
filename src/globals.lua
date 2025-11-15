@@ -32,6 +32,9 @@ OrderIndex = OrderIndex or {}
 ---@type table<string, Intent> Dictionary mapping intentId to intent data
 Intents = Intents or {}
 
+---@type string Global counter for intent IDs (string integer)
+IntentCounter = IntentCounter or "0"
+
 -- Pruning schedule tracking
 ---@type table Pruning schedule configuration
 Pruning = Pruning or {

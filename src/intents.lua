@@ -1,7 +1,15 @@
 local intents = {}
+local bint = require('.bint')(256)
 local utils = require('utils')
 local json = require('json')
 local constants = require('constants')
+
+--- Increment the global intent counter and return the new ID
+--- @return string intentId The new intent ID
+function intents.incrementIntentCounter()
+	IntentCounter = tostring(bint(IntentCounter) + bint(1))
+	return tostring(IntentCounter)
+end
 
 --- Create a parent intent
 --- @param msg Message The incoming message
@@ -10,7 +18,7 @@ local constants = require('constants')
 --- @return ParentIntent intent The created parent intent
 function intents.createParentIntent(msg, action, forwardedTags)
 	local intent = {
-		intentId = msg.Id,
+		intentId = intents.incrementIntentCounter(),
 		type = constants.INTENT_TYPES.PARENT,
 		initiator = msg.From,
 		parentIntentId = nil,
@@ -35,10 +43,12 @@ end
 --- @param forwardedTags table<string, any> Table of tags to forward with the intent
 --- @return ChildIntent childIntent The created child intent
 function intents.createChildIntent(parentId, msg, expectedFrom, forwardedTags)
-	local childId = msg.Id .. '-child-' .. tostring(os.time()) .. '-' .. tostring(math.random(1000, 9999))
+	-- Validate parent intent exists
+	local parent = Intents[parentId]
+	assert(parent, 'Parent intent not found: ' .. tostring(parentId))
 
 	local childIntent = {
-		intentId = childId,
+		intentId = intents.incrementIntentCounter(),
 		type = constants.INTENT_TYPES.CHILD,
 		initiator = ao.id, -- marketplace process
 		parentIntentId = parentId,
@@ -53,18 +63,17 @@ function intents.createChildIntent(parentId, msg, expectedFrom, forwardedTags)
 	}
 
 	-- Add to Intents table
-	Intents[childId] = childIntent
+	Intents[childIntent.intentId] = childIntent
 
 	-- Add to parent's childIntentIds map
-	local parent = Intents[parentId]
-	if parent then
-		parent.childIntentIds[childId] = true
-	end
+	Intents[parentId].childIntentIds[childIntent.intentId] = true
+
 
 	return childIntent
 end
 
 --- Resolve an intent
+--- Handles status transitions and pruning of parent intents in terminal states
 --- @param intentId string The intent ID to resolve
 --- @param timestamp number The timestamp of resolution
 --- @return boolean success Whether the resolution was successful
@@ -79,6 +88,16 @@ function intents.resolveIntent(intentId, timestamp)
 		if intent.status == constants.INTENT_STATUSES.PENDING then
 			intent.status = constants.INTENT_STATUSES.ACTIVE
 			intent.resolvedAt = timestamp
+		end
+		
+		-- Prune parent intents (and their children) when they reach terminal states
+		if intent.status == constants.INTENT_STATUSES.COMPLETED or intent.status == constants.INTENT_STATUSES.FAILED then
+			-- Delete all child intents
+			for childId in pairs(intent.childIntentIds) do
+				Intents[childId] = nil
+			end
+			-- Delete parent intent
+			Intents[intentId] = nil
 		end
 	elseif intent.type == constants.INTENT_TYPES.CHILD then
 		-- Child intent resolution
@@ -102,6 +121,9 @@ function intents.failIntent(intentId, reason)
 	intent.status = constants.INTENT_STATUSES.FAILED
 	intent.failureReason = reason
 
+	-- Use resolveIntent to handle pruning logic centrally
+	intents.resolveIntent(intentId, os.time())
+
 	return true
 end
 
@@ -120,6 +142,11 @@ function intents.updateIntentStatus(intentId, status)
 	-- Set completedAt timestamp if moving to completed
 	if status == constants.INTENT_STATUSES.COMPLETED then
 		intent.completedAt = os.time()
+	end
+
+	-- Use resolveIntent to handle pruning logic centrally for terminal states
+	if status == constants.INTENT_STATUSES.COMPLETED or status == constants.INTENT_STATUSES.FAILED then
+		intents.resolveIntent(intentId, os.time())
 	end
 
 	return true
@@ -143,6 +170,9 @@ function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
 	local parentIntentId = handledMsg.Tags and handledMsg.Tags['X-Intent-Id']
 
 	if parentIntentId then
+		-- Validate intent ID format
+		assert(utils.isValidIntentId(parentIntentId), 'Invalid X-Intent-Id format: ' .. tostring(parentIntentId))
+		
 		-- Validate parent intent exists
 		local parent = intents.getIntentById(parentIntentId)
 		if parent then

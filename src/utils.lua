@@ -34,6 +34,23 @@ function utils.keys(t)
 	return keys
 end
 
+--- Validate an intent ID format
+--- @param intentId string The intent ID to validate
+--- @return boolean valid Whether the intent ID is valid
+function utils.isValidIntentId(intentId)
+	if not intentId or type(intentId) ~= 'string' then
+		return false
+	end
+	
+	-- Intent IDs should be non-empty strings containing only digits
+	if intentId == '' then
+		return false
+	end
+	
+	-- Check if it's a valid string integer (only digits)
+	return intentId:match('^%d+$') ~= nil
+end
+
 --- Converts a string to camelCase
 --- @param str string The string to convert
 --- @return string camelCaseString The camelCase string

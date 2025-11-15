@@ -34,10 +34,16 @@ function notices.creditNoticeHandler(msg)
 		return
 	end
 
+	-- Validate intent ID format
+	if not utils.isValidIntentId(msg.Tags['X-Intent-Id']) then
+		handleInvalidTransfer('Invalid X-Intent-Id format')
+		return
+	end
+
 	-- Validate intent exists
 	local intent = intents.getIntentById(msg.Tags['X-Intent-Id'])
 	if not intent then
-		handleInvalidTransfer('Intent not found')
+		handleInvalidTransfer('Intent already resolved or does not exist')
 		return
 	end
 
@@ -120,10 +126,16 @@ end
 
 -- Handler: Debit-Notice - Resolves child intents when transfers complete
 function notices.debitNoticeHandler(msg)
+	local utils = require('utils')
 	local intents = require('intents')
 
 	local intentId = msg.Tags['X-Intent-Id']
 	if not intentId then
+		return
+	end
+
+	-- Validate intent ID format
+	if not utils.isValidIntentId(intentId) then
 		return
 	end
 
@@ -157,10 +169,16 @@ end
 
 -- Handler: Transfer-Error / Invalid-Transfer-Notice - Handles transfer failures
 function notices.transferErrorHandler(msg)
+	local utils = require('utils')
 	local intents = require('intents')
 
 	local intentId = msg.Tags['X-Intent-Id']
 	if not intentId then
+		return
+	end
+
+	-- Validate intent ID format
+	if not utils.isValidIntentId(intentId) then
 		return
 	end
 
