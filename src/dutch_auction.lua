@@ -147,11 +147,20 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 			local calculatedSendAmount = utils.calculateSendAmount(requiredAmount)
 			local calculatedFillAmount = utils.calculateFillAmount(fillAmount)
 
-			utils.sendFeeToTreasury(requiredAmount, calculatedSendAmount, args.dominantToken, args.msg)
+		utils.sendFeeToTreasury(requiredAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
-			-- Execute token transfers
-			local ucm = require('ucm')
-			ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
+		-- Execute token transfers
+		local ucm = require('ucm')
+		ucm.executeTokenTransfers({
+			sender = args.sender,
+			dominantToken = args.dominantToken,
+			swapToken = args.swapToken,
+			originalSendAmount = args.originalSendAmount,
+			msg = args.msg,
+			currentOrderEntry = currentOrderEntry,
+			calculatedSendAmount = calculatedSendAmount,
+			calculatedFillAmount = calculatedFillAmount,
+		})
 
 		-- Handle refund if sent amount was more than required
 		if sentAmount > requiredAmount then

@@ -123,6 +123,16 @@
 --- @field swapToken string Swap token
 --- @field msg Message|nil Message context for intent tracking
 
+--- @class ExecuteTokenTransfersArgs
+--- @field sender string The buyer/order sender address
+--- @field dominantToken string The dominant token process ID
+--- @field swapToken string The swap token process ID
+--- @field originalSendAmount string|nil Original send amount before fees (for fee calculation)
+--- @field msg Message|nil Message context for intent tracking
+--- @field currentOrderEntry Order The order being matched
+--- @field calculatedSendAmount string|number The amount of dominant tokens to transfer (after fees)
+--- @field calculatedFillAmount string|number The amount of swap tokens to transfer
+
 --- @class IntentStats
 --- @field total number Total number of intents
 --- @field byStatus table<string, number> Intent counts by status

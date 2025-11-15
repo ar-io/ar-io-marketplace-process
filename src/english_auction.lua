@@ -226,14 +226,14 @@ function english_auction.settleAuction(args)
 	local ucm = require('ucm')
 	ucm.executeTokenTransfers({
 		sender = order.highestBidder,
-		quantity = tostring(quantity),
-		price = order.highestBid,
-		originalSendAmount = winningBidAmount,
-		orderId = orderId,
-		orderGroupId = 'auto-settlement',
+		dominantToken = validPair[1],
 		swapToken = order.token, -- ANT token process
+		originalSendAmount = winningBidAmount,
 		msg = args.msg,
-	}, order, validPair, calculatedSendAmount, calculatedFillAmount)
+		currentOrderEntry = order,
+		calculatedSendAmount = calculatedSendAmount,
+		calculatedFillAmount = calculatedFillAmount,
+	})
 
 	-- Record the settlement directly on the order
 	order.settlement = {

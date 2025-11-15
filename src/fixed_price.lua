@@ -149,18 +149,21 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 				local calculatedSendAmount = utils.calculateSendAmount(requiredAmount)
 				local calculatedFillAmount = utils.calculateFillAmount(fillAmount)
 
-				-- Accrue fee based on the actual sent amount vs calculated
-				local originalSendAmount = tostring(sentAmount)
-				utils.sendFeeToTreasury(originalSendAmount, calculatedSendAmount, args.dominantToken, args.msg)
+			-- Accrue fee based on the actual sent amount vs calculated
+			local originalSendAmount = tostring(sentAmount)
+			utils.sendFeeToTreasury(originalSendAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
-				-- Execute token transfers
-				ucm.executeTokenTransfers(
-					args,
-					currentOrderEntry,
-					validPair,
-					calculatedSendAmount,
-					calculatedFillAmount
-				)
+			-- Execute token transfers
+			ucm.executeTokenTransfers({
+				sender = args.sender,
+				dominantToken = args.dominantToken,
+				swapToken = args.swapToken,
+				originalSendAmount = originalSendAmount,
+				msg = args.msg,
+				currentOrderEntry = currentOrderEntry,
+				calculatedSendAmount = calculatedSendAmount,
+				calculatedFillAmount = calculatedFillAmount,
+			})
 
 			-- Refund any excess ARIO sent over the required amount
 			if sentAmount > requiredAmount then

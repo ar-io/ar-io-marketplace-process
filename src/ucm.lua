@@ -131,19 +131,15 @@ function ucm.transfer(recipient, quantity, token, handledMsg)
 end
 
 --- Execute token transfers for order matching
---- @param args table Order arguments containing sender, dominantToken, swapToken, originalSendAmount, msg
---- @param currentOrderEntry Order The order being matched
---- @param _ any Unused parameter
---- @param calculatedSendAmount string|number The amount of dominant tokens to transfer
---- @param calculatedFillAmount string|number The amount of swap tokens to transfer
-function ucm.executeTokenTransfers(args, currentOrderEntry, _, calculatedSendAmount, calculatedFillAmount)
+--- @param args ExecuteTokenTransfersArgs Token transfer arguments
+function ucm.executeTokenTransfers(args)
 	-- Optionally record fee (difference between original send amount and calculated amount)
-	if args and args.originalSendAmount then
+	if args.originalSendAmount then
 		local ok1, orig = pcall(function()
 			return bint(args.originalSendAmount)
 		end)
 		local ok2, calc = pcall(function()
-			return bint(calculatedSendAmount)
+			return bint(args.calculatedSendAmount)
 		end)
 		if ok1 and ok2 and orig > calc then
 			local fee = orig - calc
@@ -156,11 +152,11 @@ function ucm.executeTokenTransfers(args, currentOrderEntry, _, calculatedSendAmo
 
 	-- Transfer tokens to the seller (order creator)
 	-- The buyer is sending dominantToken, so we transfer that to the seller
-	ucm.transfer(currentOrderEntry.creator, tostring(calculatedSendAmount), args.dominantToken, msg)
+	ucm.transfer(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
 
 	-- Transfer swap tokens to the buyer (order sender)
 	-- The seller is sending swapToken, so we transfer that to the buyer
-	ucm.transfer(args.sender, tostring(calculatedFillAmount), args.swapToken, msg)
+	ucm.transfer(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
 end
 
 --- Get a trading pair from the orderbook (directional)
@@ -613,18 +609,47 @@ function ucm.getOrderHandler(msg)
 	return json.encode(foundOrder)
 end
 
+--- Helper function to check if an order matches the status filter
+--- @param order table The order to check
+--- @param statusFilter string|nil The status filter to apply
+--- @return boolean includeOrder Whether the order should be included
+function ucm.matchesStatusFilter(order, statusFilter)
+	if not statusFilter or statusFilter == constants.ORDER_STATUS_FILTERS.ALL then
+		return true
+	elseif statusFilter == constants.ORDER_STATUS_FILTERS.LISTED then
+		return order.status == constants.ORDER_STATUSES.ACTIVE
+			or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
+	elseif statusFilter == constants.ORDER_STATUS_FILTERS.COMPLETED then
+		return order.status == constants.ORDER_STATUSES.EXECUTED
+			or order.status == constants.ORDER_STATUSES.CANCELLED
+			or order.status == constants.ORDER_STATUSES.EXPIRED
+	elseif statusFilter == constants.ORDER_STATUSES.ACTIVE then
+		return order.status == constants.ORDER_STATUSES.ACTIVE
+	elseif statusFilter == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT then
+		return order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
+	elseif statusFilter == constants.ORDER_STATUSES.EXECUTED then
+		return order.status == constants.ORDER_STATUSES.EXECUTED
+	elseif statusFilter == constants.ORDER_STATUSES.CANCELLED then
+		return order.status == constants.ORDER_STATUSES.CANCELLED
+	elseif statusFilter == constants.ORDER_STATUSES.EXPIRED then
+		return order.status == constants.ORDER_STATUSES.EXPIRED
+	else
+		-- Default to listed if unknown status
+		return order.status == constants.ORDER_STATUSES.ACTIVE
+			or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
+	end
+end
+
 -- Handler: Get-Orders
 --- Get multiple orders with flexible filtering
 --- @param msg table Message with optional Status, Ids, Dominant-Token, Swap-Token tags and pagination
 function ucm.getOrdersHandler(msg)
 	local page = utils.parsePaginationTags(msg)
 
-	-- Support both 'status' and 'type' for backward compatibility
-	local statusFilter = msg.Tags.Status or msg.Tags.status
-	local idsParam = msg.Tags.Ids or msg.Tags.ids
-	-- Support both Train-Case and camelCase for trading pair filters
-	local dominantToken = msg.Tags['Dominant-Token'] or msg.Tags.DominantToken
-	local swapToken = msg.Tags['Swap-Token'] or msg.Tags.SwapToken
+	local statusFilter = msg.Tags.Status
+	local idsFilter = utils.parseIdsFilter(msg.Tags.Ids)
+	local dominantToken = msg.Tags['Dominant-Token']
+	local swapToken = msg.Tags['Swap-Token']
 
 	local ordersArray = {}
 
@@ -633,50 +658,16 @@ function ucm.getOrdersHandler(msg)
 		local pair = ucm.getPair(dominantToken, swapToken)
 		if pair then
 			-- If specific IDs are requested
-			if idsParam then
-				local ids = {}
-				for id in string.gmatch(idsParam, '([^,]+)') do
-					ids[id:match('^%s*(.-)%s*$')] = true -- trim whitespace
-				end
-
+			if idsFilter then
 				for orderId, order in pairs(pair.orders) do
-					if ids[orderId] then
+					if idsFilter[orderId] then
 						table.insert(ordersArray, order)
 					end
 				end
 			else
 				-- Get all orders in this pair, applying status filter
 				for _, order in pairs(pair.orders) do
-					local includeOrder = false
-
-					if not statusFilter or statusFilter == 'all' then
-						includeOrder = true
-					elseif statusFilter == 'listed' then
-						includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
-							or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-					elseif statusFilter == 'completed' then
-						includeOrder = order.status == constants.ORDER_STATUSES.EXECUTED
-							or order.status == constants.ORDER_STATUSES.CANCELLED
-							or order.status == constants.ORDER_STATUSES.EXPIRED
-					elseif statusFilter == constants.ORDER_STATUSES.ACTIVE or statusFilter == 'active' then
-						includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
-					elseif
-						statusFilter == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-						or statusFilter == 'ready-for-settlement'
-					then
-						includeOrder = order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-					elseif statusFilter == constants.ORDER_STATUSES.EXECUTED or statusFilter == 'executed' then
-						includeOrder = order.status == constants.ORDER_STATUSES.EXECUTED
-					elseif statusFilter == constants.ORDER_STATUSES.CANCELLED or statusFilter == 'cancelled' then
-						includeOrder = order.status == constants.ORDER_STATUSES.CANCELLED
-					elseif statusFilter == constants.ORDER_STATUSES.EXPIRED or statusFilter == 'expired' then
-						includeOrder = order.status == constants.ORDER_STATUSES.EXPIRED
-					else
-						includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
-							or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-					end
-
-					if includeOrder then
+					if ucm.matchesStatusFilter(order, statusFilter) then
 						table.insert(ordersArray, order)
 					end
 				end
@@ -685,17 +676,12 @@ function ucm.getOrdersHandler(msg)
 	else
 		-- No pair specified, search all pairs
 		-- If specific IDs are requested
-		if idsParam then
-			local ids = {}
-			for id in string.gmatch(idsParam, '([^,]+)') do
-				ids[id:match('^%s*(.-)%s*$')] = true -- trim whitespace
-			end
-
+		if idsFilter then
 			-- Search for orders by ID
 			for _, swapTokens in pairs(Orderbook) do
 				for _, pair in pairs(swapTokens) do
 					for orderId, order in pairs(pair.orders) do
-						if ids[orderId] then
+						if idsFilter[orderId] then
 							table.insert(ordersArray, order)
 						end
 					end
@@ -707,39 +693,7 @@ function ucm.getOrdersHandler(msg)
 			for _, swapTokens in pairs(Orderbook) do
 				for _, pair in pairs(swapTokens) do
 					for _, order in pairs(pair.orders) do
-						local includeOrder = false
-
-						if not statusFilter or statusFilter == 'all' then
-							includeOrder = true
-						elseif statusFilter == 'listed' then
-							-- Active and ready-for-settlement orders
-							includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
-								or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-						elseif statusFilter == 'completed' then
-							-- Completed orders (executed, cancelled, expired)
-							includeOrder = order.status == constants.ORDER_STATUSES.EXECUTED
-								or order.status == constants.ORDER_STATUSES.CANCELLED
-								or order.status == constants.ORDER_STATUSES.EXPIRED
-						elseif statusFilter == constants.ORDER_STATUSES.ACTIVE or statusFilter == 'active' then
-							includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
-						elseif
-							statusFilter == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-							or statusFilter == 'ready-for-settlement'
-						then
-							includeOrder = order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-						elseif statusFilter == constants.ORDER_STATUSES.EXECUTED or statusFilter == 'executed' then
-							includeOrder = order.status == constants.ORDER_STATUSES.EXECUTED
-						elseif statusFilter == constants.ORDER_STATUSES.CANCELLED or statusFilter == 'cancelled' then
-							includeOrder = order.status == constants.ORDER_STATUSES.CANCELLED
-						elseif statusFilter == constants.ORDER_STATUSES.EXPIRED or statusFilter == 'expired' then
-							includeOrder = order.status == constants.ORDER_STATUSES.EXPIRED
-						else
-							-- Default to listed if unknown status
-							includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
-								or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
-						end
-
-						if includeOrder then
+						if ucm.matchesStatusFilter(order, statusFilter) then
 							table.insert(ordersArray, order)
 						end
 					end

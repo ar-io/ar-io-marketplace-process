@@ -310,70 +310,6 @@ function utils.Send(msg, sendParams)
 	end
 end
 
---- Prints a table in a formatted way (serializes to string)
---- @param t table The table to print
---- @param indent number|nil The indentation level (optional)
-function utils.printTable(t, indent)
-	local function serialize(tbl, indentLevel)
-		local isArray = #tbl > 0
-		local tab = isArray and '[\n' or '{\n'
-		local sep = isArray and ',\n' or ',\n'
-		local endTab = isArray and ']' or '}'
-		indentLevel = indentLevel + 1
-
-		for k, v in pairs(tbl) do
-			tab = tab .. string.rep('  ', indentLevel)
-			if not isArray then
-				tab = tab .. "'" .. tostring(k) .. "': "
-			end
-
-			if type(v) == 'table' then
-				tab = tab .. serialize(v, indentLevel) .. sep
-			else
-				if type(v) == 'string' then
-					tab = tab .. "'" .. tostring(v) .. "'" .. sep
-				else
-					tab = tab .. tostring(v) .. sep
-				end
-			end
-		end
-
-		if tab:sub(-2) == sep then
-			tab = tab:sub(1, -3) .. '\n'
-		end
-
-		indentLevel = indentLevel - 1
-		tab = tab .. string.rep('  ', indentLevel) .. endTab
-		return tab
-	end
-
-	local jsonStr = serialize(t, indent or 0)
-end
-
---- Recursively checks if two tables are equal
---- @param t1 any The first table
---- @param t2 any The second table
---- @return boolean areEqual Whether the tables are equal
-function utils.checkTables(t1, t2)
-	if t1 == t2 then
-		return true
-	end
-	if type(t1) ~= 'table' or type(t2) ~= 'table' then
-		return false
-	end
-	for k, v in pairs(t1) do
-		if not utils.checkTables(v, t2[k]) then
-			return false
-		end
-	end
-	for k in pairs(t2) do
-		if t1[k] == nil then
-			return false
-		end
-	end
-	return true
-end
-
 --- Checks if an expiration time is valid
 --- @param expirationTime string|number|nil The expiration timestamp
 --- @param timestamp string|number The current timestamp
@@ -478,6 +414,30 @@ function utils.parsePaginationTags(msg)
 		sortOrder = sortOrder,
 		filters = filters,
 	}
+end
+
+--- Parses the Ids tag from a message and returns a set for efficient lookup
+--- @param idsParam string|nil JSON array string of IDs (e.g., '["id1", "id2"]')
+--- @return table|nil idsSet A table with IDs as keys (set to true) for quick lookup, or nil if input is nil/invalid
+function utils.parseIdsFilter(idsParam)
+	if not idsParam then
+		return nil
+	end
+	
+	local idsArray = utils.safeDecodeJson(idsParam)
+	if not idsArray or type(idsArray) ~= 'table' then
+		return nil
+	end
+	
+	-- Convert array to set for O(1) lookups
+	local idsSet = {}
+	for _, id in ipairs(idsArray) do
+		if type(id) == 'string' then
+			idsSet[id] = true
+		end
+	end
+	
+	return idsSet
 end
 
 --- Paginate a table with a cursor
@@ -826,7 +786,7 @@ end
 --- @param feeToken string The token process ID for the fee
 --- @param msg table|nil The message context (optional)
 function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg)
-	if not TREASURY_ADDRESS or TREASURY_ADDRESS == 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks' then
+	if not TREASURY_ADDRESS then
 		return
 	end
 
@@ -1019,20 +979,6 @@ function utils.createHandler(tagName, tagValue, handler, position)
 			return _utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
 		end
 	)
-end
-
---- Creates an action handler (convenience wrapper for createHandler with "Action" tag)
---- @param action string The action value to match
---- @param msgHandler function The handler function to execute
---- @param position "add" | "prepend" | "append" | nil Where to add the handler
---- @example
---- ```lua
---- utils.createActionHandler("Info", function(msg)
----   return { Name = "Marketplace" }
---- end)
---- ```
-function utils.createActionHandler(action, msgHandler, position)
-	return utils.createHandler('Action', action, msgHandler, position)
 end
 
 return utils

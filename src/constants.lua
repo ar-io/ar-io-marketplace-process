@@ -12,6 +12,13 @@ constants.ORDER_STATUSES = {
 	EXPIRED = 'expired',
 }
 
+-- Order status filter constants (for Get-Orders handler)
+constants.ORDER_STATUS_FILTERS = {
+	ALL = 'all',
+	LISTED = 'listed', -- ACTIVE or READY_FOR_SETTLEMENT
+	COMPLETED = 'completed', -- EXECUTED, CANCELLED, or EXPIRED
+}
+
 -- Order type constants
 constants.ORDER_TYPES = {
 	FIXED = 'fixed',
