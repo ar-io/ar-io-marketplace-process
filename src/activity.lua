@@ -30,8 +30,8 @@ local function normalizeOrderTimestamps(oc)
 	if oc.CreatedAt then
 		oc.CreatedAt = tonumber(oc.CreatedAt)
 	end
-	if oc.ExpirationTime then
-		oc.ExpirationTime = tonumber(oc.ExpirationTime)
+	if oc.expirationTime then
+		oc.expirationTime = tonumber(oc.expirationTime)
 	end
 	if oc.EndedAt then
 		oc.EndedAt = tonumber(oc.EndedAt)
@@ -41,9 +41,9 @@ end
 
 -- Helper: attach english-auction fields onto a single order-like table
 local function applyEnglishAuctionFields(orderCopy)
-	if orderCopy and orderCopy.OrderType == 'english' then
-		local auctionBids = AuctionBids[orderCopy.OrderId]
-		orderCopy.StartingPrice = orderCopy.StartingPrice or orderCopy.Price
+	if orderCopy and orderCopy.orderType == 'english' then
+		local auctionBids = AuctionBids[orderCopy.orderId]
+		orderCopy.StartingPrice = orderCopy.StartingPrice or orderCopy.price
 		if auctionBids then
 			orderCopy.Bids = auctionBids.Bids
 			orderCopy.HighestBid = auctionBids.HighestBid
@@ -64,11 +64,11 @@ end
 local function computeListedStatus(order, now)
 	local status = 'active'
 	local endedAt = nil
-	if order.ExpirationTime then
-		local expirationTime = tonumber(order.ExpirationTime)
+	if order.expirationTime then
+		local expirationTime = tonumber(order.expirationTime)
 		if now >= expirationTime then
-			if order.OrderType == 'english' then
-				local auctionBids = AuctionBids[order.OrderId]
+			if order.orderType == 'english' then
+				local auctionBids = AuctionBids[order.orderId]
 				if auctionBids and auctionBids.HighestBidder then
 					status = 'ready-for-settlement'
 				else
@@ -94,11 +94,11 @@ local function decorateOrder(order, status)
 	oc = applyEnglishAuctionFields(oc)
 	if status == 'settled' then
 		oc.Buyer = oc.Receiver
-		if order.OrderType == 'dutch' or order.OrderType == 'fixed' then
-			oc.FinalPrice = oc.Price
+		if order.orderType == 'dutch' or order.orderType == 'fixed' then
+			oc.FinalPrice = oc.price
 		end
-	elseif status == 'expired' and oc.ExpirationTime and not oc.EndedAt then
-		oc.EndedAt = oc.ExpirationTime
+	elseif status == 'expired' and oc.expirationTime and not oc.EndedAt then
+		oc.EndedAt = oc.expirationTime
 	end
 
 	return oc
@@ -265,7 +265,6 @@ function activity.getOrderById(msg)
 	end
 
 	local foundOrder = cancelledById[orderId] or executedById[orderId] or listedById[orderId]
-	local orderStatus = foundOrder and foundOrder.Status or nil
 
 	if not foundOrder then
 		ao.send({

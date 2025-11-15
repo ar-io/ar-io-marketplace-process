@@ -1,0 +1,774 @@
+yarn run v1.22.22
+$ rm -rf coverage && mkdir -p coverage && echo '=== Running busted tests ===' && busted . && luacov && echo '
+=== Coverage Report ===' && tail -20 coverage/luacov.report.out
+=== Running busted tests ===
+Setting up global test environment...
+✓ Global test environment initialized
+  ARIO_TOKEN_PROCESS_ID: agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Package path configured
+  Mock objects created (ao, Handlers)
+✓ Test globals loaded and initialized
+
+Loading luacov for coverage tracking...
+✓ luacov loaded successfully
+
+Force-loading modules for coverage...
+  ✓ Loaded: activity
+  ✓ Loaded: dutch_auction
+  ✓ Loaded: english_auction
+  ✓ Loaded: fixed_price
+  ✓ Loaded: intents
+  ✓ Loaded: notices
+  ✓ Loaded: types
+  ✓ Loaded: ucm
+  ✓ Loaded: utils
+✓ All modules loaded for coverage tracking
+
+
+=== Loading activity module for testing ===
+✓ activity module loaded
+
+--- Starting Activity tests ---
+●●●●◼
+=== Loading CurrentListings module for testing ===
+✓ CurrentListings module loaded
+
+--- Starting CurrentListings tests ---
+DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	fixed
+●◼●DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	fixed
+●◌◌◌
+=== Loading dutch_auction module for testing ===
+✓ dutch_auction module loaded
+
+--- Starting Dutch Auction tests ---
+DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	dutch
+●DEBUG: Orderbook before buy order:	1
+  Pair exists:	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orders count:	1
+  Order ID:	ant-sell-order
+  Order Type:	dutch
+  Are they equal?:	true
+DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	1	pairs
+    Pair	1	:	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	- Orders:	0
+  getPairIndex returned:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	dutch
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	dutch
+DEBUG: Loading and calling dutch_auction.handleAntOrder
+DEBUG: dutch_auction module loaded, calling handleAntOrder
+DEBUG handleAntOrder called: pairIndex=	1	requestedOrderId=	ant-sell-order
+  Orderbook pairs:	1
+  Pair exists at index	1
+  Orders in pair:	table: 0x1064c4700
+  Order count:	1
+DEBUG handleAntOrder: Checking order	ant-sell-order	ant-sell-order
+  Not expired
+  Is dutch type
+  Comparing IDs:	ant-sell-order	vs	ant-sell-order
+  ID matches! Proceeding to price check
+DEBUG: dutch_auction.handleAntOrder returned
+DEBUG: Orderbook after buy order:	1
+  Pair	1	:	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	- Orders:	0
+DEBUG Dutch matching: Transfer count:	2
+  Transfer	1	:	Transfer	of	497500000000	to	ant-seller	at	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Transfer	2	:	Transfer	of	1	to	ario-buyer	at	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+DEBUG: Sent messages count in matching test:	3
+  Message	1	:	Transfer	to	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Message	2	:	Transfer	to	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Message	3	:	Order-Success	to	ario-buyer
+    Message text:	ANT order executed immediately in Dutch auction!
+●DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	dutch
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	dutch
+DEBUG: Loading and calling dutch_auction.handleAntOrder
+DEBUG: dutch_auction module loaded, calling handleAntOrder
+DEBUG handleAntOrder called: pairIndex=	1	requestedOrderId=	ant-sell-order
+  Orderbook pairs:	1
+  Pair exists at index	1
+  Orders in pair:	table: 0x10755d820
+  Order count:	0
+DEBUG: dutch_auction.handleAntOrder returned
+◼DEBUG: Sent messages count:	2
+  Message	1	:	Transfer	to	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Message	2	:	Validation-Error	to	test-sender
+    Message text:	Minimum price must be provided
+◼DEBUG: Sent messages count:	2
+  Message	1	:	Transfer	to	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Message	2	:	Validation-Error	to	test-sender
+    Message text:	Decrease interval must be provided
+◼
+=== Loading english_auction module for testing ===
+✓ english_auction module loaded
+
+--- Starting English Auction tests ---
+DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	english
+●DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	english
+●◼◼◼◼◼◼◼◼◼◼◼◼
+=== Loading intents module for testing ===
+✓ intents module loaded
+
+--- Starting Intent Management tests ---
+●●●●●●●●●●●●●●●●●●●●
+=== Loading ucm module for testing ===
+✓ ucm module loaded
+
+--- Starting UCM tests ---
+DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	fixed
+●DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	fixed
+●DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	fixed
+●◼Both pair elements must be valid addresses
+●◼◼◼◼◼◼Both pair elements must be valid addresses
+●Pair addresses cannot be equal
+●Both pair elements must be valid addresses
+●◼◼◼◼◼DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼Both pair elements must be valid addresses
+●DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼DEBUG ensurePairExists: Looking for pair	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10	isBuyingAnt=	false	orderType=	fixed
+◼Both pair elements must be valid addresses
+◼◼DEBUG ensurePairExists: Looking for pair	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+  Orderbook has	0	pairs
+  getPairIndex returned:	-1
+  Creating new pair
+  New pairIndex:	1
+DEBUG createOrder: dominantToken=	agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA	isBuyingAnt=	true	orderType=	fixed
+DEBUG: Calling handleAntOrderAuctions
+DEBUG handleAntOrderAuctions: orderType=	fixed
+◼◼◼
+=== Loading utils module for testing ===
+✓ utils module loaded
+✓ json module loaded
+✓ bint module loaded
+
+--- Starting utils tests ---
+●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●Pair must be a list of exactly two strings - [TokenId, TokenId]
+●Both pair elements must be strings
+●Both pair elements must be valid addresses
+●Pair addresses cannot be equal
+●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●
+214 successes / 42 failures / 0 errors / 3 pending : 1.745545 seconds
+
+Pending → ./spec/current_listings_spec.lua @ 146
+CurrentListings CurrentListings tracking should update CurrentListings quantity on partial execution
+
+Pending → ./spec/current_listings_spec.lua @ 150
+CurrentListings CurrentListings tracking should remove from CurrentListings on full execution
+
+Pending → ./spec/current_listings_spec.lua @ 154
+CurrentListings CurrentListings tracking should remove from CurrentListings on order cancellation
+
+Failure → ./spec/activity_spec.lua @ 141
+Activity getOrderById should return error for non-existent order
+./spec/activity_spec.lua:150: Expected objects to be equal.
+Passed in:
+(string) 'Order-Not-Found'
+Expected:
+(string) 'Get-Order-By-Id-Error'
+
+stack traceback:
+	./spec/activity_spec.lua:150: in function <./spec/activity_spec.lua:141>
+
+
+Failure → ./spec/current_listings_spec.lua @ 44
+CurrentListings Order creation should reject listing with invalid quantity
+./spec/current_listings_spec.lua:59: Expected objects to be equal.
+Passed in:
+(string) 'Validation-Error'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/current_listings_spec.lua:59: in function <./spec/current_listings_spec.lua:44>
+
+
+Failure → ./spec/dutch_auction_spec.lua @ 188
+Dutch Auction ARIO buy order matching Dutch auction should apply price reduction over time in Dutch auction
+./spec/dutch_auction_spec.lua:230: Expected objects to be equal.
+Passed in:
+(number) 1
+Expected:
+(number) 2
+
+stack traceback:
+	./spec/dutch_auction_spec.lua:230: in function <./spec/dutch_auction_spec.lua:188>
+
+
+Failure → ./spec/dutch_auction_spec.lua @ 238
+Dutch Auction Dutch auction validation should reject order without minimum price
+./spec/dutch_auction_spec.lua:271: Should have Order-Error message
+Expected objects to be the same.
+Passed in:
+(boolean) false
+Expected:
+(boolean) true
+
+stack traceback:
+	./spec/dutch_auction_spec.lua:271: in function <./spec/dutch_auction_spec.lua:238>
+
+
+Failure → ./spec/dutch_auction_spec.lua @ 274
+Dutch Auction Dutch auction validation should reject order without decrease interval
+./spec/dutch_auction_spec.lua:307: Should have Order-Error message
+Expected objects to be the same.
+Passed in:
+(boolean) false
+Expected:
+(boolean) true
+
+stack traceback:
+	./spec/dutch_auction_spec.lua:307: in function <./spec/dutch_auction_spec.lua:274>
+
+
+Failure → ./spec/english_auction_spec.lua @ 91
+English Auction ANT sell order creation should reject order with negative expiration time
+./spec/english_auction_spec.lua:106: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:106: in function <./spec/english_auction_spec.lua:91>
+
+
+Failure → ./spec/english_auction_spec.lua @ 109
+English Auction ANT sell order creation should reject order with expired time
+./spec/english_auction_spec.lua:123: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:123: in function <./spec/english_auction_spec.lua:109>
+
+
+Failure → ./spec/english_auction_spec.lua @ 126
+English Auction ANT sell order creation should reject order without price
+./spec/english_auction_spec.lua:138: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:138: in function <./spec/english_auction_spec.lua:126>
+
+
+Failure → ./spec/english_auction_spec.lua @ 141
+English Auction ANT sell order creation should reject order with negative price
+./spec/english_auction_spec.lua:154: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:154: in function <./spec/english_auction_spec.lua:141>
+
+
+Failure → ./spec/english_auction_spec.lua @ 157
+English Auction ANT sell order creation should reject order with quantity not equal to 1
+./spec/english_auction_spec.lua:170: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Validation-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:170: in function <./spec/english_auction_spec.lua:157>
+
+
+Failure → ./spec/english_auction_spec.lua @ 175
+English Auction Bidding validation should reject bid with negative amount
+./spec/english_auction_spec.lua:206: Expected objects to be equal.
+Passed in:
+(string) 'Validation-Error'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:206: in function <./spec/english_auction_spec.lua:175>
+
+
+Failure → ./spec/english_auction_spec.lua @ 209
+English Auction Bidding validation should reject bid without orderId
+./spec/english_auction_spec.lua:221: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:221: in function <./spec/english_auction_spec.lua:209>
+
+
+Failure → ./spec/english_auction_spec.lua @ 226
+English Auction Bidding logic should accept first bid on active auction
+./spec/english_auction_spec.lua:260: Expected objects to not be the same.
+Passed in:
+(nil)
+Did not expect:
+type nil
+
+stack traceback:
+	./spec/english_auction_spec.lua:260: in function <./spec/english_auction_spec.lua:226>
+
+
+Failure → ./spec/english_auction_spec.lua @ 265
+English Auction Bidding logic should accept second bid and return first bid
+./spec/english_auction_spec.lua:307: Expected objects to be equal.
+Passed in:
+(string) 'bidder-1'
+Expected:
+(string) 'bidder-2'
+
+stack traceback:
+	./spec/english_auction_spec.lua:307: in function <./spec/english_auction_spec.lua:265>
+
+
+Failure → ./spec/english_auction_spec.lua @ 321
+English Auction Bidding logic should reject bid lower than current highest
+./spec/english_auction_spec.lua:363: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Validation-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:363: in function <./spec/english_auction_spec.lua:321>
+
+
+Failure → ./spec/english_auction_spec.lua @ 366
+English Auction Bidding logic should reject bid below minimum 1 ARIO increment
+./spec/english_auction_spec.lua:408: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Validation-Error'
+
+stack traceback:
+	./spec/english_auction_spec.lua:408: in function <./spec/english_auction_spec.lua:366>
+
+
+Failure → ./spec/english_auction_spec.lua @ 411
+English Auction Bidding logic should accept bid that meets minimum 1 ARIO increment
+./spec/english_auction_spec.lua:453: Expected objects to be equal.
+Passed in:
+(string) 'bidder-1'
+Expected:
+(string) 'bidder-2'
+
+stack traceback:
+	./spec/english_auction_spec.lua:453: in function <./spec/english_auction_spec.lua:411>
+
+
+Failure → ./spec/ucm_spec.lua @ 34
+UCM (Unified Catalog Marketplace) Immediate trade execution should execute immediate trade when selling ARIO to buy ANT with matching ANT order
+./spec/ucm_spec.lua:67: Expected objects to be equal.
+Passed in:
+(number) 1
+Expected:
+(number) 2
+
+stack traceback:
+	./spec/ucm_spec.lua:67: in function <./spec/ucm_spec.lua:34>
+
+
+Failure → ./spec/ucm_spec.lua @ 84
+UCM (Unified Catalog Marketplace) Immediate trade execution should execute immediate trade with valid expiration time when selling ARIO to buy ANT
+./spec/ucm_spec.lua:115: Expected objects to be equal.
+Passed in:
+(number) 1
+Expected:
+(number) 2
+
+stack traceback:
+	./spec/ucm_spec.lua:115: in function <./spec/ucm_spec.lua:84>
+
+
+Failure → ./spec/ucm_spec.lua @ 179
+UCM (Unified Catalog Marketplace) Order validation should reject order with invalid orderType
+./spec/ucm_spec.lua:191: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:191: in function <./spec/ucm_spec.lua:179>
+
+
+Failure → ./spec/ucm_spec.lua @ 210
+UCM (Unified Catalog Marketplace) Order validation should reject order with zero quantity
+./spec/ucm_spec.lua:222: Expected objects to be equal.
+Passed in:
+(string) 'Validation-Error'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:222: in function <./spec/ucm_spec.lua:210>
+
+
+Failure → ./spec/ucm_spec.lua @ 225
+UCM (Unified Catalog Marketplace) Order validation should reject order with negative quantity
+./spec/ucm_spec.lua:237: Expected objects to be equal.
+Passed in:
+(string) 'Validation-Error'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:237: in function <./spec/ucm_spec.lua:225>
+
+
+Failure → ./spec/ucm_spec.lua @ 240
+UCM (Unified Catalog Marketplace) Order validation should reject ANT sell order with quantity greater than 1
+./spec/ucm_spec.lua:253: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Validation-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:253: in function <./spec/ucm_spec.lua:240>
+
+
+Failure → ./spec/ucm_spec.lua @ 256
+UCM (Unified Catalog Marketplace) Order validation should reject order with no price specified
+./spec/ucm_spec.lua:268: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:268: in function <./spec/ucm_spec.lua:256>
+
+
+Failure → ./spec/ucm_spec.lua @ 271
+UCM (Unified Catalog Marketplace) Order validation should reject order with negative price
+./spec/ucm_spec.lua:284: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:284: in function <./spec/ucm_spec.lua:271>
+
+
+Failure → ./spec/ucm_spec.lua @ 287
+UCM (Unified Catalog Marketplace) Order validation should reject order with zero price
+./spec/ucm_spec.lua:300: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:300: in function <./spec/ucm_spec.lua:287>
+
+
+Failure → ./spec/ucm_spec.lua @ 355
+UCM (Unified Catalog Marketplace) Expiration time validation should reject order with expiration time equal to timestamp
+./spec/ucm_spec.lua:369: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:369: in function <./spec/ucm_spec.lua:355>
+
+
+Failure → ./spec/ucm_spec.lua @ 372
+UCM (Unified Catalog Marketplace) Expiration time validation should reject order with expiration time less than timestamp
+./spec/ucm_spec.lua:386: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:386: in function <./spec/ucm_spec.lua:372>
+
+
+Failure → ./spec/ucm_spec.lua @ 389
+UCM (Unified Catalog Marketplace) Expiration time validation should reject order with zero expiration time
+./spec/ucm_spec.lua:403: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:403: in function <./spec/ucm_spec.lua:389>
+
+
+Failure → ./spec/ucm_spec.lua @ 406
+UCM (Unified Catalog Marketplace) Expiration time validation should reject order with negative expiration time
+./spec/ucm_spec.lua:420: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:420: in function <./spec/ucm_spec.lua:406>
+
+
+Failure → ./spec/ucm_spec.lua @ 423
+UCM (Unified Catalog Marketplace) Expiration time validation should reject order with invalid expiration time
+./spec/ucm_spec.lua:437: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:437: in function <./spec/ucm_spec.lua:423>
+
+
+Failure → ./spec/ucm_spec.lua @ 442
+UCM (Unified Catalog Marketplace) Fee calculations should apply correct fees to successful ANT trades when buying with ARIO
+./spec/ucm_spec.lua:473: Expected objects to be equal.
+Passed in:
+(string) '1000000000000'
+Expected:
+(string) '995000000000'
+
+stack traceback:
+	./spec/ucm_spec.lua:473: in function <./spec/ucm_spec.lua:442>
+
+
+Failure → ./spec/ucm_spec.lua @ 477
+UCM (Unified Catalog Marketplace) Fee calculations should handle fee calculation with very small amounts when buying ANT with ARIO
+./spec/ucm_spec.lua:508: Expected objects to be equal.
+Passed in:
+(number) 1
+Expected:
+(number) 2
+
+stack traceback:
+	./spec/ucm_spec.lua:508: in function <./spec/ucm_spec.lua:477>
+
+
+Failure → ./spec/ucm_spec.lua @ 513
+UCM (Unified Catalog Marketplace) Order matching edge cases should fail when buying ANT with ARIO but no ANT orders exist to match against
+./spec/ucm_spec.lua:528: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:528: in function <./spec/ucm_spec.lua:513>
+
+
+Failure → ./spec/ucm_spec.lua @ 564
+UCM (Unified Catalog Marketplace) Order matching edge cases should reject partial ANT purchase when buying with ARIO
+./spec/ucm_spec.lua:594: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:594: in function <./spec/ucm_spec.lua:564>
+
+
+Failure → ./spec/ucm_spec.lua @ 597
+UCM (Unified Catalog Marketplace) Order matching edge cases should not match expired ANT orders
+./spec/ucm_spec.lua:628: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:628: in function <./spec/ucm_spec.lua:597>
+
+
+Failure → ./spec/ucm_spec.lua @ 633
+UCM (Unified Catalog Marketplace) Duplicate order handling should reject duplicate ANT sell order for same ANT token
+./spec/ucm_spec.lua:663: Expected objects to be equal.
+Passed in:
+(string) 'Order-Success'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:663: in function <./spec/ucm_spec.lua:633>
+
+
+Failure → ./spec/ucm_spec.lua @ 666
+UCM (Unified Catalog Marketplace) Duplicate order handling should allow different ANT tokens to be sold simultaneously
+./spec/ucm_spec.lua:697: Expected objects to be equal.
+Passed in:
+(number) 1
+Expected:
+(number) 2
+
+stack traceback:
+	./spec/ucm_spec.lua:697: in function <./spec/ucm_spec.lua:666>
+
+
+Failure → ./spec/ucm_spec.lua @ 702
+UCM (Unified Catalog Marketplace) ARIO purchase validation should reject ARIO dominant order without requestedOrderId
+./spec/ucm_spec.lua:715: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:715: in function <./spec/ucm_spec.lua:702>
+
+
+Failure → ./spec/ucm_spec.lua @ 718
+UCM (Unified Catalog Marketplace) ARIO purchase validation should reject ANT purchase when user sends different ARIO quantity than ANT sell order price
+./spec/ucm_spec.lua:748: Expected objects to be equal.
+Passed in:
+(string) 'Transfer'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:748: in function <./spec/ucm_spec.lua:718>
+
+
+Failure → ./spec/ucm_spec.lua @ 753
+UCM (Unified Catalog Marketplace) Zero quantity edge cases should reject order with quantity 0 while selling ANT
+./spec/ucm_spec.lua:766: Expected objects to be equal.
+Passed in:
+(string) 'Validation-Error'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:766: in function <./spec/ucm_spec.lua:753>
+
+
+Failure → ./spec/ucm_spec.lua @ 769
+UCM (Unified Catalog Marketplace) Zero quantity edge cases should reject order with quantity 0 while buying ANT
+./spec/ucm_spec.lua:781: Expected objects to be equal.
+Passed in:
+(string) 'Validation-Error'
+Expected:
+(string) 'Order-Error'
+
+stack traceback:
+	./spec/ucm_spec.lua:781: in function <./spec/ucm_spec.lua:769>
+
+
+=== All tests completed ===
+Coverage data will be written to: coverage/luacov.stats.out
+Run 'luacov' to generate the coverage report
+error Command failed with exit code 1.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.

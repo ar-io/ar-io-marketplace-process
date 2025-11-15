@@ -8,19 +8,19 @@ local activity = require('activity')
 local fixed_price = {}
 
 -- Helper function to update VWAP data
-local function updateVwapData(pairIndex, matches, args, currentToken)
+local function updateVwapData(dominantToken, swapToken, matches, args, currentToken)
 	local sumVolumePrice, sumVolume = 0, 0
 	if #matches > 0 then
 		for _, match in ipairs(matches) do
-			local volume = bint(match.Quantity)
-			local price = bint(match.Price)
+			local volume = bint(match.quantity)
+			local price = bint(match.price)
 			sumVolumePrice = sumVolumePrice + (volume * price)
 			sumVolume = sumVolume + volume
 		end
 
 		-- Calculate and store VWAP
 		local vwap = sumVolumePrice / sumVolume
-		Orderbook[pairIndex].PriceData = {
+		Orderbook[dominantToken][swapToken].PriceData = {
 			Vwap = tostring(math.floor(vwap)),
 			Block = tostring(args.blockheight),
 			DominantToken = currentToken,
@@ -31,19 +31,20 @@ local function updateVwapData(pairIndex, matches, args, currentToken)
 	return sumVolume
 end
 -- Helper function to handle ARIO token orders: we are selling ANT token, so we need to add to orderbook
-function fixed_price.handleArioOrder(args, validPair, pairIndex)
+function fixed_price.handleArioOrder(args)
 	-- Add the new order to the orderbook (buy now functionality)
-	table.insert(Orderbook[pairIndex].Orders, {
-		Id = args.orderId,
-		Quantity = tostring(args.quantity),
-		OriginalQuantity = tostring(args.quantity),
-		Creator = args.sender,
-		Token = args.dominantToken,
-		DateCreated = args.createdAt,
-		Price = args.price and tostring(args.price),
-		ExpirationTime = args.expirationTime,
-		OrderType = 'fixed',
-	})
+	local orderId = args.orderId
+	Orderbook[args.dominantToken][args.swapToken].orders[orderId] = {
+		id = args.orderId,
+		quantity = tostring(args.quantity),
+		originalQuantity = tostring(args.quantity),
+		creator = args.sender,
+		token = args.dominantToken,
+		dateCreated = args.createdAt,
+		price = args.price and tostring(args.price),
+		expirationTime = args.expirationTime,
+		orderType = 'fixed',
+	}
 
 	-- Record listed order internally
 	activity.recordListedOrder({
@@ -80,36 +81,53 @@ function fixed_price.handleArioOrder(args, validPair, pairIndex)
 end
 
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to match with an existing ANT sell order or fail
-function fixed_price.handleAntOrder(args, validPair, pairIndex)
-	local currentOrders = Orderbook[pairIndex].Orders
+function fixed_price.handleAntOrder(args, validPair)
+	-- Swap the pair to get [ANT, ARIO] since we're buying ANT with ARIO
+	local antDominant = validPair[1]  -- ANT token (swap to become dominant)
+	local arioSwap = validPair[2]  -- ARIO token (swap to become swap token)
+	
+	local pairData = Orderbook[antDominant] and Orderbook[antDominant][arioSwap]
+	if not pairData then
+		utils.handleError({
+			Target = args.sender,
+			Action = 'Order-Error',
+			Message = 'No matching orders found for immediate ANT trade - exact ARIO amount match required',
+			Quantity = args.quantity,
+			TransferToken = args.dominantToken,
+			OrderGroupId = args.orderGroupId,
+		})
+		return
+	end
+	
+	local currentOrders = pairData.orders
 	local matches = {}
 	local matchedOrderId = nil
 
 	-- Attempt to match with existing orders for immediate trade
 	for orderId, currentOrderEntry in pairs(currentOrders) do
 		-- Check if order has expired
-		if currentOrderEntry.ExpirationTime and bint(currentOrderEntry.ExpirationTime) < bint(args.createdAt) then
+		if currentOrderEntry.expirationTime and bint(currentOrderEntry.expirationTime) < bint(args.createdAt) then
 			-- Skip expired orders
 			goto continue
 		end
 
 		-- Check if the order is a fixed order
-		if currentOrderEntry.OrderType ~= 'fixed' then
+		if currentOrderEntry.orderType ~= 'fixed' then
 			goto continue
 		end
 
 		-- Check if this is the specific order we're looking for
-		if currentOrderEntry.Id ~= args.requestedOrderId then
+		if currentOrderEntry.id ~= args.requestedOrderId then
 			goto continue
 		end
 
 		-- Check if we can still fill and the order has remaining quantity
-		if bint(args.quantity) > bint(0) and bint(currentOrderEntry.Quantity) > bint(0) then
+		if bint(args.quantity) > bint(0) and bint(currentOrderEntry.quantity) > bint(0) then
 			-- For ANT tokens, only allow complete trades - no partial amounts
-			local fillAmount, sendAmount
+			local fillAmount
 
 			-- Accept sent amount >= listed price; refund any excess
-			local requiredAmount = bint(currentOrderEntry.Price)
+			local requiredAmount = bint(currentOrderEntry.price)
 			local sentAmount = bint(args.quantity)
 			if sentAmount >= requiredAmount then
 				-- User buys 1 ANT token
@@ -176,11 +194,11 @@ function fixed_price.handleAntOrder(args, validPair, pairIndex)
 
 	-- Remove the matched order from the orderbook
 	if matchedOrderId then
-		Orderbook[pairIndex].Orders[matchedOrderId] = nil
+		pairData.orders[matchedOrderId] = nil
 	end
 
 	-- Update VWAP and get total volume
-	local sumVolume = updateVwapData(pairIndex, matches, args, args.dominantToken)
+	local sumVolume = updateVwapData(antDominant, arioSwap, matches, args, args.dominantToken)
 
 	-- Send success response if any matches occurred
 	if sumVolume > 0 then

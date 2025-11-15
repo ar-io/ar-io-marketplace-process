@@ -1,0 +1,1535 @@
+yarn run v1.22.22
+$ yarn format:fix && yarn test:unit && yarn test:integration
+$ biome format --write
+Formatted 19 files in 8ms. No fixes applied.
+$ rm -rf coverage && mkdir -p coverage && busted . && luacov
+Setup global ao mocks successfully...
+●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●Pair must be a list of exactly two strings - [TokenId, TokenId]
+●Both pair elements must be strings
+●Both pair elements must be valid addresses
+●Pair addresses cannot be equal
+●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●
+195 successes / 0 failures / 0 errors / 0 pending : 0.896127 seconds
+$ pnpm bundle && tsx --test --experimental-wasm-memory64 tests/integration/*.test.ts
+
+> ar-io-marketplace-process@1.0.0 bundle /Volumes/primary_all/ar-io-marketplace-process
+> tsx scripts/bundle-marketplace-process.ts
+
+Bundling Lua...
+🔍 Analyzing module dependencies...
+
+
+⚠️  Self-References Detected:
+  ⟲ /Volumes/primary_all/ar-io-marketplace-process/src/utils.lua:985:1
+    requires itself utils
+
+💡 Note: Self-references are often used for dynamic reloading or hot-module replacement.
+   This pattern is intentional for runtime module updates but should be used sparingly.
+
+
+⚠️  Circular Dependencies Detected:
+  → /Volumes/primary_all/ar-io-marketplace-process/src/utils.lua:424:1
+    requires ucm
+    cycle: ucm → utils → ucm
+
+  → /Volumes/primary_all/ar-io-marketplace-process/src/dutch_auction.lua:148:1
+    requires ucm
+    cycle: ucm → dutch_auction → ucm
+
+  → /Volumes/primary_all/ar-io-marketplace-process/src/fixed_price.lua:140:1
+    requires ucm
+    cycle: ucm → fixed_price → ucm
+
+  → /Volumes/primary_all/ar-io-marketplace-process/src/english_auction.lua:72:1
+    requires ucm
+    cycle: ucm → english_auction → ucm
+
+💡 Tip: Circular dependencies are handled by breaking the cycle.
+   Consider refactoring to extract shared logic into a separate module.
+
+✓ Found 12 modules to bundle
+
+Doth Lua hath been bundled!
+TAP version 13
+# creating aos loader
+# {
+#   emptyListedOrders: {
+#     hasMore: false,
+#     limit: 100,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# {
+#   paginatedListedOrders: {
+#     hasMore: false,
+#     limit: 10,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# {
+#   filteredListedOrders: {
+#     hasMore: false,
+#     limit: 100,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# {
+#   emptyCompletedOrders: {
+#     hasMore: false,
+#     limit: 100,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# {
+#   paginatedCompletedOrders: {
+#     hasMore: false,
+#     limit: 5,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# { nonExistentOrder: undefined }
+# { missingOrderId: undefined }
+# { zeroOrderCounts: { SalesByAddress: [], PurchasesByAddress: [] } }
+# { volume: undefined }
+# { mostTradedTokens: [] }
+# { topFiveTokens: [] }
+# {
+#   activityLengths: {
+#     ListedOrders: 0,
+#     PurchasesByAddress: 0,
+#     CancelledOrders: 0,
+#     SalesByAddress: 0,
+#     ExecutedOrders: 0
+#   }
+# }
+# Subtest: Activity Tracking
+    # Subtest: Get-Listed-Orders
+        # Subtest: should return empty list when no orders exist
+        not ok 1 - should return empty list when no orders exist
+          ---
+          duration_ms: 197.130291
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:731'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:34:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should support pagination
+        not ok 2 - should support pagination
+          ---
+          duration_ms: 142.520625
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:1154'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:46:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should support filtering
+        not ok 3 - should support filtering
+          ---
+          duration_ms: 102.769125
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:1480'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:59:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..3
+    not ok 1 - Get-Listed-Orders
+      ---
+      duration_ms: 456.224042
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:697'
+      failureType: 'subtestsFailed'
+      error: '3 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      stack: |-
+        async Promise.all (index 0)
+      ...
+    # Subtest: Get-Completed-Orders
+        # Subtest: should return empty list when no completed orders exist
+        not ok 1 - should return empty list when no completed orders exist
+          ---
+          duration_ms: 78.033584
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:1791'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:70:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should support pagination and sorting
+        not ok 2 - should support pagination and sorting
+          ---
+          duration_ms: 86.633666
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:2240'
+          failureType: 'testCodeFailure'
+          error: '"undefined" is not valid JSON'
+          code: 'ERR_TEST_FAILURE'
+          name: 'SyntaxError'
+          stack: |-
+            JSON.parse (<anonymous>)
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:90:25)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 2 - Get-Completed-Orders
+      ---
+      duration_ms: 165.015083
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:1754'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Get-Order-By-Id
+        # Subtest: should return Order-Not-Found for non-existent order
+        not ok 1 - should return Order-Not-Found for non-existent order
+          ---
+          duration_ms: 25.985917
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:2689'
+          failureType: 'testCodeFailure'
+          error: 'Result should be defined'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: true
+          operator: '=='
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:105:7)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should handle missing OrderId parameter
+        not ok 2 - should handle missing OrderId parameter
+          ---
+          duration_ms: 31.490291
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:2981'
+          failureType: 'testCodeFailure'
+          error: 'Result should be defined'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: true
+          operator: '=='
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:116:7)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 3 - Get-Order-By-Id
+      ---
+      duration_ms: 59.529917
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:2657'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Get-Order-Counts-By-Address
+        # Subtest: should return zero counts for address with no orders
+        not ok 1 - should return zero counts for address with no orders
+          ---
+          duration_ms: 21.674083
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:3325'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:130:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..1
+    not ok 4 - Get-Order-Counts-By-Address
+      ---
+      duration_ms: 21.805459
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:3281'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Get-Volume
+        # Subtest: should return zero volume when no trades have occurred
+        not ok 1 - should return zero volume when no trades have occurred
+          ---
+          duration_ms: 23.025833
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:3763'
+          failureType: 'testCodeFailure'
+          error: 'Result should be defined'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: true
+          operator: '=='
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:142:7)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..1
+    not ok 5 - Get-Volume
+      ---
+      duration_ms: 23.154167
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:3736'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Get-Most-Traded-Tokens
+        # Subtest: should return empty list when no trades exist
+        not ok 1 - should return empty list when no trades exist
+          ---
+          duration_ms: 23.598667
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:4082'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Most-Traded-Tokens-Result'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Most-Traded-Tokens-Result'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:157:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should support custom count parameter
+        not ok 2 - should support custom count parameter
+          ---
+          duration_ms: 21.163333
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:4508'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Most-Traded-Tokens-Result'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Most-Traded-Tokens-Result'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:169:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 6 - Get-Most-Traded-Tokens
+      ---
+      duration_ms: 44.899209
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:4043'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Get-Activity-Lengths
+        # Subtest: should return counts of all activity arrays
+        not ok 1 - should return counts of all activity arrays
+          ---
+          duration_ms: 24.407292
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:4816'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:180:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..1
+    not ok 7 - Get-Activity-Lengths
+      ---
+      duration_ms: 24.539208
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:4779'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    1..7
+not ok 1 - Activity Tracking
+  ---
+  duration_ms: 1708.103291
+  type: 'suite'
+  location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/activity.test.ts:1:304'
+  failureType: 'subtestsFailed'
+  error: '7 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# creating aos loader
+# {
+#   dutchMissingParams: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   dutchInvalidMinPrice: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   dutchMissingExpiration: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   dutchPriceCalc: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   englishCreateIntent: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   englishMissingExpiration: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   englishBidValidation: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   fixedPriceIntent: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   fixedPriceMissingPrice: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   invalidOrderType: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   orderTypes: {
+#     fixed: {
+#       Status: 'Success',
+#       'Intent-Id': '0000000000000000000000000000000000000000000'
+#     },
+#     dutch: {
+#       Status: 'Success',
+#       'Intent-Id': '0000000000000000000000000000000000000000000'
+#     },
+#     english: {
+#       Status: 'Success',
+#       'Intent-Id': '0000000000000000000000000000000000000000000'
+#     }
+#   }
+# }
+# {
+#   auctionLifecycleIntent: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# Subtest: Auction Mechanisms
+    # Subtest: Dutch Auction
+        # Subtest: Order Creation
+            # Subtest: should validate required Dutch auction parameters
+            ok 1 - should validate required Dutch auction parameters
+              ---
+              duration_ms: 184.351125
+              ...
+            # Subtest: should validate minimum price is less than starting price
+            ok 2 - should validate minimum price is less than starting price
+              ---
+              duration_ms: 152.07925
+              ...
+            # Subtest: should validate expiration time is required
+            ok 3 - should validate expiration time is required
+              ---
+              duration_ms: 99.849792
+              ...
+            1..3
+        ok 1 - Order Creation
+          ---
+          duration_ms: 437.703542
+          type: 'suite'
+          ...
+        # Subtest: Price Calculation
+            # Subtest: should calculate decreasing price over time
+            ok 1 - should calculate decreasing price over time
+              ---
+              duration_ms: 91.296916
+              ...
+            1..1
+        ok 2 - Price Calculation
+          ---
+          duration_ms: 91.39625
+          type: 'suite'
+          ...
+        1..2
+    ok 1 - Dutch Auction
+      ---
+      duration_ms: 539.436333
+      type: 'suite'
+      ...
+    # Subtest: English Auction
+        # Subtest: Order Creation
+            # Subtest: should validate required English auction parameters
+            ok 1 - should validate required English auction parameters
+              ---
+              duration_ms: 83.190667
+              ...
+            # Subtest: should require expiration time for English auctions
+            ok 2 - should require expiration time for English auctions
+              ---
+              duration_ms: 24.277792
+              ...
+            1..2
+        ok 1 - Order Creation
+          ---
+          duration_ms: 113.192459
+          type: 'suite'
+          ...
+        # Subtest: Bidding
+            # Subtest: should validate bid amount against minimum
+            ok 1 - should validate bid amount against minimum
+              ---
+              duration_ms: 33.045542
+              ...
+            1..1
+        ok 2 - Bidding
+          ---
+          duration_ms: 33.339125
+          type: 'suite'
+          ...
+        # Subtest: Settlement
+            # Subtest: should require Order-Id for settlement
+            not ok 1 - should require Order-Id for settlement
+              ---
+              duration_ms: 23.65375
+              location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:3708'
+              failureType: 'testCodeFailure'
+              error: 'Order-Id is required (line 6177)'
+              code: 'ERR_TEST_FAILURE'
+              stack: |-
+                AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+                async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:167:25)
+                async Test.run (node:internal/test_runner/test:797:9)
+                async Promise.all (index 0)
+                async Suite.run (node:internal/test_runner/test:1135:7)
+                async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+              ...
+            # Subtest: should reject settlement of non-existent auction
+            not ok 2 - should reject settlement of non-existent auction
+              ---
+              duration_ms: 23.111625
+              location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:4067'
+              failureType: 'testCodeFailure'
+              error: 'Order not found (line 6181)'
+              code: 'ERR_TEST_FAILURE'
+              stack: |-
+                AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+                async MarketplaceProcess.settleAuction (/Volumes/primary_all/ar-io-marketplace-process/tests/utils/marketplace_process.ts:176:12)
+                async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:180:24)
+                async Test.run (node:internal/test_runner/test:797:9)
+                async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+              ...
+            # Subtest: should validate auction is ready for settlement
+            not ok 3 - should validate auction is ready for settlement
+              ---
+              duration_ms: 23.032875
+              location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:4452'
+              failureType: 'testCodeFailure'
+              error: 'Order not found (line 6181)'
+              code: 'ERR_TEST_FAILURE'
+              stack: |-
+                AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+                async MarketplaceProcess.settleAuction (/Volumes/primary_all/ar-io-marketplace-process/tests/utils/marketplace_process.ts:176:12)
+                async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:194:24)
+                async Test.run (node:internal/test_runner/test:797:9)
+                async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+              ...
+            1..3
+        not ok 3 - Settlement
+          ---
+          duration_ms: 70.311125
+          type: 'suite'
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:3681'
+          failureType: 'subtestsFailed'
+          error: '3 subtests failed'
+          code: 'ERR_TEST_FAILURE'
+          ...
+        1..3
+    not ok 2 - English Auction
+      ---
+      duration_ms: 219.826084
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:2557'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Fixed Price Orders
+        # Subtest: should create valid fixed price order intent
+        not ok 1 - should create valid fixed price order intent
+          ---
+          duration_ms: 29.848708
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:4736'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Intent-Created'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Intent-Created'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:219:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should validate required parameters for fixed price
+        ok 2 - should validate required parameters for fixed price
+          ---
+          duration_ms: 21.51125
+          ...
+        1..2
+    not ok 3 - Fixed Price Orders
+      ---
+      duration_ms: 51.64425
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:4701'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Order Type Validation
+        # Subtest: should reject invalid order type
+        ok 1 - should reject invalid order type
+          ---
+          duration_ms: 15.968125
+          ...
+        # Subtest: should support all three order types
+        ok 2 - should support all three order types
+          ---
+          duration_ms: 54.437875
+          ...
+        1..2
+    ok 4 - Order Type Validation
+      ---
+      duration_ms: 70.524458
+      type: 'suite'
+      ...
+    # Subtest: Auction Lifecycle
+        # Subtest: should track auction from creation to settlement
+        not ok 1 - should track auction from creation to settlement
+          ---
+          duration_ms: 15.421458
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:6704'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Intent-Created'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Intent-Created'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:311:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..1
+    not ok 5 - Auction Lifecycle
+      ---
+      duration_ms: 16.245084
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:6670'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    1..5
+not ok 2 - Auction Mechanisms
+  ---
+  duration_ms: 1807.372833
+  type: 'suite'
+  location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/auction.test.ts:1:304'
+  failureType: 'subtestsFailed'
+  error: '3 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# creating aos loader
+# { info: { Orderbook: [], Name: 'ANT Marketplace' } }
+# {
+#   dryrun: {
+#     Error: undefined,
+#     Output: {
+#       print: true,
+#       data: '\\x1B[90mNew Message From \\x1B[32m111...111\\x1B[90m: \\x1B[90mAction = \\x1B[34mInfo\\x1B[0m',
+#       prompt: 'aos> '
+#     },
+#     Messages: [
+#       {
+#         Anchor: '00000000000000000000000000000001',
+#         Tags: [
+#           { value: 'ao', name: 'Data-Protocol' },
+#           { value: 'ao.TN.1', name: 'Variant' },
+#           { value: 'Message', name: 'Type' },
+#           {
+#             value: '0000000000000000000000000000000000000000000',
+#             name: 'From-Process'
+#           },
+#           { value: '', name: 'From-Module' },
+#           { value: '1', name: 'Ref_' },
+#           { value: 'Info-Notice', name: 'Action' }
+#         ],
+#         Data: '{"Orderbook":[],"Name":"ANT Marketplace"}',
+#         Target: '1111111111111111111111111111111111111111111'
+#       }
+#     ],
+#     Spawns: [],
+#     Assignments: [],
+#     Patches: [],
+#     GasUsed: 0
+#   }
+# }
+# {
+#   id: '0000000000000000000000000000000000000000001',
+#   result: { Orderbook: [], Name: 'ANT Marketplace' }
+# }
+# { messageId: '0000000000000000000000000000000000000000002' }
+# {
+#   msgResult: {
+#     Error: undefined,
+#     Output: {
+#       print: true,
+#       data: '\\x1B[90mNew Message From \\x1B[32m111...111\\x1B[90m: \\x1B[90mAction = \\x1B[34mInfo\\x1B[0m',
+#       prompt: 'aos> '
+#     },
+#     Messages: [
+#       {
+#         Anchor: '00000000000000000000000000000002',
+#         Tags: [
+#           { value: 'ao', name: 'Data-Protocol' },
+#           { value: 'ao.TN.1', name: 'Variant' },
+#           { value: 'Message', name: 'Type' },
+#           {
+#             value: '0000000000000000000000000000000000000000000',
+#             name: 'From-Process'
+#           },
+#           { value: '', name: 'From-Module' },
+#           { value: '2', name: 'Ref_' },
+#           { value: 'Info-Notice', name: 'Action' }
+#         ],
+#         Data: '{"Orderbook":[],"Name":"ANT Marketplace"}',
+#         Target: '1111111111111111111111111111111111111111111'
+#       }
+#     ],
+#     Spawns: [],
+#     Assignments: [],
+#     Patches: [],
+#     GasUsed: 0
+#   }
+# }
+# Subtest: Info
+    # Subtest: should return the info
+    ok 1 - should return the info
+      ---
+      duration_ms: 544.098375
+      ...
+    1..1
+ok 3 - Info
+  ---
+  duration_ms: 1459.718917
+  type: 'suite'
+  ...
+# creating aos loader
+# {
+#   createIntent: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   cancelIntent: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   settleIntent: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   emptyIntents: {
+#     hasMore: false,
+#     limit: 100,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# {
+#   intentsWithData: {
+#     hasMore: false,
+#     limit: 100,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# {
+#   filteredIntents: {
+#     hasMore: false,
+#     limit: 100,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# {
+#   paginatedIntents: {
+#     hasMore: false,
+#     limit: 1,
+#     items: [],
+#     totalItems: 0,
+#     sortOrder: 'desc',
+#     sortBy: 'CreatedAt'
+#   }
+# }
+# { intentStats: { ByStatus: [], ByType: [], ByAction: [], Total: 0 } }
+# { emptyStats: { ByStatus: [], ByType: [], ByAction: [], Total: 0 } }
+# Subtest: Intent Workflow Tracking
+    # Subtest: Create-Intent
+        # Subtest: should create an intent for Create-Order action
+        not ok 1 - should create an intent for Create-Order action
+          ---
+          duration_ms: 197.497875
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:746'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Intent-Created'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Intent-Created'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:45:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should fail to create intent without required X-Intent-Action
+        not ok 2 - should fail to create intent without required X-Intent-Action
+          ---
+          duration_ms: 148.577333
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:1245'
+          failureType: 'testCodeFailure'
+          error: 'X-Intent-Action required (line 4564)'
+          code: 'ERR_TEST_FAILURE'
+          name: 'WriteInteractionError'
+          stack: |-
+            AOProcess.send (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:201:19)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:51:27)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should fail to create intent without required parameters for Create-Order
+        not ok 3 - should fail to create intent without required parameters for Create-Order
+          ---
+          duration_ms: 116.92075
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:1706'
+          failureType: 'testCodeFailure'
+          error: 'X-Intent-Swap-Token required for Create-Order (line 4583)'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+            async MarketplaceProcess.createIntent (/Volumes/primary_all/ar-io-marketplace-process/tests/utils/marketplace_process.ts:52:12)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:69:22)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should create an intent for Cancel-Order action
+        not ok 4 - should create an intent for Cancel-Order action
+          ---
+          duration_ms: 131.25675
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:2069'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Intent-Created'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Intent-Created'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:90:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should create an intent for Settle-Auction action
+        not ok 5 - should create an intent for Settle-Auction action
+          ---
+          duration_ms: 40.027833
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:2454'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Intent-Created'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Intent-Created'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:103:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..5
+    not ok 1 - Create-Intent
+      ---
+      duration_ms: 646.683208
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:716'
+      failureType: 'subtestsFailed'
+      error: '5 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      stack: |-
+        async Promise.all (index 0)
+      ...
+    # Subtest: Get-Paginated-Intents
+        # Subtest: should return empty list when no intents exist
+        not ok 1 - should return empty list when no intents exist
+          ---
+          duration_ms: 31.038917
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:2885'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:115:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should return created intents
+        not ok 2 - should return created intents
+          ---
+          duration_ms: 42.358541
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:3309'
+          failureType: 'testCodeFailure'
+          error: '"undefined" is not valid JSON'
+          code: 'ERR_TEST_FAILURE'
+          name: 'SyntaxError'
+          stack: |-
+            JSON.parse (<anonymous>)
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:135:25)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should filter intents by Initiator
+        not ok 3 - should filter intents by Initiator
+          ---
+          duration_ms: 42.776666
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:3905'
+          failureType: 'testCodeFailure'
+          error: '"undefined" is not valid JSON'
+          code: 'ERR_TEST_FAILURE'
+          name: 'SyntaxError'
+          stack: |-
+            JSON.parse (<anonymous>)
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:158:25)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should support pagination with limit
+        not ok 4 - should support pagination with limit
+          ---
+          duration_ms: 58.150417
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:4407'
+          failureType: 'testCodeFailure'
+          error: '"undefined" is not valid JSON'
+          code: 'ERR_TEST_FAILURE'
+          name: 'SyntaxError'
+          stack: |-
+            JSON.parse (<anonymous>)
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:183:25)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..4
+    not ok 2 - Get-Paginated-Intents
+      ---
+      duration_ms: 175.214417
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:2847'
+      failureType: 'subtestsFailed'
+      error: '4 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Get-Intent-By-Id
+        # Subtest: should return intent by ID
+        not ok 1 - should return intent by ID
+          ---
+          duration_ms: 19.866708
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:5113'
+          failureType: 'testCodeFailure'
+          error: "Cannot read properties of undefined (reading 'Intent-Id')"
+          code: 'ERR_TEST_FAILURE'
+          name: 'TypeError'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:201:37)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should return error for non-existent intent
+        not ok 2 - should return error for non-existent intent
+          ---
+          duration_ms: 18.4735
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:5726'
+          failureType: 'testCodeFailure'
+          error: 'Intent not found (line 4633)'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+            async MarketplaceProcess.getIntentById (/Volumes/primary_all/ar-io-marketplace-process/tests/utils/marketplace_process.ts:77:12)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:216:22)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should return Intent-Not-Found when Intent-Id is missing
+        not ok 3 - should return Intent-Not-Found when Intent-Id is missing
+          ---
+          duration_ms: 20.935292
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:6006'
+          failureType: 'testCodeFailure'
+          error: 'Intent-Id required (line 4630)'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:225:23)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..3
+    not ok 3 - Get-Intent-By-Id
+      ---
+      duration_ms: 59.733666
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:5080'
+      failureType: 'subtestsFailed'
+      error: '3 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Get-Intent-Stats
+        # Subtest: should return statistics about intents
+        not ok 1 - should return statistics about intents
+          ---
+          duration_ms: 50.475666
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:6358'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Intent-Stats-Result'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Intent-Stats-Result'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:256:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should return zero stats when no intents exist
+        not ok 2 - should return zero stats when no intents exist
+          ---
+          duration_ms: 14.294708
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:7193'
+          failureType: 'testCodeFailure'
+          error: '"undefined" is not valid JSON'
+          code: 'ERR_TEST_FAILURE'
+          name: 'SyntaxError'
+          stack: |-
+            JSON.parse (<anonymous>)
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:275:25)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 4 - Get-Intent-Stats
+      ---
+      duration_ms: 65.383666
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:6325'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    1..4
+not ok 4 - Intent Workflow Tracking
+  ---
+  duration_ms: 1857.733583
+  type: 'suite'
+  location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/intent.test.ts:1:316'
+  failureType: 'subtestsFailed'
+  error: '4 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# creating aos loader
+# {
+#   creditNoticeNoIntent: {
+#     Error: undefined,
+#     Output: {
+#       print: true,
+#       data: '\\x1B[90mNew Message From \\x1B[32m111...111\\x1B[90m: \\x1B[90mAction = \\x1B[34mCredit-Notice\\x1B[0m',
+#       prompt: 'aos> '
+#     },
+#     Messages: [],
+#     Spawns: [],
+#     Assignments: [],
+#     Patches: [],
+#     GasUsed: 0
+#   }
+# }
+# {
+#   creditNoticeWrongToken: {
+#     Error: undefined,
+#     Output: {
+#       print: true,
+#       data: '\\x1B[90mNew Message From \\x1B[32m111...111\\x1B[90m: \\x1B[90mAction = \\x1B[34mCredit-Notice\\x1B[0m',
+#       prompt: 'aos> '
+#     },
+#     Messages: [],
+#     Spawns: [],
+#     Assignments: [],
+#     Patches: [],
+#     GasUsed: 0
+#   }
+# }
+# {
+#   nonArioIntent: {
+#     Status: 'Success',
+#     'Intent-Id': '0000000000000000000000000000000000000000000'
+#   }
+# }
+# {
+#   initialState: {
+#     listedBefore: {
+#       hasMore: false,
+#       limit: 100,
+#       items: [],
+#       totalItems: 0,
+#       sortOrder: 'desc',
+#       sortBy: 'CreatedAt'
+#     },
+#     completedBefore: {
+#       hasMore: false,
+#       limit: 100,
+#       items: [],
+#       totalItems: 0,
+#       sortOrder: 'desc',
+#       sortBy: 'CreatedAt'
+#     }
+#   }
+# }
+# { orderCounts: { SalesByAddress: [], PurchasesByAddress: [] } }
+# Subtest: UCM (Universal Continuous Market)
+    # Subtest: Get-Orderbook-By-Pair
+        # Subtest: should return empty orderbook for non-existent pair
+        not ok 1 - should return empty orderbook for non-existent pair
+          ---
+          duration_ms: 149.573417
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:933'
+          failureType: 'testCodeFailure'
+          error: 'Process my-marketplace-process-11111111111111111111 did not return a valid response. Response: {"Output":{"print":true,"data":"\\u001b[90mNew Message From \\u001b[32m111...111\\u001b[90m: \\u001b[90mAction = \\u001b[34mGet-Orderbook-By-Pai\\u001b[0m","prompt":"aos> "},"Messages":[],"Spawns":[],"Assignments":[],"Patches":[],"GasUsed":0}'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:102:19)
+            async MarketplaceProcess.getOrderbookByPair (/Volumes/primary_all/ar-io-marketplace-process/tests/utils/marketplace_process.ts:206:12)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:36:22)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should require both DominantToken and SwapToken
+        not ok 2 - should require both DominantToken and SwapToken
+          ---
+          duration_ms: 51.178708
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:1183'
+          failureType: 'testCodeFailure'
+          error: 'Process my-marketplace-process-11111111111111111111 did not return a valid response. Response: {"Output":{"print":true,"data":"\\u001b[90mNew Message From \\u001b[32m111...111\\u001b[90m: \\u001b[90mAction = \\u001b[34mGet-Orderbook-By-Pai\\u001b[0m","prompt":"aos> "},"Messages":[],"Spawns":[],"Assignments":[],"Patches":[],"GasUsed":0}'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:102:19)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:48:22)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 1 - Get-Orderbook-By-Pair
+      ---
+      duration_ms: 211.582625
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:895'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      stack: |-
+        async Promise.all (index 0)
+      ...
+    # Subtest: Cancel-Order
+        # Subtest: should return error for non-existent order
+        not ok 1 - should return error for non-existent order
+          ---
+          duration_ms: 31.140666
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:1481'
+          failureType: 'testCodeFailure'
+          error: 'Order not found (line 6048)'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+            async MarketplaceProcess.cancelOrder (/Volumes/primary_all/ar-io-marketplace-process/tests/utils/marketplace_process.ts:158:12)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:61:22)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should require Order-Id parameter
+        not ok 2 - should require Order-Id parameter
+          ---
+          duration_ms: 148.132125
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:1859'
+          failureType: 'testCodeFailure'
+          error: 'Invalid arguments, required { Order-Id } (line 6045)'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:76:23)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 2 - Cancel-Order
+      ---
+      duration_ms: 179.748208
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:1452'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Credit-Notice (Order Creation)
+        # Subtest: should reject Credit-Notice without X-Intent-Id
+        not ok 1 - should reject Credit-Notice without X-Intent-Id
+          ---
+          duration_ms: 68.615459
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:2261'
+          failureType: 'testCodeFailure'
+          error: 'Should have error or refund message'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: true
+          actual: false
+          operator: '=='
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:119:7)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should reject Credit-Notice from non-dominant token
+        ok 2 - should reject Credit-Notice from non-dominant token
+          ---
+          duration_ms: 18.652834
+          ...
+        1..2
+    not ok 3 - Credit-Notice (Order Creation)
+      ---
+      duration_ms: 87.791834
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:2214'
+      failureType: 'subtestsFailed'
+      error: '1 subtest failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Settle-Auction
+        # Subtest: should return error for missing Order-Id
+        not ok 1 - should return error for missing Order-Id
+          ---
+          duration_ms: 21.441
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:3587'
+          failureType: 'testCodeFailure'
+          error: 'Order-Id is required (line 6177)'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:149:23)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should return error for non-existent order
+        not ok 2 - should return error for non-existent order
+          ---
+          duration_ms: 20.802958
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:3951'
+          failureType: 'testCodeFailure'
+          error: 'Order not found (line 6181)'
+          code: 'ERR_TEST_FAILURE'
+          stack: |-
+            AOProcess.read (file:///Volumes/primary_all/ar-io-marketplace-process/node_modules/.pnpm/@ar.io+sdk@3.21.0/node_modules/@ar.io/sdk/lib/esm/common/contracts/ao-process.js:94:19)
+            async MarketplaceProcess.settleAuction (/Volumes/primary_all/ar-io-marketplace-process/tests/utils/marketplace_process.ts:176:12)
+            async TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:162:22)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 4 - Settle-Auction
+      ---
+      duration_ms: 42.772666
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:3556'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    # Subtest: Order Validation
+        # Subtest: should validate ARIO requirement in trades
+        ok 1 - should validate ARIO requirement in trades
+          ---
+          duration_ms: 58.517167
+          ...
+        1..1
+    ok 5 - Order Validation
+      ---
+      duration_ms: 58.64375
+      type: 'suite'
+      ...
+    # Subtest: Order Lifecycle
+        # Subtest: should track order through listed -> executed states
+        not ok 1 - should track order through listed -> executed states
+          ---
+          duration_ms: 45.981459
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:4700'
+          failureType: 'testCodeFailure'
+          error: '"undefined" is not valid JSON'
+          code: 'ERR_TEST_FAILURE'
+          name: 'SyntaxError'
+          stack: |-
+            JSON.parse (<anonymous>)
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:206:31)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Promise.all (index 0)
+            async Suite.run (node:internal/test_runner/test:1135:7)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        # Subtest: should track order counts by address
+        not ok 2 - should track order counts by address
+          ---
+          duration_ms: 29.7455
+          location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:5360'
+          failureType: 'testCodeFailure'
+          error: |-
+            Expected values to be strictly equal:
+            + actual - expected
+            
+            + undefined
+            - 'Read-Success'
+          code: 'ERR_ASSERTION'
+          name: 'AssertionError'
+          expected: 'Read-Success'
+          operator: 'strictEqual'
+          stack: |-
+            TestContext.<anonymous> (/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:229:14)
+            async Test.run (node:internal/test_runner/test:797:9)
+            async Suite.processPendingSubtests (node:internal/test_runner/test:526:7)
+          ...
+        1..2
+    not ok 6 - Order Lifecycle
+      ---
+      duration_ms: 76.176334
+      type: 'suite'
+      location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:4668'
+      failureType: 'subtestsFailed'
+      error: '2 subtests failed'
+      code: 'ERR_TEST_FAILURE'
+      ...
+    1..6
+not ok 5 - UCM (Universal Continuous Market)
+  ---
+  duration_ms: 1401.784667
+  type: 'suite'
+  location: '/Volumes/primary_all/ar-io-marketplace-process/tests/integration/ucm.test.ts:1:318'
+  failureType: 'subtestsFailed'
+  error: '5 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..5
+# tests 53
+# suites 32
+# pass 13
+# fail 40
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3384.29175
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.

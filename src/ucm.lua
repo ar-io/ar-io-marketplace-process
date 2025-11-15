@@ -1,8 +1,10 @@
 local bint = require('.bint')(256)
 
+require('types')
 local utils = require('utils')
 local activity = require('activity')
 local json = require('json')
+local constants = require('constants')
 
 -- Note: fixed_price, dutch_auction, and english_auction are lazy-loaded
 -- within functions to avoid circular dependencies
@@ -65,10 +67,10 @@ function ucm.transfer(msg, sendParams)
 
 			-- Add child intent ID to transfer
 			sendParams.Tags = sendParams.Tags or {}
-			sendParams.Tags['X-Intent-Id'] = childIntent.IntentId
+			sendParams.Tags['X-Intent-Id'] = childIntent.intentId
 
 			-- Update parent status to "settling" if currently active
-			if parent.Status == 'active' then
+			if parent.status == 'active' then
 				intents.updateStatus(parentIntentId, 'settling')
 			end
 		end
@@ -80,8 +82,6 @@ end
 
 -- Helper function to execute token transfers for order matching
 function ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
-	local utils = require('utils')
-
 	-- Optionally record fee (difference between original send amount and calculated amount)
 	if args and args.originalSendAmount then
 		local ok1, orig = pcall(function()
@@ -104,7 +104,7 @@ function ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculate
 		Target = validPair[1],
 		Action = 'Transfer',
 		Tags = {
-			Recipient = currentOrderEntry.Creator,
+			Recipient = currentOrderEntry.creator,
 			Quantity = tostring(calculatedSendAmount),
 		},
 	})
@@ -120,20 +120,24 @@ function ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculate
 	})
 end
 
-function ucm.getPairIndex(pair)
-	local pairIndex = -1
-
-	for i, existingOrders in ipairs(Orderbook) do
-		if
-			(existingOrders.Pair[1] == pair[1] and existingOrders.Pair[2] == pair[2])
-			or (existingOrders.Pair[1] == pair[2] and existingOrders.Pair[2] == pair[1])
-		then
-			pairIndex = i
-			break
-		end
+-- Helper function to get or create pair entry in orderbook
+-- Returns the pair table and boolean indicating if it was created
+local function getPairEntry(dominantToken, swapToken)
+	-- Initialize first level if needed
+	if not Orderbook[dominantToken] then
+		Orderbook[dominantToken] = {}
 	end
 
-	return pairIndex
+	-- Initialize second level if needed
+	if not Orderbook[dominantToken][swapToken] then
+		Orderbook[dominantToken][swapToken] = {
+			pair = { dominantToken, swapToken },
+			orders = {},
+		}
+		return Orderbook[dominantToken][swapToken], true
+	end
+
+	return Orderbook[dominantToken][swapToken], false
 end
 
 -- Helper function to validate ANT dominant token orders (selling ANT for ARIO)
@@ -309,28 +313,21 @@ local function validateOrderParams(args)
 end
 
 -- Helper function to ensure trading pair exists in orderbook
-local function ensurePairExists(validPair)
-	local pairIndex = ucm.getPairIndex(validPair)
-
-	-- Create new pair entry if it doesn't exist
-	if pairIndex == -1 then
-		table.insert(Orderbook, { Pair = validPair, Orders = {} })
-		pairIndex = ucm.getPairIndex(validPair)
-	end
-
-	return pairIndex
+local function ensurePairExists(dominantToken, swapToken)
+	local pairEntry = getPairEntry(dominantToken, swapToken)
+	return pairEntry
 end
 
-local function handleAntOrderAuctions(args, validPair, pairIndex)
+local function handleAntOrderAuctions(args, validPair)
 	if args.orderType == 'fixed' then
 		local fixed_price = require('fixed_price')
-		fixed_price.handleAntOrder(args, validPair, pairIndex)
+		fixed_price.handleAntOrder(args, validPair)
 	elseif args.orderType == 'dutch' then
 		local dutch_auction = require('dutch_auction')
-		dutch_auction.handleAntOrder(args, validPair, pairIndex)
+		dutch_auction.handleAntOrder(args, validPair)
 	elseif args.orderType == 'english' then
 		local english_auction = require('english_auction')
-		english_auction.handleAntOrder(args, validPair, pairIndex)
+		english_auction.handleAntOrder(args, validPair)
 	else
 		utils.handleError({
 			Target = args.sender,
@@ -343,32 +340,34 @@ local function handleAntOrderAuctions(args, validPair, pairIndex)
 	end
 end
 
-local function handleArioOrderAuctions(args, validPair, pairIndex)
+local function handleArioOrderAuctions(args, validPair)
 	-- Check if the desired token is already being sold (prevent duplicate sell orders)
-	local currentOrders = Orderbook[pairIndex].Orders
-	for orderId, existingOrder in pairs(currentOrders) do
-		if existingOrder.Token == args.dominantToken then
-			utils.handleError({
-				Target = args.sender,
-				Action = 'Validation-Error',
-				Message = 'This ANT token is already being sold - cannot create duplicate sell order',
-				Quantity = args.quantity,
-				TransferToken = validPair[1],
-				OrderGroupId = args.orderGroupId,
-			})
-			return
+	local pairEntry = Orderbook[args.dominantToken] and Orderbook[args.dominantToken][args.swapToken]
+	if pairEntry then
+		for _, existingOrder in pairs(pairEntry.orders) do
+			if existingOrder.token == args.dominantToken then
+				utils.handleError({
+					Target = args.sender,
+					Action = 'Validation-Error',
+					Message = 'This ANT token is already being sold - cannot create duplicate sell order',
+					Quantity = args.quantity,
+					TransferToken = validPair[1],
+					OrderGroupId = args.orderGroupId,
+				})
+				return
+			end
 		end
 	end
 
 	if args.orderType == 'fixed' then
 		local fixed_price = require('fixed_price')
-		fixed_price.handleArioOrder(args, validPair, pairIndex)
+		fixed_price.handleArioOrder(args)
 	elseif args.orderType == 'dutch' then
 		local dutch_auction = require('dutch_auction')
-		dutch_auction.handleArioOrder(args, validPair, pairIndex)
+		dutch_auction.handleArioOrder(args)
 	elseif args.orderType == 'english' then
 		local english_auction = require('english_auction')
-		english_auction.handleArioOrder(args, validPair, pairIndex)
+		english_auction.handleArioOrder(args)
 	else
 		utils.handleError({
 			Target = args.sender,
@@ -389,51 +388,102 @@ function ucm.createOrder(args)
 	end
 
 	-- Ensure trading pair exists in orderbook
-	local pairIndex = ensurePairExists(validPair)
+	ensurePairExists(args.dominantToken, args.swapToken)
 
-	if pairIndex > -1 then
-		-- Check if the desired token is ARIO (add to orderbook) or ANT (immediate trade only)
-		local isBuyingAnt = utils.isArioToken(args.dominantToken) -- If dominantToken is ARIO, we're buying ANT
-		local isBuyingArio = not isBuyingAnt -- If dominantToken is not ARIO, we're selling ANT
+	-- Check if the desired token is ARIO (add to orderbook) or ANT (immediate trade only)
+	local isBuyingAnt = utils.isArioToken(args.dominantToken) -- If dominantToken is ARIO, we're buying ANT
+	local isBuyingArio = not isBuyingAnt -- If dominantToken is not ARIO, we're selling ANT
 
-		-- Handle ANT token orders - check for immediate trades only, don't add to orderbook
-		if isBuyingAnt then
-			handleAntOrderAuctions(args, validPair, pairIndex)
-			return
-		end
-
-		-- Handle ARIO token orders - add to orderbook for buy now
-		if isBuyingArio then
-			handleArioOrderAuctions(args, validPair, pairIndex)
-			return
-		end
-
-		-- Placeholder for future order type handling
-		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'Order type not implemented yet',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
-		})
+	-- Handle ANT token orders - check for immediate trades only, don't add to orderbook
+	if isBuyingAnt then
+		handleAntOrderAuctions(args, validPair)
 		return
-	else
-		-- Pair not found in orderbook (shouldn't happen after creation)
-		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'Pair not found',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
-		})
 	end
+
+	-- Handle ARIO token orders - add to orderbook for buy now
+	if isBuyingArio then
+		handleArioOrderAuctions(args, validPair)
+		return
+	end
+
+	-- Placeholder for future order type handling
+	utils.handleError({
+		Target = args.sender,
+		Action = 'Order-Error',
+		Message = 'Order type not implemented yet',
+		Quantity = args.quantity,
+		TransferToken = validPair[1],
+		OrderGroupId = args.orderGroupId,
+	})
 end
 
 function ucm.settleAuction(args)
+	-- Find the auction order using O(1) lookup
+	local targetOrder, targetPair = ucm.findOrderById(args.orderId)
+
+	if not targetOrder then
+		utils.handleError({
+			Target = args.sender,
+			Action = 'Settlement-Error',
+			Message = 'Auction order not found',
+			Quantity = '0',
+			TransferToken = nil,
+			OrderGroupId = args.orderGroupId,
+		})
+		return
+	end
+
+	-- Validate it's an English auction
+	if targetOrder.orderType ~= constants.ORDER_TYPES.ENGLISH then
+		utils.handleError({
+			Target = args.sender,
+			Action = 'Settlement-Error',
+			Message = 'Order is not an English auction',
+			Quantity = '0',
+			TransferToken = nil,
+			OrderGroupId = args.orderGroupId,
+		})
+		return
+	end
+
+	-- Check if auction has bids
+	if not targetOrder.highestBidder then
+		utils.handleError({
+			Target = args.sender,
+			Action = 'Settlement-Error',
+			Message = 'No bids found for auction',
+			Quantity = '0',
+			TransferToken = nil,
+			OrderGroupId = args.orderGroupId,
+		})
+		return
+	end
+
+	-- Check if auction has expired
+	if not utils.isExpired(targetOrder.expirationTime, args.timestamp) then
+		utils.handleError({
+			Target = args.sender,
+			Action = 'Settlement-Error',
+			Message = 'Auction has not expired yet',
+			Quantity = '0',
+			TransferToken = nil,
+			OrderGroupId = args.orderGroupId,
+		})
+		return
+	end
+
+	-- Call the core settlement function with pre-fetched data
 	local english_auction = require('english_auction')
-	english_auction.settleAuction(args)
+	english_auction.settleAuction({
+		order = targetOrder,
+		pair = targetPair,
+		dominantToken = args.dominantToken,
+		swapToken = args.swapToken,
+		timestamp = args.timestamp,
+		msg = args.msg,
+		sender = args.sender,
+		orderGroupId = args.orderGroupId,
+	})
 end
 
 -- Cancel an order
@@ -465,22 +515,27 @@ function ucm.cancelOrder(msg)
 
 	-- Find and remove order from orderbook
 	local orderFound = false
-	for pairIdx, pairData in ipairs(Orderbook) do
-		local currentOrderEntry = pairData.Orders[orderId]
-		if currentOrderEntry then
-			-- Return funds to the creator
-			ucm.transfer(msg, {
-				Target = currentOrderEntry.Token,
-				Action = 'Transfer',
-				Tags = {
-					Recipient = currentOrderEntry.Creator,
-					Quantity = currentOrderEntry.Quantity,
-				},
-			})
+	for _, swapTokens in pairs(Orderbook) do
+		for _, pairData in pairs(swapTokens) do
+			local currentOrderEntry = pairData.orders[orderId]
+			if currentOrderEntry then
+				-- Return funds to the creator
+				ucm.transfer(msg, {
+					Target = currentOrderEntry.token,
+					Action = 'Transfer',
+					Tags = {
+						Recipient = currentOrderEntry.creator,
+						Quantity = currentOrderEntry.quantity,
+					},
+				})
 
-			-- Remove the order from the orderbook
-			Orderbook[pairIdx].Orders[orderId] = nil
-			orderFound = true
+				-- Remove the order from the orderbook
+				pairData.orders[orderId] = nil
+				orderFound = true
+				break
+			end
+		end
+		if orderFound then
 			break
 		end
 	end
@@ -512,7 +567,7 @@ function ucm.cancelOrder(msg)
 end
 
 -- Handler: Info
-function ucm.info(msg)
+function ucm.info(_)
 	return json.encode({
 		Name = Name,
 		Orderbook = Orderbook,
@@ -524,10 +579,11 @@ function ucm.getOrderbookByPair(msg)
 	if not msg.Tags.DominantToken or not msg.Tags.SwapToken then
 		return
 	end
-	local pairIndex = ucm.getPairIndex({ msg.Tags.DominantToken, msg.Tags.SwapToken })
 
-	if pairIndex > -1 then
-		return json.encode({ Orderbook = Orderbook[pairIndex] })
+	local pairData = Orderbook[msg.Tags.DominantToken] and Orderbook[msg.Tags.DominantToken][msg.Tags.SwapToken]
+
+	if pairData then
+		return json.encode({ Orderbook = pairData })
 	end
 end
 
@@ -538,17 +594,17 @@ function ucm.readOrders(msg)
 	end
 
 	local readOrders = {}
-	local pairIndex = ucm.getPairIndex({ msg.Tags.DominantToken, msg.Tags.SwapToken })
+	local pairData = Orderbook[msg.Tags.DominantToken] and Orderbook[msg.Tags.DominantToken][msg.Tags.SwapToken]
 
-	if pairIndex > -1 then
-		for orderId, order in pairs(Orderbook[pairIndex].Orders) do
-			if not msg.Tags.Creator or order.Creator == msg.Tags.Creator then
+	if pairData then
+		for _, order in pairs(pairData.orders) do
+			if not msg.Tags.Creator or order.creator == msg.Tags.Creator then
 				table.insert(readOrders, {
-					id = order.Id,
-					creator = order.Creator,
-					quantity = order.Quantity,
-					price = order.Price,
-					CreatedAt = order.CreatedAt,
+					id = order.id,
+					creator = order.creator,
+					quantity = order.quantity,
+					price = order.price,
+					dateCreated = order.dateCreated,
 				})
 			end
 		end
@@ -559,11 +615,12 @@ end
 
 -- Handler: Read-Pair
 function ucm.readPair(msg)
-	local pairIndex = ucm.getPairIndex({ msg.Tags.DominantToken, msg.Tags.SwapToken })
-	if pairIndex > -1 then
+	local pairData = Orderbook[msg.Tags.DominantToken] and Orderbook[msg.Tags.DominantToken][msg.Tags.SwapToken]
+
+	if pairData then
 		return json.encode({
-			Pair = tostring(pairIndex),
-			Orderbook = Orderbook[pairIndex],
+			Pair = pairData.pair,
+			Orderbook = pairData,
 		})
 	end
 end
@@ -576,15 +633,6 @@ function ucm.settleAuctionHandler(msg)
 	local swapToken = msg.Tags['Swap-Token']
 
 	assert(orderId, 'Order-Id is required')
-
-	-- Use internal activity lookup instead of messaging
-	local foundOrder = activity.findOrderById(orderId, msg.Timestamp)
-	assert(foundOrder, 'Order not found')
-
-	assert(
-		foundOrder.Status == 'ready-for-settlement',
-		'Order is not ready for settlement. Status: ' .. tostring(foundOrder.Status)
-	)
 
 	local settleArgs = {
 		orderId = orderId,

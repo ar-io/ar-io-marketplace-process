@@ -14,21 +14,21 @@ end
 --- @return ParentIntent intent The created parent intent
 function intents.createParent(msg, action, forwardedTags)
 	local intent = {
-		IntentId = msg.Id,
-		Type = 'parent',
-		Initiator = msg.From,
-		ParentIntentId = nil,
-		ChildIntentIds = {}, -- map for O(1) lookup
-		Action = action,
-		Status = 'pending',
-		CreatedAt = msg.Timestamp,
-		ResolvedAt = nil,
-		CompletedAt = nil,
-		FailureReason = nil,
-		ForwardedTags = forwardedTags or {},
+		intentId = msg.Id,
+		type = 'parent',
+		initiator = msg.From,
+		parentIntentId = nil,
+		childIntentIds = {}, -- map for O(1) lookup
+		action = action,
+		status = 'pending',
+		createdAt = msg.Timestamp,
+		resolvedAt = nil,
+		completedAt = nil,
+		failureReason = nil,
+		forwardedTags = forwardedTags or {},
 	}
 
-	Intents[intent.IntentId] = intent
+	Intents[intent.intentId] = intent
 	return intent
 end
 
@@ -42,27 +42,27 @@ function intents.createChild(parentId, msg, expectedFrom, forwardedTags)
 	local childId = msg.Id .. '-child-' .. tostring(os.time()) .. '-' .. tostring(math.random(1000, 9999))
 
 	local childIntent = {
-		IntentId = childId,
-		Type = 'child',
-		Initiator = ao.id, -- marketplace process
-		ParentIntentId = parentId,
-		Action = 'Transfer',
-		ExpectedMessage = 'Debit-Notice',
-		ExpectedFrom = expectedFrom,
-		Status = 'pending',
-		CreatedAt = msg.Timestamp,
-		ResolvedAt = nil,
-		FailureReason = nil,
-		ForwardedTags = forwardedTags or {},
+		intentId = childId,
+		type = 'child',
+		initiator = ao.id, -- marketplace process
+		parentIntentId = parentId,
+		action = 'Transfer',
+		expectedMessage = 'Debit-Notice',
+		expectedFrom = expectedFrom,
+		status = 'pending',
+		createdAt = msg.Timestamp,
+		resolvedAt = nil,
+		failureReason = nil,
+		forwardedTags = forwardedTags or {},
 	}
 
 	-- Add to Intents table
 	Intents[childId] = childIntent
 
-	-- Add to parent's ChildIntentIds map
+	-- Add to parent's childIntentIds map
 	local parent = Intents[parentId]
 	if parent then
-		parent.ChildIntentIds[childId] = true
+		parent.childIntentIds[childId] = true
 	end
 
 	return childIntent
@@ -78,16 +78,16 @@ function intents.resolve(intentId, timestamp)
 		return false
 	end
 
-	if intent.Type == 'parent' then
+	if intent.type == 'parent' then
 		-- Parent intent resolution (pending -> active)
-		if intent.Status == 'pending' then
-			intent.Status = 'active'
-			intent.ResolvedAt = timestamp
+		if intent.status == 'pending' then
+			intent.status = 'active'
+			intent.resolvedAt = timestamp
 		end
-	elseif intent.Type == 'child' then
+	elseif intent.type == 'child' then
 		-- Child intent resolution
-		intent.Status = 'resolved'
-		intent.ResolvedAt = timestamp
+		intent.status = 'resolved'
+		intent.resolvedAt = timestamp
 	end
 
 	return true
@@ -103,8 +103,8 @@ function intents.fail(intentId, reason)
 		return false
 	end
 
-	intent.Status = 'failed'
-	intent.FailureReason = reason
+	intent.status = 'failed'
+	intent.failureReason = reason
 
 	return true
 end
@@ -119,11 +119,11 @@ function intents.updateStatus(intentId, status)
 		return false
 	end
 
-	intent.Status = status
+	intent.status = status
 
-	-- Set CompletedAt timestamp if moving to completed
+	-- Set completedAt timestamp if moving to completed
 	if status == 'completed' then
-		intent.CompletedAt = os.time()
+		intent.completedAt = os.time()
 	end
 
 	return true
@@ -141,7 +141,7 @@ end
 function intents.getPending()
 	local pending = {}
 	for _, intent in pairs(Intents) do
-		if intent.Type == 'parent' and intent.Status == 'pending' then
+		if intent.type == 'parent' and intent.status == 'pending' then
 			table.insert(pending, intent)
 		end
 	end
@@ -154,7 +154,7 @@ end
 function intents.getByStatus(status)
 	local filtered = {}
 	for _, intent in pairs(Intents) do
-		if intent.Status == status then
+		if intent.status == status then
 			table.insert(filtered, intent)
 		end
 	end
@@ -183,13 +183,13 @@ end
 --- @return boolean allResolved Boolean indicating if all children are resolved
 function intents.areAllChildrenResolved(parentId)
 	local parent = Intents[parentId]
-	if not parent or parent.Type ~= 'parent' then
+	if not parent or parent.type ~= 'parent' then
 		return false
 	end
 
-	for childId in pairs(parent.ChildIntentIds) do
+	for childId in pairs(parent.childIntentIds) do
 		local child = Intents[childId]
-		if not child or child.Status ~= 'resolved' then
+		if not child or child.status ~= 'resolved' then
 			return false
 		end
 	end
@@ -237,9 +237,9 @@ function intents.createIntentHandler(msg)
 	-- Create parent intent
 	local intent = intents.createParent(msg, intentAction, intentParams)
 
-	-- Return IntentId to user (handler wrapper will send as notice)
+	-- Return intentId to user (handler wrapper will send as notice)
 	return json.encode({
-		['Intent-Id'] = intent.IntentId,
+		['Intent-Id'] = intent.intentId,
 		Status = 'Success',
 	})
 end
@@ -253,11 +253,11 @@ function intents.getPaginatedIntentsHandler(msg)
 	local paginatedIntents = utils.paginateTableWithCursor(
 		intentsArray,
 		page.cursor,
-		'CreatedAt',
+		'createdAt',
 		page.limit,
 		page.sortBy,
 		page.sortOrder,
-		page.filters -- { Initiator = "address", Status = "pending", Type = "parent" }
+		page.filters -- { initiator = "address", status = "pending", type = "parent" }
 	)
 
 	return json.encode(paginatedIntents)
@@ -276,10 +276,10 @@ function intents.getIntentByIdHandler(msg)
 	-- If parent, include all child intents
 	---@type table
 	local response = utils.deepCopy(intent) or intent
-	if intent.Type == 'parent' then
+	if intent.type == 'parent' then
 		---@diagnostic disable-next-line: inject-field
 		response.Children = {}
-		for childId in pairs(intent.ChildIntentIds) do
+		for childId in pairs(intent.childIntentIds) do
 			---@diagnostic disable-next-line: inject-field
 			response.Children[childId] = intents.getById(childId)
 		end
@@ -289,20 +289,20 @@ function intents.getIntentByIdHandler(msg)
 end
 
 -- Handler: Get-Intent-Stats
-function intents.getIntentStatsHandler(msg)
+function intents.getIntentStatsHandler(_)
 	local json = require('json')
 	local stats = {
-		Total = 0,
-		ByStatus = {},
-		ByType = {},
-		ByAction = {},
+		total = 0,
+		byStatus = {},
+		byType = {},
+		byAction = {},
 	}
 
 	for _, intent in pairs(Intents) do
-		stats.Total = stats.Total + 1
-		stats.ByStatus[intent.Status] = (stats.ByStatus[intent.Status] or 0) + 1
-		stats.ByType[intent.Type] = (stats.ByType[intent.Type] or 0) + 1
-		stats.ByAction[intent.Action] = (stats.ByAction[intent.Action] or 0) + 1
+		stats.total = stats.total + 1
+		stats.byStatus[intent.status] = (stats.byStatus[intent.status] or 0) + 1
+		stats.byType[intent.type] = (stats.byType[intent.type] or 0) + 1
+		stats.byAction[intent.action] = (stats.byAction[intent.action] or 0) + 1
 	end
 
 	return json.encode(stats)

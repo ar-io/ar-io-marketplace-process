@@ -8,13 +8,46 @@
       "library": [
         "src",
         "spec",
-        "${addons}/busted/module/library",
+        "${3rd}/busted/library",
         "${3rd}/luassert/library"
+      ],
+      "ignoreDir": [
+        "dist",
+        "node_modules",
+        ".git",
+        "tests"
       ]
     },
     "diagnostics": {
       "enable": true,
-      "globals": []
+      "globals": [
+        "describe",
+        "it",
+        "before_each",
+        "after_each",
+        "setup",
+        "teardown",
+        "before",
+        "after",
+        "assert",
+        "spy",
+        "stub",
+        "mock",
+        "finally",
+        "pending",
+        "insulate",
+        "expose",
+        "randomize",
+        "Owner",
+        "Name",
+        "Handlers",
+        "ao"
+      ],
+      "disable": [
+        "lowercase-global",
+        "duplicate-set-field",
+        "redundant-parameter"
+      ]
     }
   },
   "workspace.checkThirdParty": false

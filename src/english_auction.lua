@@ -94,7 +94,7 @@ local function returnPreviousBid(orderId, previousBidder, previousAmount, biddin
 end
 
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to place bids on English auctions
-function english_auction.handleAntOrder(args, validPair, pairIndex)
+function english_auction.handleAntOrder(args, validPair)
 	-- Check if orderId is provided (required for bid identification)
 	if not args.orderId then
 		utils.handleError({
@@ -108,12 +108,29 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 		return
 	end
 
-	local currentOrders = Orderbook[pairIndex].Orders
+	-- Swap the pair to get [ANT, ARIO] since we're buying ANT with ARIO
+	local antDominant = validPair[1] -- ANT token
+	local arioSwap = validPair[2] -- ARIO token
+
+	local pairData = Orderbook[antDominant] and Orderbook[antDominant][arioSwap]
+	if not pairData then
+		utils.handleError({
+			Target = args.sender,
+			Action = 'Order-Error',
+			Message = 'English auction not found',
+			Quantity = args.quantity,
+			TransferToken = args.dominantToken,
+			OrderGroupId = args.orderGroupId,
+		})
+		return
+	end
+
+	local currentOrders = pairData.orders
 	local targetOrder = nil
 
 	-- Find the English auction order to bid on
-	for orderId, order in pairs(currentOrders) do
-		if order.OrderType == 'english' and order.Id == (args.requestedOrderId or args.orderId) then
+	for _, order in pairs(currentOrders) do
+		if order.orderType == 'english' and order.id == (args.requestedOrderId or args.orderId) then
 			targetOrder = order
 			break
 		end
@@ -133,8 +150,8 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 	end
 
 	-- Ensure bidding is allowed only on active orders (via internal Activity state)
-	local activityData = activity.findOrderById(targetOrder.Id, args.createdAt)
-	print('activityData', activityData.Status)
+	local activityData = activity.findOrderById(targetOrder.id, args.createdAt)
+	print('activityData', activityData and activityData.Status or 'nil')
 	if not activityData or activityData.Status ~= 'active' then
 		utils.handleError({
 			Target = args.sender,
@@ -148,7 +165,7 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 	end
 
 	-- Check if auction has expired
-	if not isAuctionActive(targetOrder.ExpirationTime, args.createdAt) then
+	if not isAuctionActive(targetOrder.expirationTime, args.createdAt) then
 		utils.handleError({
 			Target = args.sender,
 			Action = 'Order-Error',
@@ -168,7 +185,7 @@ function english_auction.handleAntOrder(args, validPair, pairIndex)
 	local bidAmount = args.quantity -- The amount of ARIO tokens sent by the user
 
 	-- Determine minimum starting price from the target order for first bid validation
-	local minimumStartingPrice = targetOrder.Price
+	local minimumStartingPrice = targetOrder.price
 
 	local isValidBid, bidError =
 		validateBidAmount(bidAmount, existingBids and existingBids.HighestBid or nil, minimumStartingPrice)
@@ -260,18 +277,14 @@ function english_auction.settleAuction(args)
 		return
 	end
 
-	-- Find the auction order
+	-- Find the auction order using the provided tokens
 	local targetOrder = nil
-	local targetOrderIndex = nil
-	local targetPairIndex = nil
+	local antToken = args.dominantToken -- ANT is the dominant token in the orderbook
+	local arioToken = args.swapToken -- ARIO is the swap token
 
-	for pairIndex, pairData in ipairs(Orderbook) do
-		local order = pairData.Orders[orderId]
-		if order and order.OrderType == 'english' and order.Id == orderId then
-			targetOrder = order
-			targetPairIndex = pairIndex
-			break
-		end
+	-- Look for order in nested map structure
+	if Orderbook[antToken] and Orderbook[antToken][arioToken] then
+		targetOrder = Orderbook[antToken][arioToken].orders[orderId]
 	end
 
 	if not targetOrder then
@@ -287,7 +300,7 @@ function english_auction.settleAuction(args)
 	end
 
 	-- Check if auction has expired
-	if isAuctionActive(targetOrder.ExpirationTime, args.timestamp) then
+	if isAuctionActive(targetOrder.expirationTime, args.timestamp) then
 		utils.handleError({
 			Target = args.sender,
 			Action = 'Settlement-Error',
@@ -303,9 +316,9 @@ function english_auction.settleAuction(args)
 	-- For English auction settlement: seller gets ARIO tokens, buyer gets ANT tokens
 	-- The Orderbook pair is [ANT_token_process, ARIO_token_process]
 	-- We need validPair to be [ARIO_token_process, ANT_token_process] for correct transfers
-	local validPair = { Orderbook[targetPairIndex].Pair[2], Orderbook[targetPairIndex].Pair[1] } -- Swap the order to get [ARIO, ANT]
+	local validPair = { arioToken, antToken } -- Swap the order to get [ARIO, ANT]
 	local winningBidAmount = bint(auctionBids.HighestBid)
-	local quantity = bint(targetOrder.Quantity)
+	local quantity = bint(targetOrder.quantity)
 
 	-- Calculate amounts after fees
 	local calculatedSendAmount = utils.calculateSendAmount(winningBidAmount)
@@ -322,7 +335,7 @@ function english_auction.settleAuction(args)
 		originalSendAmount = winningBidAmount, -- to compute and accrue fee
 		orderId = orderId,
 		orderGroupId = args.orderGroupId,
-		swapToken = targetOrder.Token, -- ANT token process for the second transfer
+		swapToken = targetOrder.token, -- ANT token process for the second transfer
 		msg = args.msg, -- Pass msg context for intent tracking
 	}, targetOrder, validPair, calculatedSendAmount, calculatedFillAmount)
 
@@ -344,17 +357,17 @@ function english_auction.settleAuction(args)
 		Id = orderId,
 		DominantToken = validPair[2],
 		SwapToken = validPair[1],
-		Sender = targetOrder.Creator,
+		Sender = targetOrder.creator,
 		Receiver = auctionBids.HighestBidder,
 		Quantity = tostring(quantity),
 		Price = tostring(auctionBids.HighestBid),
-		CreatedAt = targetOrder.DateCreated,
+		CreatedAt = targetOrder.dateCreated,
 		EndedAt = args.timestamp,
 		ExecutionTime = args.timestamp,
 	})
 
 	-- Remove the auction from orderbook
-	Orderbook[targetPairIndex].Orders[orderId] = nil
+	Orderbook[antToken][arioToken].orders[orderId] = nil
 
 	-- Clear auction bids
 	EnglishAuctionBids[orderId] = nil
@@ -389,18 +402,19 @@ function english_auction.settleAuction(args)
 end
 
 -- Helper function to handle ARIO token orders: we are selling ANT token, so we need to add to orderbook
-function english_auction.handleArioOrder(args, validPair, pairIndex)
+function english_auction.handleArioOrder(args)
 	-- Add the new order to the orderbook (buy now functionality)
-	Orderbook[pairIndex].Orders[args.orderId] = {
-		Id = args.orderId,
-		Quantity = tostring(args.quantity),
-		OriginalQuantity = tostring(args.quantity),
-		Creator = args.sender,
-		Token = args.dominantToken,
-		DateCreated = args.createdAt,
-		Price = args.price and tostring(args.price),
-		ExpirationTime = args.expirationTime,
-		OrderType = 'english',
+	local orderId = args.orderId
+	Orderbook[args.dominantToken][args.swapToken].orders[orderId] = {
+		id = args.orderId,
+		quantity = tostring(args.quantity),
+		originalQuantity = tostring(args.quantity),
+		creator = args.sender,
+		token = args.dominantToken,
+		dateCreated = args.createdAt,
+		price = args.price and tostring(args.price),
+		expirationTime = args.expirationTime,
+		orderType = 'english',
 	}
 
 	-- Record listed order internally

@@ -13,23 +13,24 @@ function dutch_auction.calculateDecreaseStep(args)
 	return math.floor(priceDecreaseMax / intervalsCount)
 end
 
-function dutch_auction.handleArioOrder(args, validPair, pairIndex)
+function dutch_auction.handleArioOrder(args)
 	local decreaseStep = dutch_auction.calculateDecreaseStep(args)
 
-	table.insert(Orderbook[pairIndex].Orders, {
-		Id = args.orderId,
-		Quantity = tostring(args.quantity),
-		OriginalQuantity = tostring(args.quantity),
-		Creator = args.sender,
-		Token = args.dominantToken,
-		DateCreated = args.createdAt,
-		Price = args.price and tostring(args.price),
-		ExpirationTime = args.expirationTime,
-		OrderType = 'dutch',
-		MinimumPrice = args.minimumPrice and tostring(args.minimumPrice),
-		DecreaseInterval = args.decreaseInterval and tostring(args.decreaseInterval),
-		DecreaseStep = tostring(decreaseStep),
-	})
+	local orderId = args.orderId
+	Orderbook[args.dominantToken][args.swapToken].orders[orderId] = {
+		id = args.orderId,
+		quantity = tostring(args.quantity),
+		originalQuantity = tostring(args.quantity),
+		creator = args.sender,
+		token = args.dominantToken,
+		dateCreated = args.createdAt,
+		price = args.price and tostring(args.price),
+		expirationTime = args.expirationTime,
+		orderType = 'dutch',
+		minimumPrice = args.minimumPrice and tostring(args.minimumPrice),
+		decreaseInterval = args.decreaseInterval and tostring(args.decreaseInterval),
+		decreaseStep = tostring(decreaseStep),
+	}
 
 	activity.recordListedOrder({
 		Id = args.orderId,
@@ -66,39 +67,56 @@ function dutch_auction.handleArioOrder(args, validPair, pairIndex)
 	})
 end
 
-function dutch_auction.handleAntOrder(args, validPair, pairIndex)
-	local currentOrders = Orderbook[pairIndex].Orders
+function dutch_auction.handleAntOrder(args, validPair)
+	-- Swap the pair to get [ARIO, ANT] since we're buying ANT with ARIO
+	local arioDominant = validPair[2] -- ARIO token
+	local antSwap = validPair[1] -- ANT token
+
+	local pairData = Orderbook[antSwap] and Orderbook[antSwap][arioDominant]
+	if not pairData then
+		utils.handleError({
+			Target = args.sender,
+			Action = 'Order-Error',
+			Message = 'No matching Dutch auction order found for immediate ANT trade',
+			Quantity = args.quantity,
+			TransferToken = args.dominantToken,
+			OrderGroupId = args.orderGroupId,
+		})
+		return
+	end
+
+	local currentOrders = pairData.orders
 	local matches = {}
 	local matchedOrderId = nil
 
 	-- Attempt to match with existing Dutch orders for immediate trade
 	for orderId, currentOrderEntry in pairs(currentOrders) do
 		-- Check if order has expired
-		if currentOrderEntry.ExpirationTime and bint(currentOrderEntry.ExpirationTime) < bint(args.createdAt) then
+		if currentOrderEntry.expirationTime and bint(currentOrderEntry.expirationTime) < bint(args.createdAt) then
 			-- Skip expired orders
 			goto continue
 		end
 
 		-- Check if the order is a Dutch auction order
-		if currentOrderEntry.OrderType ~= 'dutch' then
+		if currentOrderEntry.orderType ~= 'dutch' then
 			goto continue
 		end
 
 		-- Check if this is the specific order we're looking for
-		if currentOrderEntry.Id ~= args.requestedOrderId then
+		if currentOrderEntry.id ~= args.requestedOrderId then
 			goto continue
 		end
 
 		-- Calculate current price based on time passed since order creation
-		local timePassed = bint(args.createdAt) - bint(currentOrderEntry.DateCreated)
-		local intervalsPassed = math.floor(timePassed / bint(currentOrderEntry.DecreaseInterval))
+		local timePassed = bint(args.createdAt) - bint(currentOrderEntry.dateCreated)
+		local intervalsPassed = math.floor(timePassed / bint(currentOrderEntry.decreaseInterval))
 		local intervalsBint = bint(intervalsPassed)
-		local decreaseStepBint = bint(currentOrderEntry.DecreaseStep)
+		local decreaseStepBint = bint(currentOrderEntry.decreaseStep)
 		local priceReduction = intervalsBint * decreaseStepBint
-		local currentPrice = bint(currentOrderEntry.Price) - priceReduction
+		local currentPrice = bint(currentOrderEntry.price) - priceReduction
 		-- Ensure price doesn't go below minimum
-		if currentPrice < bint(currentOrderEntry.MinimumPrice) then
-			currentPrice = bint(currentOrderEntry.MinimumPrice)
+		if currentPrice < bint(currentOrderEntry.minimumPrice) then
+			currentPrice = bint(currentOrderEntry.minimumPrice)
 		end
 
 		-- Check if the user sent enough ARIO to pay for 1 ANT token at the current Dutch auction price
@@ -144,9 +162,9 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 
 			utils.sendFeeToTreasury(requiredAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
-		-- Execute token transfers
-		local ucm = require('ucm')
-		ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
+			-- Execute token transfers
+			local ucm = require('ucm')
+			ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
 
 			-- Handle refund if sent amount was more than required
 			if sentAmount > requiredAmount then
@@ -161,22 +179,22 @@ function dutch_auction.handleAntOrder(args, validPair, pairIndex)
 				})
 			end
 
-		-- Record the match
-		local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
-		table.insert(matches, match)
+			-- Record the match
+			local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
+			table.insert(matches, match)
 
-		-- Mark the order ID for removal
-		matchedOrderId = orderId
-		break -- Only match with one order, no partial matching
+			-- Mark the order ID for removal
+			matchedOrderId = orderId
+			break -- Only match with one order, no partial matching
+		end
+
+		::continue::
 	end
 
-	::continue::
-end
-
--- Remove the matched order from the orderbook
-if matchedOrderId then
-	Orderbook[pairIndex].Orders[matchedOrderId] = nil
-end
+	-- Remove the matched order from the orderbook
+	if matchedOrderId then
+		pairData.orders[matchedOrderId] = nil
+	end
 
 	-- Send success response if any matches occurred
 	if #matches > 0 then

@@ -16,6 +16,16 @@
   "Lua.workspace.checkThirdParty": true,
   "Lua.diagnostics.enable": true,
   "Lua.diagnostics.disable": ["lowercase-global", "undefined-global"],
+  "Lua.diagnostics.neededFileStatus": {
+    "unused-local": "Any!",
+    "unused-function": "Any!",
+    "unused-vararg": "Any!"
+  },
+  "Lua.diagnostics.severity": {
+    "unused-local": "Error!",
+    "unused-function": "Error!",
+    "unused-vararg": "Error!"
+  },
   "Lua.format.defaultConfig": {
     "indent_style": "space",
     "indent_size": "2"
