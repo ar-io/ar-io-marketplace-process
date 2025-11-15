@@ -31,27 +31,68 @@ describe('UCM (Universal Continuous Market)', () => {
     await ao_mock.reset();
   });
 
-  describe('Get-Orderbook-By-Pair', () => {
-    it('should return empty orderbook for non-existent pair', async () => {
-      const result = await marketplaceProcess.getOrderbookByPair(
+  describe('Get-Orders with flexible filtering', () => {
+    it('should return empty orders for non-existent pair using getOrdersByPair', async () => {
+      const result = await marketplaceProcess.getOrdersByPair(
         TEST_ANT_TOKEN,
         TEST_ARIO_TOKEN,
       );
 
-      console.dir({ emptyOrderbook: result }, { depth: null });
+      console.dir({ emptyOrdersForPair: result }, { depth: null });
 
-      // Orderbook may not exist yet, so no response or success response with empty data
+      // Orders may not exist yet for this pair
       assert(result, 'Result should be defined');
     });
 
-    it('should require both DominantToken and SwapToken', async () => {
-      const result = await marketplaceProcess.process.read({
-        tags: [{ name: 'Action', value: 'Get-Orderbook-By-Pair' }],
+    it('should return all orders when no filter is provided', async () => {
+      const result = await marketplaceProcess.getOrders();
+
+      console.dir({ allOrders: result }, { depth: null });
+
+      // Handler should return all orders when no filter is specified
+      assert(result !== undefined, 'Result should exist');
+    });
+
+    it('should support filtering by status', async () => {
+      const result = await marketplaceProcess.getOrders({ status: 'active' });
+
+      console.dir({ activeOrders: result }, { depth: null });
+
+      assert(result !== undefined, 'Result should exist');
+    });
+
+    it('should support filtering by trading pair', async () => {
+      const result = await marketplaceProcess.getOrders({
+        dominantToken: TEST_ANT_TOKEN,
+        swapToken: TEST_ARIO_TOKEN,
       });
 
-      console.dir({ missingTokens: result }, { depth: null });
+      console.dir({ ordersByPair: result }, { depth: null });
 
-      // Handler should return nothing if tokens are missing (early return)
+      assert(result !== undefined, 'Result should exist');
+    });
+
+    it('should support combined filters (pair + status)', async () => {
+      const result = await marketplaceProcess.getOrders({
+        dominantToken: TEST_ANT_TOKEN,
+        swapToken: TEST_ARIO_TOKEN,
+        status: 'listed',
+      });
+
+      console.dir({ filteredOrders: result }, { depth: null });
+
+      assert(result !== undefined, 'Result should exist');
+    });
+
+    it('should support pagination parameters', async () => {
+      const result = await marketplaceProcess.getOrders({
+        limit: 10,
+        sortBy: 'CreatedAt',
+        sortOrder: 'desc',
+      });
+
+      console.dir({ paginatedOrders: result }, { depth: null });
+
       assert(result !== undefined, 'Result should exist');
     });
   });

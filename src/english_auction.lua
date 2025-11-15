@@ -73,14 +73,7 @@ end
 function english_auction.handleAntOrder(args, _, pair)
 	-- Check if orderId is provided (required for bid identification)
 	if not args.orderId then
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'Order ID is required for bidding',
-			quantity = args.quantity,
-			transferToken = args.dominantToken,
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(args.msg, args.sender, 'Order ID is required for bidding', 'Order-Error')
 		return
 	end
 
@@ -97,40 +90,19 @@ function english_auction.handleAntOrder(args, _, pair)
 
 	-- Check if the auction exists
 	if not targetOrder then
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'English auction not found',
-			quantity = args.quantity,
-			transferToken = args.dominantToken,
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(args.msg, args.sender, 'English auction not found', 'Order-Error')
 		return
 	end
 
 	-- Ensure bidding is allowed only on active orders
 	if targetOrder.status ~= ORDER_STATUSES.ACTIVE then
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'Bidding allowed only on active orders',
-			quantity = args.quantity,
-			transferToken = args.dominantToken,
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(args.msg, args.sender, 'Bidding allowed only on active orders', 'Order-Error')
 		return
 	end
 
 	-- Check if auction has expired
 	if not english_auction.isAuctionActive(targetOrder.expirationTime, args.createdAt) then
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'Auction has expired',
-			quantity = args.quantity,
-			transferToken = args.dominantToken,
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(args.msg, args.sender, 'Auction has expired', 'Order-Error')
 		return
 	end
 
@@ -144,14 +116,7 @@ function english_auction.handleAntOrder(args, _, pair)
 		english_auction.validateBidAmount(bidAmount, targetOrder.highestBid, minimumStartingPrice)
 
 	if not isValidBid then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = bidError,
-			quantity = args.quantity,
-			transferToken = args.dominantToken,
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(args.msg, args.sender, bidError, 'Validation-Error')
 		return
 	end
 

@@ -19,7 +19,7 @@ describe('ucm helpers', function()
 
 	describe('findOrderById', function()
 		it('should return nil for non-existent order', function()
-			local order, pair = ucm.findOrderById('non-existent-id')
+			local order, pair = ucm.getOrderById('non-existent-id')
 			assert.is_nil(order)
 			assert.is_nil(pair)
 		end)
@@ -53,7 +53,7 @@ describe('ucm helpers', function()
 				swapToken = swapToken,
 			}
 
-			local order, pair = ucm.findOrderById(orderId)
+			local order, pair = ucm.getOrderById(orderId)
 			assert.is_not_nil(order)
 			assert.is_not_nil(pair)
 			if order then
@@ -69,7 +69,7 @@ describe('ucm helpers', function()
 				swapToken = 'missing-swap',
 			}
 
-			local order, pair = ucm.findOrderById(orderId)
+			local order, pair = ucm.getOrderById(orderId)
 			assert.is_nil(order)
 			assert.is_nil(pair)
 			assert.is_nil(_G.OrderIndex[orderId])
@@ -92,7 +92,7 @@ describe('ucm helpers', function()
 				swapToken = swapToken,
 			}
 
-			local order, pair = ucm.findOrderById(orderId)
+			local order, pair = ucm.getOrderById(orderId)
 			assert.is_nil(order)
 			assert.is_nil(pair)
 			assert.is_nil(_G.OrderIndex[orderId])

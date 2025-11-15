@@ -8,7 +8,7 @@ local constants = require('constants')
 --- @param action string The action being performed (Create-Order, Cancel-Order, etc.)
 --- @param forwardedTags table<string, any> Table of tags to forward with the intent
 --- @return ParentIntent intent The created parent intent
-function intents.createParent(msg, action, forwardedTags)
+function intents.createParentIntent(msg, action, forwardedTags)
 	local intent = {
 		intentId = msg.Id,
 		type = constants.INTENT_TYPES.PARENT,
@@ -34,7 +34,7 @@ end
 --- @param expectedFrom string The process ID we expect a Debit-Notice from
 --- @param forwardedTags table<string, any> Table of tags to forward with the intent
 --- @return ChildIntent childIntent The created child intent
-function intents.createChild(parentId, msg, expectedFrom, forwardedTags)
+function intents.createChildIntent(parentId, msg, expectedFrom, forwardedTags)
 	local childId = msg.Id .. '-child-' .. tostring(os.time()) .. '-' .. tostring(math.random(1000, 9999))
 
 	local childIntent = {
@@ -68,7 +68,7 @@ end
 --- @param intentId string The intent ID to resolve
 --- @param timestamp number The timestamp of resolution
 --- @return boolean success Whether the resolution was successful
-function intents.resolve(intentId, timestamp)
+function intents.resolveIntent(intentId, timestamp)
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -93,7 +93,7 @@ end
 --- @param intentId string The intent ID to fail
 --- @param reason string The failure reason
 --- @return boolean success Whether the failure was recorded
-function intents.fail(intentId, reason)
+function intents.failIntent(intentId, reason)
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -109,7 +109,7 @@ end
 --- @param intentId string The intent ID
 --- @param status string The new status
 --- @return boolean success Whether the update was successful
-function intents.updateStatus(intentId, status)
+function intents.updateIntentStatus(intentId, status)
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -128,7 +128,7 @@ end
 --- Get intent by ID
 --- @param intentId string The intent ID
 --- @return Intent|nil intent The intent or nil if not found
-function intents.getById(intentId)
+function intents.getIntentById(intentId)
 	return Intents[intentId]
 end
 
@@ -144,10 +144,10 @@ function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
 
 	if parentIntentId then
 		-- Validate parent intent exists
-		local parent = intents.getById(parentIntentId)
+		local parent = intents.getIntentById(parentIntentId)
 		if parent then
 			-- Create child intent
-			local childIntent = intents.createChild(
+			local childIntent = intents.createChildIntent(
 				parentIntentId,
 				handledMsg,
 				sendParams.Target, -- process we expect response from
@@ -160,7 +160,7 @@ function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
 
 			-- Update parent status to "settling" if currently active
 			if parent.status == constants.INTENT_STATUSES.ACTIVE then
-				intents.updateStatus(parentIntentId, constants.INTENT_STATUSES.SETTLING)
+				intents.updateIntentStatus(parentIntentId, constants.INTENT_STATUSES.SETTLING)
 			end
 		end
 	end
@@ -170,7 +170,7 @@ end
 
 --- Get all pending parent intents
 --- @return ParentIntent[] pending Array of pending parent intents
-function intents.getPending()
+function intents.getPendingIntents()
 	local pending = {}
 	for _, intent in pairs(Intents) do
 		if intent.type == constants.INTENT_TYPES.PARENT and intent.status == constants.INTENT_STATUSES.PENDING then
@@ -183,7 +183,7 @@ end
 --- Get intents by status
 --- @param status string The status to filter by
 --- @return Intent[] filtered Array of intents with the given status
-function intents.getByStatus(status)
+function intents.getIntentsByStatus(status)
 	local filtered = {}
 	for _, intent in pairs(Intents) do
 		if intent.status == status then
@@ -196,7 +196,7 @@ end
 --- Validate that an intent exists
 --- @param intentId string The intent ID
 --- @return boolean exists Boolean indicating if intent exists
-function intents.validateExists(intentId)
+function intents.validateIntentExists(intentId)
 	return Intents[intentId] ~= nil
 end
 
@@ -213,7 +213,7 @@ end
 --- Check if all child intents are resolved
 --- @param parentId string The parent intent ID
 --- @return boolean allResolved Boolean indicating if all children are resolved
-function intents.areAllChildrenResolved(parentId)
+function intents.areAllChildrenIntentsResolved(parentId)
 	local parent = Intents[parentId]
 	if not parent or parent.type ~= constants.INTENT_TYPES.PARENT then
 		return false
@@ -266,7 +266,7 @@ function intents.createIntentHandler(msg)
 	end
 
 	-- Create parent intent
-	local intent = intents.createParent(msg, intentAction, intentParams)
+	local intent = intents.createParentIntent(msg, intentAction, intentParams)
 
 	-- Return intentId to user (handler wrapper will send as notice)
 	return json.encode({
@@ -299,7 +299,7 @@ function intents.getIntentByIdHandler(msg)
 	local intentId = msg.Tags['Intent-Id']
 	assert(intentId, 'Intent-Id required')
 
-	local intent = intents.getById(intentId)
+	local intent = intents.getIntentById(intentId)
 	assert(intent, 'Intent not found')
 
 	-- If parent, include all child intents
@@ -307,10 +307,10 @@ function intents.getIntentByIdHandler(msg)
 	local response = utils.deepCopy(intent) or intent
 	if intent.type == constants.INTENT_TYPES.PARENT then
 		---@diagnostic disable-next-line: inject-field
-		response.Children = {}
+		response.children = {}
 		for childId in pairs(intent.childIntentIds) do
 			---@diagnostic disable-next-line: inject-field
-			response.Children[childId] = intents.getById(childId)
+			response.children[childId] = intents.getIntentById(childId)
 		end
 	end
 

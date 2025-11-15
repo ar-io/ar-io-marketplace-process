@@ -413,11 +413,13 @@ function utils.handleError(args) -- target, transferToken, quantity, msg
 	utils.Send(msg, {
 		Target = args.target,
 		Action = args.action,
+		Error = args.message,
 		Tags = { Status = 'Error', Message = args.message, ['X-Group-ID'] = args.orderGroupId },
 	})
 end
 
 --- Helper function to refund deposits on validation failures
+--- Sends refund and error message, then throws error to stop execution
 --- @param msg table The original message
 --- @param sender string The sender address to refund to
 --- @param message string The error message
@@ -432,6 +434,8 @@ function utils.refundAndError(msg, sender, message, action)
 		orderGroupId = msg.Tags['X-Group-ID'] or 'None',
 		msg = msg,
 	})
+	-- Throw error to stop execution (will be caught by pcall wrapper)
+	error(message)
 end
 
 --- Parses the pagination tags from a message

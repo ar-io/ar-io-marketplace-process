@@ -63,15 +63,15 @@ function dutch_auction.handleArioOrder(args, validPair, pair)
 		Action = 'Order-Success',
 		Tags = {
 			Status = 'Success',
-			OrderId = args.orderId,
+			['Order-Id'] = args.orderId,
 			Handler = 'Create-Order',
-			DominantToken = args.dominantToken,
-			SwapToken = args.swapToken,
+			['Dominant-Token'] = args.dominantToken,
+			['Swap-Token'] = args.swapToken,
 			Quantity = tostring(args.quantity),
 			Price = args.price and tostring(args.price),
 			Message = 'ARIO order added to orderbook for Dutch auction!',
 			['X-Group-ID'] = args.orderGroupId,
-			OrderType = ORDER_TYPES.DUTCH,
+			['Order-Type'] = ORDER_TYPES.DUTCH,
 		},
 	})
 end
@@ -117,38 +117,30 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 
 		-- Check if the user sent enough ARIO to pay for 1 ANT token at the current Dutch auction price
 		if bint(args.quantity) >= currentPrice then
-			local fillAmount = bint(1) -- 1 ANT token (always 1 for ANT orders)
-			-- Validate we have a valid fill amount
-			if fillAmount <= bint(0) then
-				utils.handleError({
-					target = args.sender,
-					action = 'Order-Error',
-					message = 'No amount to fill',
-					quantity = args.quantity,
-					transferToken = args.dominantToken,
-					orderGroupId = args.orderGroupId,
-				})
-				return
-			end
+		local fillAmount = bint(1) -- 1 ANT token (always 1 for ANT orders)
+		-- Validate we have a valid fill amount
+		if fillAmount <= bint(0) then
+			utils.refundAndError(args.msg, args.sender, 'No amount to fill', 'Order-Error')
+			return
+		end
 
 			-- Check if sent amount is sufficient for current price
 
-			local requiredAmount = currentPrice
-			local sentAmount = bint(args.quantity) -- User pays the current Dutch auction price
+		local requiredAmount = currentPrice
+		local sentAmount = bint(args.quantity) -- User pays the current Dutch auction price
 
-			if sentAmount < requiredAmount then
-				utils.handleError({
-					target = args.sender,
-					action = 'Order-Error',
-					message = 'Insufficient payment for current Dutch auction price',
-					quantity = args.quantity, -- Refund the ARIO amount that was sent
-					transferToken = args.dominantToken, -- Send to ARIO token process (dominantToken)
-					orderGroupId = args.orderGroupId,
-					RequiredAmount = tostring(requiredAmount),
-					SentAmount = tostring(sentAmount),
-				})
-				return
-			end
+		if sentAmount < requiredAmount then
+			utils.refundAndError(
+				args.msg,
+				args.sender,
+				'Insufficient payment for current Dutch auction price. Required: '
+					.. tostring(requiredAmount)
+					.. ', Sent: '
+					.. tostring(sentAmount),
+				'Order-Error'
+			)
+			return
+		end
 
 			args.executionPrice = tostring(currentPrice)
 
@@ -207,28 +199,26 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 			Target = args.sender,
 			Action = 'Order-Success',
 			Tags = {
-				OrderId = args.orderId,
+				['Order-Id'] = args.orderId,
 				Status = 'Success',
 				Handler = 'Create-Order',
-				DominantToken = args.dominantToken,
-				SwapToken = args.swapToken,
+				['Dominant-Token'] = args.dominantToken,
+				['Swap-Token'] = args.swapToken,
 				Quantity = tostring(args.quantity),
 				Price = args.price and tostring(args.price) or 'None',
 				Message = 'ANT order executed immediately in Dutch auction!',
 				['X-Group-ID'] = args.orderGroupId or 'None',
-				OrderType = ORDER_TYPES.DUTCH,
+				['Order-Type'] = ORDER_TYPES.DUTCH,
 			},
 		})
 	else
 		-- No matches found for ANT token - return error
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'No matching Dutch auction order found for immediate ANT trade',
-			quantity = args.quantity,
-			transferToken = args.dominantToken,
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(
+			args.msg,
+			args.sender,
+			'No matching Dutch auction order found for immediate ANT trade',
+			'Order-Error'
+		)
 		return
 	end
 end

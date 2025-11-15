@@ -14,12 +14,14 @@ function fixed_price.pruneExpiredOrder(order)
 	order.endedAt = order.expirationTime
 end
 
--- Helper function to update VWAP data
---- @param pair Pair The pair object from orderbook
---- @param matches table[] Array of match records
---- @param args table Order arguments
---- @param currentToken string Current token ID
---- @return number Sum of volumes
+-- Helper function to update VWAP (Volume-Weighted Average Price) data
+-- VWAP is a trading benchmark calculated as (sum of volume × price) / total volume
+-- This provides a fair average price based on actual trades, useful for price discovery and analytics
+--- @param pair Pair The pair object from orderbook (priceData will be injected with vwap, block, dominantToken, matchLogs)
+--- @param matches table[] Array of match records containing quantity and price for each trade
+--- @param args table Order arguments containing blockheight for recording when the data was captured
+--- @param currentToken string Current token ID (the dominant token in the trading pair)
+--- @return number Sum of volumes across all matches
 function fixed_price.updateVwapData(pair, matches, args, currentToken)
 	local sumVolumePrice, sumVolume = 0, 0
 	if #matches > 0 then
@@ -33,11 +35,11 @@ function fixed_price.updateVwapData(pair, matches, args, currentToken)
 		-- Calculate and store VWAP
 		local vwap = sumVolumePrice / sumVolume
 		---@diagnostic disable-next-line: inject-field
-		pair.PriceData = {
-			Vwap = tostring(math.floor(vwap)),
-			Block = tostring(args.blockheight),
-			DominantToken = currentToken,
-			MatchLogs = matches,
+		pair.priceData = {
+			vwap = tostring(math.floor(vwap)),
+			block = tostring(args.blockheight),
+			dominantToken = currentToken,
+			matchLogs = matches,
 		}
 	end
 
@@ -83,16 +85,16 @@ function fixed_price.handleArioOrder(args, validPair, pair)
 		Action = 'Order-Success',
 		Tags = {
 			Status = 'Success',
-			OrderId = args.orderId,
+			['Order-Id'] = args.orderId,
 			Handler = 'Create-Order',
-			DominantToken = args.dominantToken,
-			SwapToken = args.swapToken,
+			['Dominant-Token'] = args.dominantToken,
+			['Swap-Token'] = args.swapToken,
 			Quantity = tostring(args.quantity),
 			Price = args.price and tostring(args.price),
 			Message = 'ARIO order added to orderbook for buy now!',
 			['X-Group-ID'] = args.orderGroupId,
-			OrderType = ORDER_TYPES.FIXED,
-			ExpirationTime = args.expirationTime,
+			['Order-Type'] = ORDER_TYPES.FIXED,
+			['Expiration-Time'] = args.expirationTime,
 		},
 	})
 end
@@ -135,20 +137,13 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 			local sentAmount = bint(args.quantity)
 			if sentAmount >= requiredAmount then
 			-- User buys 1 ANT token
-			fillAmount = bint(1) -- always 1 for ANT orders
+		fillAmount = bint(1) -- always 1 for ANT orders
 
-			-- Validate we have a valid fill amount
-			if fillAmount <= bint(0) then
-				utils.handleError({
-					target = args.sender,
-					action = 'Order-Error',
-					message = 'No amount to fill',
-					quantity = args.quantity,
-					transferToken = args.dominantToken,
-					orderGroupId = args.orderGroupId,
-				})
-				return
-			end
+		-- Validate we have a valid fill amount
+		if fillAmount <= bint(0) then
+			utils.refundAndError(args.msg, args.sender, 'No amount to fill', 'Order-Error')
+			return
+		end
 
 				-- Apply fees and calculate final amounts based on required amount
 				local calculatedSendAmount = utils.calculateSendAmount(requiredAmount)
@@ -217,11 +212,11 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 			Target = args.sender,
 			Action = 'Order-Success',
 			Tags = {
-				OrderId = args.orderId,
+				['Order-Id'] = args.orderId,
 				Status = 'Success',
 				Handler = 'Create-Order',
-				DominantToken = args.dominantToken,
-				SwapToken = args.swapToken,
+				['Dominant-Token'] = args.dominantToken,
+				['Swap-Token'] = args.swapToken,
 				Quantity = tostring(sumVolume),
 				Price = args.price and tostring(args.price) or 'None',
 				Message = 'ANT order executed immediately!',
@@ -230,14 +225,12 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 		})
 	else
 		-- No matches found for ANT token - return error
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'No matching orders found for immediate ANT trade - exact ARIO amount match required',
-			quantity = args.quantity,
-			transferToken = args.dominantToken,
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(
+			args.msg,
+			args.sender,
+			'No matching orders found for immediate ANT trade - exact ARIO amount match required',
+			'Order-Error'
+		)
 		return
 	end
 end

@@ -13,11 +13,8 @@ ActionMap = {
 	getOrder = 'Get-Order',
 	-- UCM handlers
 	info = 'Info',
-	getOrderbookByPair = 'Get-Orderbook-By-Pair',
 	cancelOrder = 'Cancel-Order',
 	settleAuction = 'Settle-Auction',
-	readOrders = 'Read-Orders',
-	readPair = 'Read-Pair',
 	withdrawFees = 'Withdraw-Fees',
 	-- Intent handlers
 	createIntent = 'Create-Intent',
@@ -39,11 +36,8 @@ utils.createHandler('Action', ActionMap.getIntentById, intents.getIntentByIdHand
 utils.createHandler('Action', ActionMap.info, ucm.infoHandler)
 utils.createHandler('Action', ActionMap.getOrders, ucm.getOrdersHandler)
 utils.createHandler('Action', ActionMap.getOrder, ucm.getOrderHandler)
-utils.createHandler('Action', ActionMap.getOrderbookByPair, ucm.getOrderbookByPairHandler)
 utils.createHandler('Action', ActionMap.cancelOrder, ucm.cancelOrderHandler)
 utils.createHandler('Action', ActionMap.settleAuction, ucm.settleAuctionHandler)
-utils.createHandler('Action', ActionMap.readOrders, ucm.readOrdersHandler)
-utils.createHandler('Action', ActionMap.readPair, ucm.readPairHandler)
 utils.createHandler('Action', ActionMap.withdrawFees, ucm.withdrawFeesHandler)
 
 -- Notice handlers (incoming notices from external processes)

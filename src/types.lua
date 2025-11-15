@@ -103,12 +103,12 @@
 --- @field Data string|nil Message data
 
 --- @class ErrorHandlerArgs
---- @field Target string Target to send error to
---- @field Action string Action type
---- @field Message string Error message
---- @field Quantity string|nil Quantity to refund
---- @field TransferToken string|nil Token to refund
---- @field OrderGroupId string|nil Order group ID
+--- @field target string Target to send error to
+--- @field action string Action type
+--- @field message string Error message
+--- @field quantity string|nil Quantity to refund
+--- @field transferToken string|nil Token to refund
+--- @field orderGroupId string|nil Order group ID
 --- @field msg Message|nil Message context for intent tracking
 
 --- @class SettleArgs
@@ -174,6 +174,5 @@
 --- @field activity ActivityInfo Activity statistics
 --- @field intents IntentStats Intent workflow statistics
 --- @field ucm UCMInfo UCM marketplace information
-
 
 return {}

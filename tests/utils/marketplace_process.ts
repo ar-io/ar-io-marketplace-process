@@ -96,6 +96,8 @@ export class MarketplaceProcess {
       { name: 'Action', value: 'Get-Orders' },
       { name: 'Status', value: params?.status },
       { name: 'Ids', value: params?.ids?.join(',') },
+      { name: 'DominantToken', value: params?.dominantToken },
+      { name: 'SwapToken', value: params?.swapToken },
       { name: 'Cursor', value: params?.cursor },
       { name: 'Limit', value: params?.limit?.toString() },
       { name: 'Sort-By', value: params?.sortBy },
@@ -193,17 +195,28 @@ export class MarketplaceProcess {
   }
 
   // UCM handlers
+  
+  /**
+   * Get orders for a specific trading pair
+   * @param dominantToken - Dominant token address
+   * @param swapToken - Swap token address
+   * @returns Orders for the trading pair
+   */
+  async getOrdersByPair(
+    dominantToken: string,
+    swapToken: string,
+  ): Promise<ReadResponse> {
+    return this.getOrders({ dominantToken, swapToken });
+  }
+
+  /**
+   * @deprecated Use getOrdersByPair or getOrders instead
+   */
   async getOrderbookByPair(
     dominantToken: string,
     swapToken: string,
   ): Promise<ReadResponse> {
-    return await this.process.read({
-      tags: [
-        { name: 'Action', value: 'Get-Orderbook-By-Pair' },
-        { name: 'DominantToken', value: dominantToken },
-        { name: 'SwapToken', value: swapToken },
-      ],
-    });
+    return this.getOrdersByPair(dominantToken, swapToken);
   }
 
   // Simulated Credit-Notice for testing

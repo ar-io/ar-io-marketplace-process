@@ -23,17 +23,17 @@ describe('Intent Management', function()
 				['X-Intent-Swap-Token'] = 'token-xyz',
 			}
 
-			local intent = intents.createParent(msg, 'Create-Order', forwardedTags)
+			local intent = intents.createParentIntent(msg, 'Create-Order', forwardedTags)
 
-		assert.are.equal('test-intent-123', intent.intentId)
-		assert.are.equal('parent', intent.type)
-		assert.are.equal('user-address-abc', intent.initiator)
-		assert.are.equal('Create-Order', intent.action)
-		assert.are.equal('pending', intent.status)
-		assert.are.equal(1234567890, intent.createdAt)
-		assert.is_nil(intent.parentIntentId)
-		assert.is_table(intent.childIntentIds)
-		assert.are.same(forwardedTags, intent.forwardedTags)
+			assert.are.equal('test-intent-123', intent.intentId)
+			assert.are.equal('parent', intent.type)
+			assert.are.equal('user-address-abc', intent.initiator)
+			assert.are.equal('Create-Order', intent.action)
+			assert.are.equal('pending', intent.status)
+			assert.are.equal(1234567890, intent.createdAt)
+			assert.is_nil(intent.parentIntentId)
+			assert.is_table(intent.childIntentIds)
+			assert.are.same(forwardedTags, intent.forwardedTags)
 		end)
 
 		it('should add parent intent to Intents table', function()
@@ -43,10 +43,10 @@ describe('Intent Management', function()
 				Timestamp = 1234567890,
 			}
 
-			intents.createParent(msg, 'Cancel-Order', {})
+			intents.createParentIntent(msg, 'Cancel-Order', {})
 
-		assert.is_not_nil(Intents['test-intent-456'])
-		assert.are.equal('parent', Intents['test-intent-456'].type)
+			assert.is_not_nil(Intents['test-intent-456'])
+			assert.are.equal('parent', Intents['test-intent-456'].type)
 		end)
 	end)
 
@@ -58,7 +58,7 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(parentMsg, 'Create-Order', {})
+			intents.createParentIntent(parentMsg, 'Create-Order', {})
 
 			-- Create child
 			local childMsg = {
@@ -72,15 +72,15 @@ describe('Intent Management', function()
 				Token = 'token-process-id',
 			}
 
-			local childIntent = intents.createChild('parent-123', childMsg, 'token-process-id', forwardedTags)
+			local childIntent = intents.createChildIntent('parent-123', childMsg, 'token-process-id', forwardedTags)
 
-		assert.are.equal('child', childIntent.type)
-		assert.are.equal('parent-123', childIntent.parentIntentId)
-		assert.are.equal('Transfer', childIntent.action)
-		assert.are.equal('Debit-Notice', childIntent.expectedMessage)
-		assert.are.equal('token-process-id', childIntent.expectedFrom)
-		assert.are.equal('pending', childIntent.status)
-		assert.are.same(forwardedTags, childIntent.forwardedTags)
+			assert.are.equal('child', childIntent.type)
+			assert.are.equal('parent-123', childIntent.parentIntentId)
+			assert.are.equal('Transfer', childIntent.action)
+			assert.are.equal('Debit-Notice', childIntent.expectedMessage)
+			assert.are.equal('token-process-id', childIntent.expectedFrom)
+			assert.are.equal('pending', childIntent.status)
+			assert.are.same(forwardedTags, childIntent.forwardedTags)
 		end)
 
 		it("should add child to parent's ChildIntentIds map", function()
@@ -90,7 +90,7 @@ describe('Intent Management', function()
 				From = 'user-xyz',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(parentMsg, 'Create-Order', {})
+			intents.createParentIntent(parentMsg, 'Create-Order', {})
 
 			-- Create child
 			local childMsg = {
@@ -98,10 +98,10 @@ describe('Intent Management', function()
 				Timestamp = 1234567900,
 			}
 
-			local childIntent = intents.createChild('parent-456', childMsg, 'token-123', {})
+			local childIntent = intents.createChildIntent('parent-456', childMsg, 'token-123', {})
 
-		local parent = Intents['parent-456']
-		assert.is_true(parent.childIntentIds[childIntent.intentId])
+			local parent = Intents['parent-456']
+			assert.is_true(parent.childIntentIds[childIntent.intentId])
 		end)
 	end)
 
@@ -112,13 +112,13 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg, 'Create-Order', {})
+			intents.createParentIntent(msg, 'Create-Order', {})
 
-			local result = intents.resolve('parent-789', 1234567900)
+			local result = intents.resolveIntent('parent-789', 1234567900)
 
-		assert.is_true(result)
-		assert.are.equal('active', Intents['parent-789'].status)
-		assert.are.equal(1234567900, Intents['parent-789'].resolvedAt)
+			assert.is_true(result)
+			assert.are.equal('active', Intents['parent-789'].status)
+			assert.are.equal(1234567900, Intents['parent-789'].resolvedAt)
 		end)
 
 		it('should update child status to resolved', function()
@@ -128,24 +128,24 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(parentMsg, 'Create-Order', {})
+			intents.createParentIntent(parentMsg, 'Create-Order', {})
 
 			-- Create child
 			local childMsg = {
 				Id = 'msg-222',
 				Timestamp = 1234567900,
 			}
-			local childIntent = intents.createChild('parent-999', childMsg, 'token-123', {})
+			local childIntent = intents.createChildIntent('parent-999', childMsg, 'token-123', {})
 
-		local result = intents.resolve(childIntent.intentId, 1234567950)
+			local result = intents.resolveIntent(childIntent.intentId, 1234567950)
 
-		assert.is_true(result)
-		assert.are.equal('resolved', Intents[childIntent.intentId].status)
-		assert.are.equal(1234567950, Intents[childIntent.intentId].resolvedAt)
+			assert.is_true(result)
+			assert.are.equal('resolved', Intents[childIntent.intentId].status)
+			assert.are.equal(1234567950, Intents[childIntent.intentId].resolvedAt)
 		end)
 
 		it('should return false for non-existent intent', function()
-			local result = intents.resolve('non-existent-id', 1234567890)
+			local result = intents.resolveIntent('non-existent-id', 1234567890)
 			assert.is_false(result)
 		end)
 	end)
@@ -157,17 +157,17 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg, 'Create-Order', {})
+			intents.createParentIntent(msg, 'Create-Order', {})
 
-			local result = intents.fail('parent-fail', 'Insufficient balance')
+			local result = intents.failIntent('parent-fail', 'Insufficient balance')
 
 			assert.is_true(result)
-		assert.are.equal('failed', Intents['parent-fail'].status)
-		assert.are.equal('Insufficient balance', Intents['parent-fail'].failureReason)
+			assert.are.equal('failed', Intents['parent-fail'].status)
+			assert.are.equal('Insufficient balance', Intents['parent-fail'].failureReason)
 		end)
 
 		it('should return false for non-existent intent', function()
-			local result = intents.fail('non-existent', 'Some reason')
+			local result = intents.failIntent('non-existent', 'Some reason')
 			assert.is_false(result)
 		end)
 	end)
@@ -179,9 +179,9 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg, 'Create-Order', {})
+			intents.createParentIntent(msg, 'Create-Order', {})
 
-			local result = intents.updateStatus('parent-status', 'settling')
+			local result = intents.updateIntentStatus('parent-status', 'settling')
 
 			assert.is_true(result)
 			assert.are.equal('settling', Intents['parent-status'].status)
@@ -193,12 +193,12 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg, 'Create-Order', {})
+			intents.createParentIntent(msg, 'Create-Order', {})
 
-			intents.updateStatus('parent-complete', 'completed')
+			intents.updateIntentStatus('parent-complete', 'completed')
 
-		assert.are.equal('completed', Intents['parent-complete'].status)
-		assert.is_not_nil(Intents['parent-complete'].completedAt)
+			assert.are.equal('completed', Intents['parent-complete'].status)
+			assert.is_not_nil(Intents['parent-complete'].completedAt)
 		end)
 	end)
 
@@ -209,16 +209,16 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg, 'Create-Order', {})
+			intents.createParentIntent(msg, 'Create-Order', {})
 
-			local intent = intents.getById('test-get')
+			local intent = intents.getIntentById('test-get')
 
-		assert.is_not_nil(intent)
-		assert.are.equal('test-get', intent.intentId)
+			assert.is_not_nil(intent)
+			assert.are.equal('test-get', intent.intentId)
 		end)
 
 		it('should return nil for non-existent intent', function()
-			local intent = intents.getById('non-existent')
+			local intent = intents.getIntentById('non-existent')
 			assert.is_nil(intent)
 		end)
 	end)
@@ -231,7 +231,7 @@ describe('Intent Management', function()
 				From = 'user-1',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg1, 'Create-Order', {})
+			intents.createParentIntent(msg1, 'Create-Order', {})
 
 			-- Create active parent
 			local msg2 = {
@@ -239,13 +239,13 @@ describe('Intent Management', function()
 				From = 'user-2',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg2, 'Create-Order', {})
-			intents.resolve('active-1', 1234567900)
+			intents.createParentIntent(msg2, 'Create-Order', {})
+			intents.resolveIntent('active-1', 1234567900)
 
-			local pending = intents.getPending()
+			local pending = intents.getPendingIntents()
 
-		assert.are.equal(1, #pending)
-		assert.are.equal('pending-1', pending[1].intentId)
+			assert.are.equal(1, #pending)
+			assert.are.equal('pending-1', pending[1].intentId)
 		end)
 	end)
 
@@ -257,20 +257,20 @@ describe('Intent Management', function()
 				From = 'user-1',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg1, 'Create-Order', {})
+			intents.createParentIntent(msg1, 'Create-Order', {})
 
 			local msg2 = {
 				Id = 'intent-2',
 				From = 'user-2',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg2, 'Cancel-Order', {})
-			intents.fail('intent-2', 'Some error')
+			intents.createParentIntent(msg2, 'Cancel-Order', {})
+			intents.failIntent('intent-2', 'Some error')
 
-			local failed = intents.getByStatus('failed')
+			local failed = intents.getIntentsByStatus('failed')
 
-		assert.are.equal(1, #failed)
-		assert.are.equal('intent-2', failed[1].intentId)
+			assert.are.equal(1, #failed)
+			assert.are.equal('intent-2', failed[1].intentId)
 		end)
 	end)
 
@@ -281,13 +281,13 @@ describe('Intent Management', function()
 				From = 'user-1',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg, 'Create-Order', {})
+			intents.createParentIntent(msg, 'Create-Order', {})
 
-			assert.is_true(intents.validateExists('exists-1'))
+			assert.is_true(intents.validateIntentExists('exists-1'))
 		end)
 
 		it('should return false for non-existent intent', function()
-			assert.is_false(intents.validateExists('does-not-exist'))
+			assert.is_false(intents.validateIntentExists('does-not-exist'))
 		end)
 	end)
 
@@ -298,14 +298,14 @@ describe('Intent Management', function()
 				From = 'user-1',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg1, 'Create-Order', {})
+			intents.createParentIntent(msg1, 'Create-Order', {})
 
 			local msg2 = {
 				Id = 'intent-2',
 				From = 'user-2',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(msg2, 'Cancel-Order', {})
+			intents.createParentIntent(msg2, 'Cancel-Order', {})
 
 			local all = intents.getAllIntents()
 
@@ -321,26 +321,26 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(parentMsg, 'Create-Order', {})
+			intents.createParentIntent(parentMsg, 'Create-Order', {})
 
 			-- Create children
 			local childMsg1 = {
 				Id = 'child-1',
 				Timestamp = 1234567900,
 			}
-			local child1 = intents.createChild('parent-check', childMsg1, 'token-1', {})
+			local child1 = intents.createChildIntent('parent-check', childMsg1, 'token-1', {})
 
 			local childMsg2 = {
 				Id = 'child-2',
 				Timestamp = 1234567900,
 			}
-			local child2 = intents.createChild('parent-check', childMsg2, 'token-2', {})
+			local child2 = intents.createChildIntent('parent-check', childMsg2, 'token-2', {})
 
-		-- Resolve both children
-		intents.resolve(child1.intentId, 1234567950)
-		intents.resolve(child2.intentId, 1234567960)
+			-- Resolve both children
+			intents.resolveIntent(child1.intentId, 1234567950)
+			intents.resolveIntent(child2.intentId, 1234567960)
 
-		assert.is_true(intents.areAllChildrenResolved('parent-check'))
+			assert.is_true(intents.areAllChildrenIntentsResolved('parent-check'))
 		end)
 
 		it('should return false when not all children are resolved', function()
@@ -350,25 +350,25 @@ describe('Intent Management', function()
 				From = 'user-abc',
 				Timestamp = 1234567890,
 			}
-			intents.createParent(parentMsg, 'Create-Order', {})
+			intents.createParentIntent(parentMsg, 'Create-Order', {})
 
 			-- Create children
 			local childMsg1 = {
 				Id = 'child-3',
 				Timestamp = 1234567900,
 			}
-			local child1 = intents.createChild('parent-check-2', childMsg1, 'token-1', {})
+			local child1 = intents.createChildIntent('parent-check-2', childMsg1, 'token-1', {})
 
 			local childMsg2 = {
 				Id = 'child-4',
 				Timestamp = 1234567900,
 			}
-			intents.createChild('parent-check-2', childMsg2, 'token-2', {})
+			intents.createChildIntent('parent-check-2', childMsg2, 'token-2', {})
 
-		-- Only resolve one child
-		intents.resolve(child1.intentId, 1234567950)
+			-- Only resolve one child
+			intents.resolveIntent(child1.intentId, 1234567950)
 
-		assert.is_false(intents.areAllChildrenResolved('parent-check-2'))
+			assert.is_false(intents.areAllChildrenIntentsResolved('parent-check-2'))
 		end)
 	end)
 end)

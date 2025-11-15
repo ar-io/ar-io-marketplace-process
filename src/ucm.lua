@@ -14,7 +14,7 @@ local ucm = {}
 --- @param orderId string The order ID to find
 --- @return table|nil order The order object or nil
 --- @return table|nil pair The pair containing the order or nil
-function ucm.findOrderById(orderId)
+function ucm.getOrderById(orderId)
 	local location = OrderIndex[orderId]
 	if not location then
 		return nil, nil
@@ -130,7 +130,12 @@ function ucm.transfer(recipient, quantity, token, handledMsg)
 	utils.Send(handledMsg, sendParams)
 end
 
--- Helper function to execute token transfers for order matching
+--- Execute token transfers for order matching
+--- @param args table Order arguments containing sender, dominantToken, swapToken, originalSendAmount, msg
+--- @param currentOrderEntry Order The order being matched
+--- @param _ any Unused parameter
+--- @param calculatedSendAmount string|number The amount of dominant tokens to transfer
+--- @param calculatedFillAmount string|number The amount of swap tokens to transfer
 function ucm.executeTokenTransfers(args, currentOrderEntry, _, calculatedSendAmount, calculatedFillAmount)
 	-- Optionally record fee (difference between original send amount and calculated amount)
 	if args and args.originalSendAmount then
@@ -169,172 +174,107 @@ function ucm.getPair(dominantToken, swapToken)
 	return nil
 end
 
--- Helper function to validate ANT dominant token orders (selling ANT for ARIO)
+--- Validate ANT dominant token orders (selling ANT for ARIO)
+--- Throws error if validation fails
+--- @param args table Order arguments containing quantity, price, expirationTime, createdAt, sender, orderGroupId
+--- @param validPair string[] The validated pair [ANT, ARIO]
 function ucm.validateAntDominantOrder(args, validPair)
 	-- ANT tokens can only be sold in quantities of exactly 1
 	if bint(args.quantity) ~= bint(constants.AUCTION.ANT_EXACT_QUANTITY) then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = 'ANT tokens can only be sold in quantities of exactly ' .. constants.AUCTION.ANT_EXACT_QUANTITY,
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
-		return false
+		utils.refundAndError(
+			args.msg,
+			args.sender,
+			'ANT tokens can only be sold in quantities of exactly ' .. constants.AUCTION.ANT_EXACT_QUANTITY
+		)
+		return
 	end
 
 	-- Price is required when selling ANT
 	if not args.price then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = 'Price is required when selling ANT tokens',
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
-		return false
+		utils.refundAndError(args.msg, args.sender, 'Price is required when selling ANT tokens')
+		return
 	end
 
 	-- Validate expiration time is valid
 	local isValidExpiration, expirationError = utils.checkValidExpirationTime(args.expirationTime, args.createdAt)
 	if not isValidExpiration then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = expirationError,
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
-		return false
+		utils.refundAndError(args.msg, args.sender, expirationError)
+		return
 	end
 
 	-- Validate price is valid
 	local isValidPrice, priceError = utils.checkValidAmount(args.price)
 	if not isValidPrice then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = priceError,
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
-		return false
+		utils.refundAndError(args.msg, args.sender, priceError or 'Unknown price error')
+		return
 	end
-
-	return true
 end
 
--- Helper function to validate ARIO dominant token orders (buying ANT with ARIO)
+--- Validate ARIO dominant token orders (buying ANT with ARIO)
+--- Throws error if validation fails
+--- @param args table Order arguments containing requestedOrderId, sender, quantity, orderGroupId
+--- @param validPair string[] The validated pair [ARIO, ANT]
 function ucm.validateArioDominantOrder(args, validPair)
 	-- Currently no specific validation rules for ARIO dominant orders
 	-- All general validations (quantity, pair, etc.) are handled in validateOrderParams
 	-- This function is a placeholder for future ARIO-specific validation rules
 	if not args.requestedOrderId then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = 'Requested order ID is required',
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
-		return false
+		utils.refundAndError(args.msg, args.sender, 'Requested order ID is required')
+		return
 	end
-
-	return true
 end
 
--- Helper function to validate order parameters
+--- Validate order parameters
+--- @param args table Order arguments containing dominantToken, swapToken, quantity, orderType, sender, orderGroupId
+--- @return string[]|nil validPair The validated pair [dominantToken, swapToken] or nil if validation fails
 function ucm.validateOrderParams(args)
 	-- 1. Check pair data
 	local validPair, pairError = utils.validatePairData({ args.dominantToken, args.swapToken })
 	if not validPair then
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = pairError or 'Error validating pair',
-			quantity = args.quantity,
-			transferToken = nil,
-			orderGroupId = args.orderGroupId,
-		})
-		return nil
+		utils.refundAndError(args.msg, args.sender, pairError or 'Error validating pair', 'Order-Error')
+		return
 	end
 
 	-- 2. Validate ARIO is in trade (marketplace requirement)
 	local isArioValid, arioError = utils.validateArioInTrade(args.dominantToken, args.swapToken)
 	if not isArioValid then
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = arioError or 'Invalid trade - ARIO must be involved',
-			quantity = args.quantity,
-			transferToken = nil,
-			orderGroupId = args.orderGroupId,
-		})
-		return nil
+		utils.refundAndError(args.msg, args.sender, arioError or 'Invalid trade - ARIO must be involved', 'Order-Error')
+		return
 	end
 
 	-- 3. Check quantity is positive integer
 	if not utils.checkValidAmount(args.quantity) then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = 'Quantity must be an integer greater than zero',
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
-		return nil
+		utils.refundAndError(args.msg, args.sender, 'Quantity must be an integer greater than zero')
+		return
 	end
 
 	-- 4. Check order type is supported
 	if
 		not args.orderType
-		or args.orderType ~= 'fixed' and args.orderType ~= 'dutch' and args.orderType ~= 'english'
+		or (args.orderType ~= 'fixed' and args.orderType ~= 'dutch' and args.orderType ~= 'english')
 	then
-		utils.handleError({
-			target = args.sender,
-			action = 'Validation-Error',
-			message = 'Order type must be "fixed" or "dutch" or "english"',
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
-		return nil
+		utils.refundAndError(args.msg, args.sender, 'Order type must be "fixed" or "dutch" or "english"')
+		return
 	end
+
 	-- 5. Check if it's ANT dominant (selling ANT) or ARIO dominant (buying ANT)
 	local isAntDominant = not utils.isArioToken(args.dominantToken)
 
 	if isAntDominant then
 		-- ANT dominant: validate ANT-specific requirements
-		if not ucm.validateAntDominantOrder(args, validPair) then
-			return nil
-		end
+		ucm.validateAntDominantOrder(args, validPair)
 
 		-- Dutch auction specific validation
 		if args.orderType == constants.ORDER_TYPES.DUTCH then
 			local isValidDutch, dutchError = dutch_auction.validateDutchParams(args)
 			if not isValidDutch then
-				utils.handleError({
-					target = args.sender,
-					action = 'Validation-Error',
-					message = dutchError,
-					quantity = args.quantity,
-					transferToken = validPair[1],
-					orderGroupId = args.orderGroupId,
-				})
-				return nil
+				utils.refundAndError(args.msg, args.sender, dutchError)
+				return
 			end
 		end
 	else
 		-- ARIO dominant: validate ARIO-specific requirements
-		if not ucm.validateArioDominantOrder(args, validPair) then
-			return nil
-		end
+		ucm.validateArioDominantOrder(args, validPair)
 	end
 
 	return validPair
@@ -375,14 +315,8 @@ function ucm.handleAntOrderAuctions(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
 		english_auction.handleAntOrder(args, validPair, pair)
 	else
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'Order type not implemented yet',
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
+		return
 	end
 end
 
@@ -395,14 +329,11 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 	local currentOrders = pair.orders
 	for _, existingOrder in pairs(currentOrders) do
 		if existingOrder.token == args.dominantToken then
-			utils.handleError({
-				target = args.sender,
-				action = 'Validation-Error',
-				message = 'This ANT token is already being sold - cannot create duplicate sell order',
-				quantity = args.quantity,
-				transferToken = validPair[1],
-				orderGroupId = args.orderGroupId,
-			})
+			utils.refundAndError(
+				args.msg,
+				args.sender,
+				'This ANT token is already being sold - cannot create duplicate sell order'
+			)
 			return
 		end
 	end
@@ -414,17 +345,13 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
 		english_auction.handleArioOrder(args, validPair, pair)
 	else
-		utils.handleError({
-			target = args.sender,
-			action = 'Order-Error',
-			message = 'Order type not implemented yet',
-			quantity = args.quantity,
-			transferToken = validPair[1],
-			orderGroupId = args.orderGroupId,
-		})
+		utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
+		return
 	end
 end
 
+--- Create a new order in the orderbook
+--- @param args table Order arguments containing all necessary fields for order creation
 function ucm.createOrder(args)
 	-- Validate order parameters
 	local validPair = ucm.validateOrderParams(args)
@@ -455,70 +382,25 @@ function ucm.createOrder(args)
 	end
 
 	-- Placeholder for future order type handling
-	utils.handleError({
-		target = args.sender,
-		action = 'Order-Error',
-		message = 'Order type not implemented yet',
-		quantity = args.quantity,
-		transferToken = validPair[1],
-		orderGroupId = args.orderGroupId,
-	})
+	utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
+	return
 end
 
+--- Settle an expired English auction
+--- @param args table Settlement arguments containing orderId, sender, timestamp, orderGroupId, dominantToken, swapToken, msg
 function ucm.settleAuction(args)
 	-- Find the auction order using O(1) lookup
-	local targetOrder, targetPair = ucm.findOrderById(args.orderId)
-
-	if not targetOrder then
-		utils.handleError({
-			target = args.sender,
-			action = 'Settlement-Error',
-			message = 'Auction order not found',
-			quantity = '0',
-			transferToken = nil,
-			orderGroupId = args.orderGroupId,
-		})
-		return
-	end
+	local targetOrder, targetPair = ucm.getOrderById(args.orderId)
+	assert(targetOrder, 'Auction order not found')
 
 	-- Validate it's an English auction
-	if targetOrder.orderType ~= constants.ORDER_TYPES.ENGLISH then
-		utils.handleError({
-			target = args.sender,
-			action = 'Settlement-Error',
-			message = 'Order is not an English auction',
-			quantity = '0',
-			transferToken = nil,
-			orderGroupId = args.orderGroupId,
-		})
-		return
-	end
+	assert(targetOrder.orderType == constants.ORDER_TYPES.ENGLISH, 'Order is not an English auction')
 
 	-- Check if auction has bids
-	if not targetOrder.highestBidder then
-		utils.handleError({
-			target = args.sender,
-			action = 'Settlement-Error',
-			message = 'No bids found for auction',
-			quantity = '0',
-			transferToken = nil,
-			orderGroupId = args.orderGroupId,
-		})
-		return
-	end
+	assert(targetOrder.highestBidder, 'No bids found for auction')
 
 	-- Check if auction has expired
-	if not utils.isExpired(targetOrder.expirationTime, args.timestamp) then
-		utils.handleError({
-			target = args.sender,
-			action = 'Settlement-Error',
-			message = 'Auction has not expired yet',
-			quantity = '0',
-			transferToken = nil,
-			orderGroupId = args.orderGroupId,
-		})
-		return
-	end
+	assert(utils.isExpired(targetOrder.expirationTime, args.timestamp), 'Auction has not expired yet')
 
 	-- Call the core settlement function with pre-fetched data
 	english_auction.settleAuction({
@@ -533,8 +415,10 @@ function ucm.settleAuction(args)
 	})
 end
 
--- Cancel an order
--- Accepts the original msg so we can keep consistent behavior and responses
+--- Cancel an order
+--- Accepts the original msg so we can keep consistent behavior and responses
+--- @param msg Message The message containing Order-Id and X-Group-ID tags
+--- @return string jsonResponse JSON-encoded response with status and order ID
 function ucm.cancelOrderHandler(msg)
 	-- Parse parameters from tags (Train-Case)
 	local orderId = msg.Tags['Order-Id']
@@ -543,7 +427,7 @@ function ucm.cancelOrderHandler(msg)
 	assert(orderId, 'Invalid arguments, required { Order-Id }')
 
 	-- Find order using O(1) lookup
-	local currentOrderEntry, pairData = ucm.findOrderById(orderId)
+	local currentOrderEntry, pairData = ucm.getOrderById(orderId)
 	assert(currentOrderEntry, 'Order not found')
 
 	-- Check if the sender is the order creator
@@ -654,65 +538,10 @@ function ucm.infoHandler(msg)
 	})
 end
 
--- Handler: Get-Orderbook-By-Pair
---- Get orderbook for a specific trading pair
---- @param msg table Message with DominantToken and SwapToken tags
---- @return string|nil JSON-encoded orderbook or nil if not found
-function ucm.getOrderbookByPairHandler(msg)
-	if not msg.Tags.DominantToken or not msg.Tags.SwapToken then
-		return
-	end
-	local pair = ucm.getPair(msg.Tags.DominantToken, msg.Tags.SwapToken)
-
-	if pair then
-		return json.encode({ Orderbook = pair })
-	end
-end
-
--- Handler: Read-Orders
---- Read orders from a specific trading pair
---- @param msg table Message with DominantToken and SwapToken tags
---- @return string|nil JSON-encoded orders or nil if not found
-function ucm.readOrdersHandler(msg)
-	if msg.From ~= ao.id then
-		return
-	end
-
-	local readOrders = {}
-	local pair = ucm.getPair(msg.Tags.DominantToken, msg.Tags.SwapToken)
-
-	if pair then
-		for _, order in pairs(pair.orders) do
-			if not msg.Tags.Creator or order.creator == msg.Tags.Creator then
-				table.insert(readOrders, {
-					id = order.id,
-					creator = order.creator,
-					quantity = order.quantity,
-					price = order.price,
-					dateCreated = order.dateCreated,
-				})
-			end
-		end
-
-		return json.encode(readOrders)
-	end
-end
-
--- Handler: Read-Pair
---- Read a specific trading pair
---- @param msg table Message with DominantToken and SwapToken tags
---- @return string|nil JSON-encoded pair info or nil if not found
-function ucm.readPairHandler(msg)
-	local pair = ucm.getPair(msg.Tags.DominantToken, msg.Tags.SwapToken)
-	if pair then
-		return json.encode({
-			pair = pair.pair,
-			orderbook = pair,
-		})
-	end
-end
-
--- Handler: Settle-Auction
+--- Handler: Settle-Auction
+--- Settle an expired English auction by Order-Id
+--- @param msg Message The message containing Order-Id, Dominant-Token, Swap-Token, and X-Group-ID tags
+--- @return string jsonResponse JSON-encoded response with status and order ID
 function ucm.settleAuctionHandler(msg)
 	-- Parse parameters from tags (Train-Case)
 	local orderId = msg.Tags['Order-Id']
@@ -735,7 +564,10 @@ function ucm.settleAuctionHandler(msg)
 	return json.encode({ Status = 'Success', Message = 'Auction settled', ['Order-Id'] = orderId })
 end
 
--- Handler: Withdraw-Fees
+--- Handler: Withdraw-Fees
+--- Withdraw accrued marketplace fees (owner only)
+--- @param msg Message The message from the process owner
+--- @return string jsonResponse JSON-encoded response with status and withdrawn amount
 function ucm.withdrawFeesHandler(msg)
 	-- Only the process owner can withdraw fees
 	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can withdraw fees')
@@ -769,87 +601,59 @@ end
 --- @param msg table Message with Order-Id tag
 function ucm.getOrderHandler(msg)
 	local orderId = msg.Tags['Order-Id']
-
-	if not orderId then
-		utils.Send(msg, {
-			Target = msg.From,
-			Action = 'Input-Error',
-			Message = 'Order-Id parameter is required',
-		})
-		return
-	end
+	assert(orderId, 'Order-Id is required')
 
 	-- Find order using O(1) lookup
-	local foundOrder, _ = ucm.findOrderById(orderId)
-
-	if not foundOrder then
-		utils.Send(msg, {
-			Target = msg.From,
-			Action = 'Order-Not-Found',
-			Message = 'Order with ID ' .. orderId .. ' not found',
-		})
-		return
-	end
+	local foundOrder, _ = ucm.getOrderById(orderId)
+	assert(foundOrder, 'Order not found')
 
 	-- Return raw order (status, dominantToken, swapToken, bids already on order)
-	local response = foundOrder
-
-	if msg.Tags.Functioninvoke or msg.Tags.FunctionInvoke then
-		msg.reply({ Data = json.encode(response) })
-	else
-		utils.Send(msg, {
-			Target = msg.From,
-			Action = 'Read-Success',
-			Data = json.encode(response),
-		})
-	end
+	-- The onAfterHandler will send the Get-Order-Notice with this data
+	return json.encode(foundOrder)
 end
 
 -- Handler: Get-Orders
 --- Get multiple orders with flexible filtering
---- @param msg table Message with optional Status, Ids tags and pagination
+--- @param msg table Message with optional Status, Ids, Dominant-Token, Swap-Token tags and pagination
 function ucm.getOrdersHandler(msg)
 	local page = utils.parsePaginationTags(msg)
 
 	-- Support both 'status' and 'type' for backward compatibility
 	local statusFilter = msg.Tags.Status or msg.Tags.status
 	local idsParam = msg.Tags.Ids or msg.Tags.ids
+	-- Support both Train-Case and camelCase for trading pair filters
+	local dominantToken = msg.Tags['Dominant-Token'] or msg.Tags.DominantToken
+	local swapToken = msg.Tags['Swap-Token'] or msg.Tags.SwapToken
 
 	local ordersArray = {}
 
-	-- If specific IDs are requested
-	if idsParam then
-		local ids = {}
-		for id in string.gmatch(idsParam, '([^,]+)') do
-			ids[id:match('^%s*(.-)%s*$')] = true -- trim whitespace
-		end
+	-- If trading pair is specified, only look in that specific pair
+	if dominantToken and swapToken then
+		local pair = ucm.getPair(dominantToken, swapToken)
+		if pair then
+			-- If specific IDs are requested
+			if idsParam then
+				local ids = {}
+				for id in string.gmatch(idsParam, '([^,]+)') do
+					ids[id:match('^%s*(.-)%s*$')] = true -- trim whitespace
+				end
 
-		-- Search for orders by ID
-		for _, swapTokens in pairs(Orderbook) do
-			for _, pair in pairs(swapTokens) do
 				for orderId, order in pairs(pair.orders) do
 					if ids[orderId] then
 						table.insert(ordersArray, order)
 					end
 				end
-			end
-		end
-	else
-		-- Get orders by status filter
-		-- Iterate through all orders and filter by status
-		for _, swapTokens in pairs(Orderbook) do
-			for _, pair in pairs(swapTokens) do
+			else
+				-- Get all orders in this pair, applying status filter
 				for _, order in pairs(pair.orders) do
 					local includeOrder = false
 
 					if not statusFilter or statusFilter == 'all' then
 						includeOrder = true
 					elseif statusFilter == 'listed' then
-						-- Active and ready-for-settlement orders
 						includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
 							or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
 					elseif statusFilter == 'completed' then
-						-- Completed orders (executed, cancelled, expired)
 						includeOrder = order.status == constants.ORDER_STATUSES.EXECUTED
 							or order.status == constants.ORDER_STATUSES.CANCELLED
 							or order.status == constants.ORDER_STATUSES.EXPIRED
@@ -867,13 +671,76 @@ function ucm.getOrdersHandler(msg)
 					elseif statusFilter == constants.ORDER_STATUSES.EXPIRED or statusFilter == 'expired' then
 						includeOrder = order.status == constants.ORDER_STATUSES.EXPIRED
 					else
-						-- Default to listed if unknown status
 						includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
 							or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
 					end
 
 					if includeOrder then
 						table.insert(ordersArray, order)
+					end
+				end
+			end
+		end
+	else
+		-- No pair specified, search all pairs
+		-- If specific IDs are requested
+		if idsParam then
+			local ids = {}
+			for id in string.gmatch(idsParam, '([^,]+)') do
+				ids[id:match('^%s*(.-)%s*$')] = true -- trim whitespace
+			end
+
+			-- Search for orders by ID
+			for _, swapTokens in pairs(Orderbook) do
+				for _, pair in pairs(swapTokens) do
+					for orderId, order in pairs(pair.orders) do
+						if ids[orderId] then
+							table.insert(ordersArray, order)
+						end
+					end
+				end
+			end
+		else
+			-- Get orders by status filter
+			-- Iterate through all orders and filter by status
+			for _, swapTokens in pairs(Orderbook) do
+				for _, pair in pairs(swapTokens) do
+					for _, order in pairs(pair.orders) do
+						local includeOrder = false
+
+						if not statusFilter or statusFilter == 'all' then
+							includeOrder = true
+						elseif statusFilter == 'listed' then
+							-- Active and ready-for-settlement orders
+							includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
+								or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
+						elseif statusFilter == 'completed' then
+							-- Completed orders (executed, cancelled, expired)
+							includeOrder = order.status == constants.ORDER_STATUSES.EXECUTED
+								or order.status == constants.ORDER_STATUSES.CANCELLED
+								or order.status == constants.ORDER_STATUSES.EXPIRED
+						elseif statusFilter == constants.ORDER_STATUSES.ACTIVE or statusFilter == 'active' then
+							includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
+						elseif
+							statusFilter == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
+							or statusFilter == 'ready-for-settlement'
+						then
+							includeOrder = order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
+						elseif statusFilter == constants.ORDER_STATUSES.EXECUTED or statusFilter == 'executed' then
+							includeOrder = order.status == constants.ORDER_STATUSES.EXECUTED
+						elseif statusFilter == constants.ORDER_STATUSES.CANCELLED or statusFilter == 'cancelled' then
+							includeOrder = order.status == constants.ORDER_STATUSES.CANCELLED
+						elseif statusFilter == constants.ORDER_STATUSES.EXPIRED or statusFilter == 'expired' then
+							includeOrder = order.status == constants.ORDER_STATUSES.EXPIRED
+						else
+							-- Default to listed if unknown status
+							includeOrder = order.status == constants.ORDER_STATUSES.ACTIVE
+								or order.status == constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
+						end
+
+						if includeOrder then
+							table.insert(ordersArray, order)
+						end
 					end
 				end
 			end
@@ -890,11 +757,9 @@ function ucm.getOrdersHandler(msg)
 		page.filters
 	)
 
-	utils.Send(msg, {
-		Target = msg.From,
-		Action = 'Read-Success',
-		Data = json.encode(paginatedOrders),
-	})
+	-- Return paginated orders as JSON
+	-- The onAfterHandler will send the Get-Orders-Notice with this data
+	return json.encode(paginatedOrders)
 end
 
 return ucm

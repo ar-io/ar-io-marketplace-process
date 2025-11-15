@@ -110,10 +110,7 @@ To test the `process.lua` in a real environment, follow these steps.
 1. Start the processes that will be deploying the required contract: `aos your_process_name [--wallet /optional/path/to/wallet.json]`. There should be 2 in total.
 2. Deploy the token blueprint to act as ARIO tokens in one of the processes: `> .load-blueprint token`. The address of that process will be handling token messages. 
 3. Deploy the `process.lua` with correct addresses from the first and second step. 
-4. Handlers define what actions can be taken. To do an action, for example read orders, send:
-```
-Send({Target = "processId", Action = "Read-Orders", Tags = {["DominantToken"] = "some-address-1", ["SwapToken"] = "some-address-2"}})
-```
+4. Handlers define what actions can be taken and can be invoked by sending messages to the process.
 5. Check ao.link for debugging or messages results.
 
 ## Deployment

@@ -139,4 +139,3 @@ constants.TOKEN = {
 }
 
 return constants
-

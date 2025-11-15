@@ -104,6 +104,8 @@ export interface GetOrdersParams extends GetPaginatedIntentsParams {
     | 'cancelled'
     | 'expired';
   ids?: string[]; // Array of order IDs to fetch specific orders
+  dominantToken?: string; // Filter by dominant token in trading pair
+  swapToken?: string; // Filter by swap token in trading pair
 }
 
 /**
