@@ -24,7 +24,6 @@ ActionMap = {
 	creditNotice = 'Credit-Notice',
 	debitNotice = 'Debit-Notice',
 	transferError = 'Transfer-Error',
-	invalidTransferNotice = 'Invalid-Transfer-Notice',
 }
 
 -- Intent handlers
@@ -43,5 +42,5 @@ utils.createHandler('Action', ActionMap.withdrawFees, ucm.withdrawFeesHandler)
 -- Notice handlers (incoming notices from external processes)
 utils.createHandler('Action', ActionMap.creditNotice, notices.creditNoticeHandler)
 utils.createHandler('Action', ActionMap.debitNotice, notices.debitNoticeHandler)
+-- Transfer-Error is the token spec aligned error notice for failed transfers
 utils.createHandler('Action', ActionMap.transferError, notices.transferErrorHandler)
-utils.createHandler('Action', ActionMap.invalidTransferNotice, notices.transferErrorHandler)

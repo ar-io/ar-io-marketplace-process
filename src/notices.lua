@@ -167,7 +167,8 @@ function notices.debitNoticeHandler(msg)
 	end
 end
 
--- Handler: Transfer-Error / Invalid-Transfer-Notice - Handles transfer failures
+-- Handler: Transfer-Error - Handles transfer failures
+-- Transfer-Error is the token spec aligned error notice sent when a transfer fails
 function notices.transferErrorHandler(msg)
 	local utils = require('utils')
 	local intents = require('intents')
