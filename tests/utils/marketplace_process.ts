@@ -2,6 +2,8 @@ import type { AOProcess } from '@ar.io/sdk';
 import type {
   CreateIntentParams,
   GetPaginatedIntentsParams,
+  GetOrdersParams,
+  InfoResponse,
   ReadResponse,
 } from './types.js';
 
@@ -12,10 +14,11 @@ export class MarketplaceProcess {
     this.process = process;
   }
 
-  async info(): Promise<ReadResponse> {
-    return await this.process.read({
+  async info(): Promise<InfoResponse> {
+    const response: any = await this.process.read({
       tags: [{ name: 'Action', value: 'Info' }],
     });
+    return response as InfoResponse;
   }
 
   async createIntent({
@@ -82,18 +85,17 @@ export class MarketplaceProcess {
     });
   }
 
-  async getIntentStats(): Promise<ReadResponse> {
-    return await this.process.read({
-      tags: [{ name: 'Action', value: 'Get-Intent-Stats' }],
-    });
-  }
-
   // Activity handlers
-  async getListedOrders(
-    params?: GetPaginatedIntentsParams,
-  ): Promise<ReadResponse> {
+  /**
+   * Get orders with flexible selectors
+   * @param params - Parameters for filtering and pagination
+   * @returns Orders matching the criteria
+   */
+  async getOrders(params?: GetOrdersParams): Promise<ReadResponse> {
     const tags: Array<{ name: string; value: string | undefined }> = [
-      { name: 'Action', value: 'Get-Listed-Orders' },
+      { name: 'Action', value: 'Get-Orders' },
+      { name: 'Status', value: params?.status },
+      { name: 'Ids', value: params?.ids?.join(',') },
       { name: 'Cursor', value: params?.cursor },
       { name: 'Limit', value: params?.limit?.toString() },
       { name: 'Sort-By', value: params?.sortBy },
@@ -109,31 +111,16 @@ export class MarketplaceProcess {
     return await this.process.read({ tags: filteredTags });
   }
 
-  async getCompletedOrders(
-    params?: GetPaginatedIntentsParams,
-  ): Promise<ReadResponse> {
-    const tags: Array<{ name: string; value: string | undefined }> = [
-      { name: 'Action', value: 'Get-Completed-Orders' },
-      { name: 'Cursor', value: params?.cursor },
-      { name: 'Limit', value: params?.limit?.toString() },
-      { name: 'Sort-By', value: params?.sortBy },
-      { name: 'Sort-Order', value: params?.sortOrder },
-      {
-        name: 'Filters',
-        value: params?.filters ? JSON.stringify(params.filters) : undefined,
-      },
-    ];
-    const filteredTags = tags.filter(
-      (tag): tag is { name: string; value: string } => tag.value !== undefined,
-    );
-    return await this.process.read({ tags: filteredTags });
-  }
-
-  async getOrderById(orderId: string): Promise<ReadResponse> {
+  /**
+   * Get a single order by ID
+   * @param orderId - The order ID to fetch
+   * @returns The order if found
+   */
+  async getOrder(orderId: string): Promise<ReadResponse> {
     return await this.process.read({
       tags: [
-        { name: 'Action', value: 'Get-Order-By-Id' },
-        { name: 'OrderId', value: orderId },
+        { name: 'Action', value: 'Get-Order' },
+        { name: 'Order-Id', value: orderId },
       ],
     });
   }
@@ -176,26 +163,33 @@ export class MarketplaceProcess {
     return await this.process.read({ tags });
   }
 
+  /**
+   * Get volume using the unified activity handler
+   * @returns Volume information
+   */
   async getVolume(): Promise<ReadResponse> {
     return await this.process.read({
-      tags: [{ name: 'Action', value: 'Get-Volume' }],
+      tags: [
+        { name: 'Action', value: 'Get-Activity' },
+        { name: 'Query-Type', value: 'volume' },
+      ],
     });
   }
 
+  /**
+   * Get most traded tokens using the unified activity handler
+   * @param count - Number of tokens to return (optional)
+   * @returns Most traded tokens
+   */
   async getMostTradedTokens(count?: number): Promise<ReadResponse> {
     const tags: Array<{ name: string; value: string }> = [
-      { name: 'Action', value: 'Get-Most-Traded-Tokens' },
+      { name: 'Action', value: 'Get-Activity' },
+      { name: 'Query-Type', value: 'most-traded-tokens' },
     ];
     if (count !== undefined) {
       tags.push({ name: 'Count', value: count.toString() });
     }
     return await this.process.read({ tags });
-  }
-
-  async getActivityLengths(): Promise<ReadResponse> {
-    return await this.process.read({
-      tags: [{ name: 'Action', value: 'Get-Activity-Lengths' }],
-    });
   }
 
   // UCM handlers

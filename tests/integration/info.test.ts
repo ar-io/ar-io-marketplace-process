@@ -29,43 +29,106 @@ describe('Info', () => {
     await ao_mock.reset();
   });
 
-  it('should return the info', async () => {
-    // AO Process example, this has internal tooling to check errors, json parse message bodies, etc
+  it('should return the info with correct structure', async () => {
     const info = await marketplaceProcess.info();
     console.dir({ info }, { depth: null });
+
+    // Validate top-level structure
     assert(info, 'Info should be defined');
+    assert.strictEqual(typeof info.name, 'string', 'Name should be a string');
+    assert.strictEqual(
+      typeof info.processId,
+      'string',
+      'ProcessId should be a string',
+    );
 
-    // Manual dryrun example, this is a direct call to the aos handle function and will return the whole result object
-    const dryrunResult = await marketplaceProcess.process.ao.dryrun({
-      tags: [{ name: 'Action', value: 'Info' }],
-    });
-    console.dir({ dryrun: dryrunResult }, { depth: null });
-    assert(dryrunResult, 'Dryrun should be defined');
+    // Validate activity info
+    assert(info.activity, 'Activity should be defined');
+    assert.strictEqual(
+      typeof info.activity.totalOrders,
+      'number',
+      'totalOrders should be a number',
+    );
+    assert.strictEqual(
+      typeof info.activity.activeOrders,
+      'number',
+      'activeOrders should be a number',
+    );
+    assert.strictEqual(
+      typeof info.activity.readyForSettlement,
+      'number',
+      'readyForSettlement should be a number',
+    );
+    assert.strictEqual(
+      typeof info.activity.executedOrders,
+      'number',
+      'executedOrders should be a number',
+    );
+    assert.strictEqual(
+      typeof info.activity.cancelledOrders,
+      'number',
+      'cancelledOrders should be a number',
+    );
+    assert.strictEqual(
+      typeof info.activity.expiredOrders,
+      'number',
+      'expiredOrders should be a number',
+    );
+    assert.strictEqual(
+      typeof info.activity.listedOrders,
+      'number',
+      'listedOrders should be a number',
+    );
 
-    // example using process.send (again uses internal tooling to check errors, json parse message bodies, etc)
-    const { id, result } = await marketplaceProcess.process.send({
-      tags: [{ name: 'Action', value: 'Info' }],
-      signer: TEST_SIGNER,
-    });
-    console.dir({ id, result }, { depth: null });
-    assert(id, 'Id should be defined');
-    assert(result, 'Result should be defined');
+    // Validate intents info
+    assert(info.intents, 'Intents should be defined');
+    assert.strictEqual(
+      typeof info.intents.total,
+      'number',
+      'intents.total should be a number',
+    );
+    assert(info.intents.byStatus, 'intents.byStatus should be defined');
+    assert(info.intents.byType, 'intents.byType should be defined');
+    assert(info.intents.byAction, 'intents.byAction should be defined');
 
-    // example using process.ao.message (this is a direct call to the aos handle function and will return the message id)
-    const messageId = await marketplaceProcess.process.ao.message({
-      tags: [{ name: 'Action', value: 'Info' }],
-      signer: TEST_SIGNER,
-    });
-    console.dir({ messageId }, { depth: null });
-    assert(messageId, 'Message id should be defined');
+    // Validate UCM info
+    assert(info.ucm, 'UCM should be defined');
+    assert.strictEqual(
+      typeof info.ucm.totalPairs,
+      'number',
+      'totalPairs should be a number',
+    );
+    assert.strictEqual(
+      typeof info.ucm.accruedFees,
+      'string',
+      'accruedFees should be a string',
+    );
+    assert.strictEqual(
+      typeof info.ucm.arioTokenProcess,
+      'string',
+      'arioTokenProcess should be a string',
+    );
 
-    // example using process.ao.result (this is a direct call to the aos handle function and will return the message result)
-    // the localAO class maintains a resultsCache that will return the result if it has been called before
-    const msgResult = await marketplaceProcess.process.ao.result({
-      message: messageId,
-      process: marketplaceProcess.process.processId,
-    });
-    console.dir({ msgResult }, { depth: null });
-    assert(msgResult, 'Result should be defined');
+    // Verify initial state values
+    assert.strictEqual(
+      info.activity.totalOrders,
+      0,
+      'totalOrders should be 0 initially',
+    );
+    assert.strictEqual(
+      info.intents.total,
+      0,
+      'intents.total should be 0 initially',
+    );
+    assert.strictEqual(
+      info.ucm.totalPairs,
+      0,
+      'totalPairs should be 0 initially',
+    );
+    assert.strictEqual(
+      info.ucm.accruedFees,
+      '0',
+      'accruedFees should be "0" initially',
+    );
   });
 });

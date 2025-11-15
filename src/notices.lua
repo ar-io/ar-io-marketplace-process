@@ -1,4 +1,5 @@
 local notices = {}
+local constants = require('constants')
 
 -- Handler: Credit-Notice - Validates and creates orders
 function notices.creditNoticeHandler(msg)
@@ -27,7 +28,7 @@ function notices.creditNoticeHandler(msg)
 	end
 
 	-- Validate sender matches intent initiator
-	if sender ~= intent.Initiator then
+	if sender ~= intent.initiator then
 		utils.refundAndError(msg, sender, 'Sender does not match intent initiator')
 		return
 	end
@@ -58,7 +59,7 @@ function notices.creditNoticeHandler(msg)
 		-- Validate that at least one token in the trade is ARIO
 		local isArioValid, arioError = utils.validateArioInTrade(msg.From, msg.Tags['X-Swap-Token'])
 		if not isArioValid then
-			ao.send({
+			utils.Send(msg, {
 				Target = msg.From,
 				Action = 'Validation-Error',
 				Tags = { Status = 'Error', Message = arioError or 'At least one token in the trade must be ARIO' },
@@ -116,23 +117,23 @@ function notices.debitNoticeHandler(msg)
 	end
 
 	-- Validate this is expected Debit-Notice
-	if intent.Type == 'child' and intent.ExpectedFrom == msg.From then
+	if intent.type == constants.INTENT_TYPES.CHILD and intent.expectedFrom == msg.From then
 		intents.resolve(intentId, msg.Timestamp)
 
 		-- Check if parent is now complete
-		local parent = intents.getById(intent.ParentIntentId)
+		local parent = intents.getById(intent.parentIntentId)
 		if parent then
 			local allResolved = true
-			for childId in pairs(parent.ChildIntentIds) do
+			for childId in pairs(parent.childIntentIds) do
 				local child = intents.getById(childId)
-				if child and child.Status ~= 'resolved' then
+				if child and child.status ~= constants.INTENT_STATUSES.RESOLVED then
 					allResolved = false
 					break
 				end
 			end
 
 			if allResolved then
-				intents.updateStatus(parent.IntentId, 'completed')
+				intents.updateStatus(parent.intentId, constants.INTENT_STATUSES.COMPLETED)
 			end
 		end
 	end
@@ -148,7 +149,7 @@ function notices.transferErrorHandler(msg)
 	end
 
 	local intent = intents.getById(intentId)
-	if not intent or intent.Type ~= 'child' then
+	if not intent or intent.type ~= constants.INTENT_TYPES.CHILD then
 		return
 	end
 
@@ -159,10 +160,10 @@ function notices.transferErrorHandler(msg)
 	intents.fail(intentId, reason)
 
 	-- Cascade failure to parent
-	if intent.ParentIntentId then
-		local parent = intents.getById(intent.ParentIntentId)
+	if intent.parentIntentId then
+		local parent = intents.getById(intent.parentIntentId)
 		if parent then
-			intents.fail(intent.ParentIntentId, 'Child transfer failed: ' .. reason)
+			intents.fail(intent.parentIntentId, 'Child transfer failed: ' .. reason)
 		end
 	end
 end

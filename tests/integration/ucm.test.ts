@@ -192,8 +192,12 @@ describe('UCM (Universal Continuous Market)', () => {
   describe('Order Lifecycle', () => {
     it('should track order through listed -> executed states', async () => {
       // Check initial state
-      const listedBefore = await marketplaceProcess.getListedOrders();
-      const completedBefore = await marketplaceProcess.getCompletedOrders();
+      const listedBefore = await marketplaceProcess.getOrders({
+        status: 'listed',
+      });
+      const completedBefore = await marketplaceProcess.getOrders({
+        status: 'completed',
+      });
 
       console.dir(
         { initialState: { listedBefore, completedBefore } },

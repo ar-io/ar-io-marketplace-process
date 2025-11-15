@@ -91,6 +91,22 @@ export interface GetPaginatedIntentsParams {
 }
 
 /**
+ * Parameters for getting orders with flexible selectors
+ */
+export interface GetOrdersParams extends GetPaginatedIntentsParams {
+  status?:
+    | 'all'
+    | 'listed'
+    | 'completed'
+    | 'active'
+    | 'ready-for-settlement'
+    | 'executed'
+    | 'cancelled'
+    | 'expired';
+  ids?: string[]; // Array of order IDs to fetch specific orders
+}
+
+/**
  * Response from a read operation
  */
 export interface ReadResponse {
@@ -135,10 +151,43 @@ export interface Intent {
  * Intent statistics structure
  */
 export interface IntentStats {
-  Total: number;
-  ByStatus: Record<string, number>;
-  ByType: Record<string, number>;
-  ByAction: Record<string, number>;
+  total: number;
+  byStatus: Record<string, number>;
+  byType: Record<string, number>;
+  byAction: Record<string, number>;
+}
+
+/**
+ * Activity information structure
+ */
+export interface ActivityInfo {
+  totalOrders: number;
+  activeOrders: number;
+  readyForSettlement: number;
+  executedOrders: number;
+  cancelledOrders: number;
+  expiredOrders: number;
+  listedOrders: number;
+}
+
+/**
+ * UCM marketplace information structure
+ */
+export interface UCMInfo {
+  totalPairs: number;
+  accruedFees: string;
+  arioTokenProcess: string;
+}
+
+/**
+ * Info response structure from the marketplace
+ */
+export interface InfoResponse {
+  name: string;
+  processId: string;
+  activity: ActivityInfo;
+  intents: IntentStats;
+  ucm: UCMInfo;
 }
 
 /**

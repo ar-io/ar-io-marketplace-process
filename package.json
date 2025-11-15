@@ -7,7 +7,7 @@
   "scripts": {
     "bundle": "tsx scripts/bundle-marketplace-process.ts",
     "test": "yarn format:fix && yarn test:unit && yarn test:integration",
-    "test:unit": "rm -rf coverage && mkdir -p coverage && busted . && luacov",
+    "test:unit": "rm -rf coverage && mkdir -p coverage && echo '=== Running busted tests ===' && busted . && luacov && echo '\n=== Coverage Report ===' && tail -20 coverage/luacov.report.out",
     "test:integration": "pnpm bundle && tsx --test --experimental-wasm-memory64 tests/integration/*.test.ts",
     "lint:fix": "luacheck src spec && biome check --write --unsafe && eslint --fix packages/*/src",
     "lint:check": "biome check --unsafe && eslint packages/*/src",

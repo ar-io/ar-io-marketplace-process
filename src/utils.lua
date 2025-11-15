@@ -1,11 +1,9 @@
 local json = require('json')
 local bint = require('.bint')(256)
 local crypto = require('crypto')
+local constants = require('constants')
 
 local utils = {}
-if not AccruedFeesAmount then
-	AccruedFeesAmount = 0
-end
 
 --- Add forwarded tags (X-* tags) from one message to another
 --- @param oldMsg table The source message
@@ -23,11 +21,6 @@ function utils.addForwardedTags(oldMsg, newMsg)
 	end
 	return newMsg
 end
-
--- CHANGEME
-ARIO_TOKEN_PROCESS_ID = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
-
-TREASURY_ADDRESS = 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks'
 
 --- Get all keys from a table
 --- @param t table The table to get keys from
@@ -67,14 +60,18 @@ end
 --- @param address string The address to check
 --- @return boolean isValid Whether the address is valid
 function utils.isValidArweaveAddress(address)
-	return type(address) == 'string' and #address == 43 and string.match(address, '^[%w-_]+$') ~= nil
+	return type(address) == 'string'
+		and #address == constants.ADDRESS.ARWEAVE_LENGTH
+		and string.match(address, '^[%w-_]+$') ~= nil
 end
 
 --- Checks if an address is a valid Ethereum address
 --- @param address string The address to check
 --- @return boolean isValid Whether the address is valid
 function utils.isValidEthAddress(address)
-	return type(address) == 'string' and #address == 42 and string.match(address, '^0x[%x]+$') ~= nil
+	return type(address) == 'string'
+		and #address == constants.ADDRESS.ETHEREUM_LENGTH
+		and string.match(address, '^' .. constants.ADDRESS.ETHEREUM_PREFIX .. '[%x]+$') ~= nil
 end
 
 --- Checks if an address is a valid unsafe address (less strict validation)
@@ -85,7 +82,9 @@ function utils.isValidUnsafeAddress(address)
 		return false
 	end
 	local match = string.match(address, '^[%w_-]+$')
-	return match ~= nil and #address >= 1 and #address <= 128
+	return match ~= nil
+		and #address >= constants.ADDRESS.UNSAFE_MIN_LENGTH
+		and #address <= constants.ADDRESS.UNSAFE_MAX_LENGTH
 end
 
 --- Checks if an address is a valid AO address (Arweave or Ethereum)
@@ -178,7 +177,7 @@ function utils.checkValidAddress(address)
 		return false
 	end
 
-	return string.match(address, '^[%w%-_]+$') ~= nil and #address == 43
+	return string.match(address, '^[%w%-_]+$') ~= nil and #address == constants.ADDRESS.ARWEAVE_LENGTH
 end
 
 function utils.checkValidAmount(data)
@@ -232,21 +231,22 @@ function utils.validatePairData(data)
 end
 
 function utils.calculateSendAmount(amount)
-	local factor = bint(995)
-	local divisor = bint(1000)
+	local factor = bint(constants.FEE.FACTOR_NUMERATOR)
+	local divisor = bint(constants.FEE.FACTOR_DENOMINATOR)
 	local sendAmount = (bint(amount) * factor) // divisor
 	return tostring(sendAmount)
 end
 
 function utils.calculateFeeAmount(amount)
-	local factor = bint(5)
-	local divisor = bint(10000)
+	local factor = bint(constants.FEE.AMOUNT_NUMERATOR)
+	local divisor = bint(constants.FEE.AMOUNT_DENOMINATOR)
 	local feeAmount = (bint(amount) * factor) // divisor
 	return tostring(feeAmount)
 end
 
 function utils.calculateFillAmount(amount)
-	return tostring(math.floor(tonumber(amount) or 0))
+	-- Convert to string first (handles bint objects), then to number
+	return tostring(math.floor(tonumber(tostring(amount)) or 0))
 end
 
 --- Send wrapper for ao.send/msg.reply
@@ -267,7 +267,6 @@ function utils.Send(msg, sendParams)
 end
 
 function utils.printTable(t, indent)
-	local jsonStr = ''
 	local function serialize(tbl, indentLevel)
 		local isArray = #tbl > 0
 		local tab = isArray and '[\n' or '{\n'
@@ -301,7 +300,7 @@ function utils.printTable(t, indent)
 		return tab
 	end
 
-	jsonStr = serialize(t, indent or 0)
+	local jsonStr = serialize(t, indent or 0)
 	print(jsonStr)
 end
 
@@ -323,70 +322,6 @@ function utils.checkTables(t1, t2)
 		end
 	end
 	return true
-end
-
-local testResults = {
-	total = 0,
-	passed = 0,
-	failed = 0,
-}
-
-function utils.test(description, fn, expected)
-	local colors = {
-		red = '\27[31m',
-		green = '\27[32m',
-		blue = '\27[34m',
-		reset = '\27[0m',
-	}
-
-	testResults.total = testResults.total + 1
-	local testIndex = testResults.total
-
-	print('\n' .. colors.blue .. 'Running test ' .. testIndex .. '... ' .. description .. colors.reset)
-	local status, result = pcall(fn)
-	if not status then
-		testResults.failed = testResults.failed + 1
-		print(colors.red .. 'Failed - ' .. description .. ' - ' .. result .. colors.reset .. '\n')
-	else
-		if utils.checkTables(result, expected) then
-			testResults.passed = testResults.passed + 1
-			print(colors.green .. 'Passed - ' .. description .. colors.reset)
-		else
-			testResults.failed = testResults.failed + 1
-			if type(result) == 'table' and type(expected) == 'table' then
-				print(colors.red .. 'Failed - ' .. description .. colors.reset .. '\n')
-				print(colors.red .. 'Expected' .. colors.reset)
-				utils.printTable(expected)
-				print('\n' .. colors.red .. 'Got' .. colors.reset)
-				utils.printTable(result)
-			else
-				print(colors.red .. 'Failed - ' .. description .. colors.reset .. '\n')
-				print(colors.red .. 'Expected' .. colors.reset)
-				print(expected)
-				print('\n' .. colors.red .. 'Got' .. colors.reset)
-				print(result)
-			end
-		end
-	end
-end
-
-function utils.testSummary()
-	local colors = {
-		red = '\27[31m',
-		green = '\27[32m',
-		reset = '\27[0m',
-	}
-
-	print('\nTest Summary')
-	print('Total tests (' .. testResults.total .. ')')
-	print('Result: ' .. testResults.passed .. '/' .. testResults.total .. ' tests passed')
-	if testResults.passed == testResults.total then
-		print(colors.green .. 'All tests passed!' .. colors.reset)
-	else
-		print(colors.green .. 'Tests passed: ' .. testResults.passed .. '/' .. testResults.total .. colors.reset)
-		print(colors.red .. 'Tests failed: ' .. testResults.failed .. '/' .. testResults.total .. colors.reset .. '\n')
-		os.exit(1)
-	end
 end
 
 function utils.checkValidExpirationTime(expirationTime, timestamp)
@@ -417,10 +352,21 @@ function utils.checkValidExpirationTime(expirationTime, timestamp)
 	return true, nil
 end
 
+--- Check if an expiration time has passed
+--- @param expirationTime string|number|nil The expiration timestamp
+--- @param currentTimestamp string|number The current timestamp
+--- @return boolean isExpired Whether the expiration time has passed
+function utils.isExpired(expirationTime, currentTimestamp)
+	if not expirationTime then
+		return false
+	end
+	return expirationTime < currentTimestamp
+end
+
 function utils.handleError(args) -- Target, TransferToken, Quantity, msg
 	-- If there is a valid quantity then return the funds
+	local msg = args.msg or { Tags = {} }
 	if args.TransferToken and args.Quantity and utils.checkValidAmount(args.Quantity) then
-		local msg = args.msg or { Tags = {} }
 		local ucm = require('ucm')
 		ucm.transfer(msg, {
 			Target = args.TransferToken,
@@ -431,7 +377,7 @@ function utils.handleError(args) -- Target, TransferToken, Quantity, msg
 			},
 		})
 	end
-	ao.send({
+	utils.Send(msg, {
 		Target = args.Target,
 		Action = args.Action,
 		Tags = { Status = 'Error', Message = args.Message, ['X-Group-ID'] = args.OrderGroupId },
@@ -456,9 +402,13 @@ end
 --- @return PaginationTags paginationTags The pagination tags
 function utils.parsePaginationTags(msg)
 	local cursor = msg.Tags.Cursor
-	local limit = tonumber(msg.Tags['Limit']) or 100
-	assert(limit <= 1000, 'Limit must be less than or equal to 1000')
-	local sortOrder = msg.Tags['Sort-Order'] and string.lower(msg.Tags['Sort-Order']) or 'desc'
+	local limit = tonumber(msg.Tags['Limit']) or constants.PAGINATION.DEFAULT_LIMIT
+	assert(
+		limit <= constants.PAGINATION.MAX_LIMIT,
+		'Limit must be less than or equal to ' .. constants.PAGINATION.MAX_LIMIT
+	)
+	local sortOrder = msg.Tags['Sort-Order'] and string.lower(msg.Tags['Sort-Order'])
+		or constants.PAGINATION.DEFAULT_SORT_ORDER
 	assert(sortOrder == 'asc' or sortOrder == 'desc', "Invalid sortOrder: expected 'asc' or 'desc'")
 	local sortBy = msg.Tags['Sort-By']
 	local filters = utils.safeDecodeJson(msg.Tags.Filters)
@@ -497,7 +447,7 @@ function utils.paginateTableWithCursor(tableArray, cursor, cursorField, limit, s
 
 	-- Default to sorting by CreatedAt if no sortBy is specified
 	if not sortBy then
-		sortBy = 'CreatedAt'
+		sortBy = constants.PAGINATION.DEFAULT_SORT_BY
 	end
 
 	local sortFields = { { order = sortOrder, field = sortBy } }
@@ -861,6 +811,16 @@ function utils.onBeforeHandler(msg)
 		-- aos assigns tag values to the base message level as well, so format there too
 		msg[tName] = msg[tName] and utils.formatAddress(msg[tName]) or nil
 	end
+
+	-- Normalize timestamp to ensure it's always a number
+	if msg.Timestamp then
+		msg.Timestamp = tonumber(msg.Timestamp)
+	end
+
+	-- Prune expired orders from the orderbook (and auto-settle auctions)
+	-- The pruning function handles its own scheduling checks
+	local ucm = require('ucm')
+	ucm.pruneOrderbook(msg.Timestamp, msg)
 end
 
 --- Post-process handler execution - sends notices

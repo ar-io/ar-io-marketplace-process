@@ -311,7 +311,9 @@ describe('Auction Mechanisms', () => {
       assert.strictEqual(intentResult.Action, 'Intent-Created');
 
       // Check it appears in listed orders (would after Credit-Notice)
-      const listedOrders = await marketplaceProcess.getListedOrders();
+      const listedOrders = await marketplaceProcess.getOrders({
+        status: 'listed',
+      });
       console.dir({ listedOrdersAfterIntent: listedOrders }, { depth: null });
 
       assert(listedOrders, 'Listed orders should be defined');

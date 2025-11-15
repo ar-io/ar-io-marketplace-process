@@ -1,18 +1,21 @@
+print('\n=== Loading utils module for testing ===')
+require('test_globals')
 local utils = require('utils')
+print('✓ utils module loaded')
 local json = require('json')
+print('✓ json module loaded')
 local bint = require('.bint')(256)
+print('✓ bint module loaded')
 
 describe('utils', function()
+	print('\n--- Starting utils tests ---')
 	-- Mock ao.send and reset state between tests that need it
 	local sentMessages
 	local function resetMocks()
 		sentMessages = {}
-		_G.ao = {
-			send = function(msg)
-				table.insert(sentMessages, msg)
-			end,
-			id = 'test',
-		}
+		_G.ao.send = function(msg)
+			table.insert(sentMessages, msg)
+		end
 	end
 
 	describe('calculateFillAmount', function()
@@ -271,6 +274,27 @@ describe('utils', function()
 		end
 	end)
 
+	describe('isExpired', function()
+		local testCases = {
+			{ exp = nil, ts = 1000, expected = false, description = 'nil expiration returns false' },
+			{ exp = nil, ts = '1000', expected = false, description = 'nil expiration with string timestamp' },
+			{ exp = '1000', ts = 1001, expected = true, description = 'expiration < timestamp (expired)' },
+			{ exp = 1000, ts = '1001', expected = true, description = 'expiration < timestamp (both types)' },
+			{ exp = '1001', ts = 1000, expected = false, description = 'expiration > timestamp (not expired)' },
+			{ exp = 1001, ts = '1000', expected = false, description = 'expiration > timestamp (mixed types)' },
+			{ exp = '1000', ts = 1000, expected = false, description = 'expiration == timestamp (not expired)' },
+			{ exp = 1000, ts = 1000, expected = false, description = 'expiration == timestamp (both numbers)' },
+			{ exp = '999', ts = '1000', expected = true, description = 'past expiration (both strings)' },
+			{ exp = '1000000', ts = '999', expected = false, description = 'future expiration (both strings)' },
+		}
+
+		for _, tc in ipairs(testCases) do
+			it(tc.description, function()
+				assert.are.equal(tc.expected, utils.isExpired(tc.exp, tc.ts))
+			end)
+		end
+	end)
+
 	describe('createFilterFunction', function()
 		local items = {
 			{ id = 'a', status = 'active', count = 1 },
@@ -441,7 +465,7 @@ describe('utils', function()
 
 		local function makeOrderEntry(overrides)
 			local base = {
-				Creator = 'seller-addr',
+				creator = 'seller-addr',
 			}
 			for k, v in pairs(overrides or {}) do
 				base[k] = v
@@ -893,14 +917,14 @@ describe('utils', function()
 		end)
 
 		it('limit exceeds 1000 should assert', function()
-			local ok, err = pcall(function()
+			local ok = pcall(function()
 				return utils.parsePaginationTags(msg({ ['Limit'] = '1001' }))
 			end)
 			assert.is_false(ok)
 		end)
 
 		it('invalid sort order should assert', function()
-			local ok, err = pcall(function()
+			local ok = pcall(function()
 				return utils.parsePaginationTags(msg({ ['Sort-Order'] = 'invalid' }))
 			end)
 			assert.is_false(ok)

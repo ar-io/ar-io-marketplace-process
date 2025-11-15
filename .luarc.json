@@ -21,6 +21,7 @@
     "diagnostics": {
       "enable": true,
       "globals": [
+<<<<<<< Updated upstream
         "describe",
         "it",
         "before_each",
@@ -48,6 +49,22 @@
         "duplicate-set-field",
         "redundant-parameter"
       ]
+=======
+        "Handlers",
+        "ao",
+        "OrderIndex",
+        "Orderbook",
+        "EnglishAuctionBids",
+        "Intents",
+        "Name",
+        "ARIO_TOKEN_PROCESS_ID"
+      ],
+      "neededFileStatus": {
+        "unused-local": "Any",
+        "unused-function": "Any",
+        "unused-vararg": "Any"
+      }
+>>>>>>> Stashed changes
     }
   },
   "workspace.checkThirdParty": false

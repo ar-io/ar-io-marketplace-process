@@ -233,8 +233,8 @@ describe('Intent Workflow Tracking', () => {
     });
   });
 
-  describe('Get-Intent-Stats', () => {
-    it('should return statistics about intents', async () => {
+  describe('Info (Intent Stats)', () => {
+    it('should return statistics about intents via info handler', async () => {
       // Create various intents
       await marketplaceProcess.createIntent({
         action: 'Create-Order',
@@ -248,35 +248,38 @@ describe('Intent Workflow Tracking', () => {
         orderId: 'test-order-123',
       });
 
-      const result = await marketplaceProcess.getIntentStats();
+      const info = await marketplaceProcess.info();
 
-      console.dir({ intentStats: result }, { depth: null });
+      console.dir({ intentStats: info.intents }, { depth: null });
 
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Intent-Stats-Result');
-      const data = JSON.parse(result.Data);
-      assert.strictEqual(data.Total, 2, 'Should have 2 total intents');
+      assert(info, 'Info should be defined');
+      assert(info.intents, 'Intents should be defined');
+      assert.strictEqual(info.intents.total, 2, 'Should have 2 total intents');
       assert.strictEqual(
-        data.ByStatus.pending,
+        info.intents.byStatus.pending,
         2,
         'Should have 2 pending intents',
       );
-      assert.strictEqual(data.ByType.parent, 2, 'Should have 2 parent intents');
-      assert.strictEqual(data.ByAction['Create-Order'], 1);
-      assert.strictEqual(data.ByAction['Cancel-Order'], 1);
+      assert.strictEqual(
+        info.intents.byType.parent,
+        2,
+        'Should have 2 parent intents',
+      );
+      assert.strictEqual(info.intents.byAction['Create-Order'], 1);
+      assert.strictEqual(info.intents.byAction['Cancel-Order'], 1);
     });
 
-    it('should return zero stats when no intents exist', async () => {
-      const result = await marketplaceProcess.getIntentStats();
+    it('should return zero stats when no intents exist via info handler', async () => {
+      const info = await marketplaceProcess.info();
 
-      console.dir({ emptyStats: result }, { depth: null });
+      console.dir({ emptyStats: info.intents }, { depth: null });
 
-      assert(result, 'Result should be defined');
-      const data = JSON.parse(result.Data);
-      assert.strictEqual(data.Total, 0);
-      assert.deepStrictEqual(data.ByStatus, {});
-      assert.deepStrictEqual(data.ByType, {});
-      assert.deepStrictEqual(data.ByAction, {});
+      assert(info, 'Info should be defined');
+      assert(info.intents, 'Intents should be defined');
+      assert.strictEqual(info.intents.total, 0);
+      assert.deepStrictEqual(info.intents.byStatus, {});
+      assert.deepStrictEqual(info.intents.byType, {});
+      assert.deepStrictEqual(info.intents.byAction, {});
     });
   });
 });

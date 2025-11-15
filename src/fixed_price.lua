@@ -1,14 +1,30 @@
 local bint = require('.bint')(256)
 local utils = require('utils')
-local activity = require('activity')
-
--- Note: ucm is lazy-loaded within functions to avoid circular dependency
--- (ucm requires fixed_price, and fixed_price requires ucm)
+local constants = require('constants')
+local ucm = require('ucm')
 
 local fixed_price = {}
+local ORDER_STATUSES = constants.ORDER_STATUSES
+local ORDER_TYPES = constants.ORDER_TYPES
+
+--- Prune an expired fixed price order
+--- @param order table The order to prune
+function fixed_price.pruneExpiredOrder(order)
+	order.status = ORDER_STATUSES.EXPIRED
+	order.endedAt = order.expirationTime
+end
 
 -- Helper function to update VWAP data
+<<<<<<< Updated upstream
 local function updateVwapData(dominantToken, swapToken, matches, args, currentToken)
+=======
+--- @param pair Pair The pair object from orderbook
+--- @param matches table[] Array of match records
+--- @param args table Order arguments
+--- @param currentToken string Current token ID
+--- @return number Sum of volumes
+function fixed_price.updateVwapData(pair, matches, args, currentToken)
+>>>>>>> Stashed changes
 	local sumVolumePrice, sumVolume = 0, 0
 	if #matches > 0 then
 		for _, match in ipairs(matches) do
@@ -20,7 +36,11 @@ local function updateVwapData(dominantToken, swapToken, matches, args, currentTo
 
 		-- Calculate and store VWAP
 		local vwap = sumVolumePrice / sumVolume
+<<<<<<< Updated upstream
 		Orderbook[dominantToken][swapToken].PriceData = {
+=======
+		pair.PriceData = {
+>>>>>>> Stashed changes
 			Vwap = tostring(math.floor(vwap)),
 			Block = tostring(args.blockheight),
 			DominantToken = currentToken,
@@ -31,10 +51,21 @@ local function updateVwapData(dominantToken, swapToken, matches, args, currentTo
 	return sumVolume
 end
 -- Helper function to handle ARIO token orders: we are selling ANT token, so we need to add to orderbook
+<<<<<<< Updated upstream
 function fixed_price.handleArioOrder(args)
 	-- Add the new order to the orderbook (buy now functionality)
 	local orderId = args.orderId
 	Orderbook[args.dominantToken][args.swapToken].orders[orderId] = {
+=======
+--- Handle ARIO-dominant order (buying ANT with ARIO) for fixed price
+--- @param args table Order arguments
+--- @param validPair string[] The validated pair [ARIO, ANT]
+--- @param pair Pair The pair object from orderbook
+function fixed_price.handleArioOrder(args, validPair, pair)
+	-- Add the new order to the orderbook (buy now functionality)
+	-- Use dictionary-style (lookup table) for efficient order management
+	pair.orders[args.orderId] = {
+>>>>>>> Stashed changes
 		id = args.orderId,
 		quantity = tostring(args.quantity),
 		originalQuantity = tostring(args.quantity),
@@ -43,25 +74,29 @@ function fixed_price.handleArioOrder(args)
 		dateCreated = args.createdAt,
 		price = args.price and tostring(args.price),
 		expirationTime = args.expirationTime,
+<<<<<<< Updated upstream
 		orderType = 'fixed',
+=======
+		orderType = ORDER_TYPES.FIXED,
+		status = ORDER_STATUSES.ACTIVE,
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+>>>>>>> Stashed changes
 	}
 
-	-- Record listed order internally
-	activity.recordListedOrder({
-		Id = args.orderId,
-		DominantToken = args.dominantToken,
-		SwapToken = args.swapToken,
-		Sender = args.sender,
-		Receiver = nil,
-		Quantity = tostring(args.quantity),
-		Price = args.price and tostring(args.price),
-		CreatedAt = args.createdAt,
-		OrderType = 'fixed',
-		ExpirationTime = args.expirationTime,
-	})
+	-- Add to index for O(1) lookup
+	OrderIndex[args.orderId] = {
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+	}
+
+	-- Schedule pruning for expiration if needed
+	if args.expirationTime then
+		ucm.scheduleNextOrderbookPruning(args.expirationTime)
+	end
 
 	-- Notify sender of successful order creation
-	ao.send({
+	utils.Send(args.msg, {
 		Target = args.sender,
 		Action = 'Order-Success',
 		Tags = {
@@ -74,13 +109,14 @@ function fixed_price.handleArioOrder(args)
 			Price = args.price and tostring(args.price),
 			Message = 'ARIO order added to orderbook for buy now!',
 			['X-Group-ID'] = args.orderGroupId,
-			OrderType = 'fixed',
+			OrderType = ORDER_TYPES.FIXED,
 			ExpirationTime = args.expirationTime,
 		},
 	})
 end
 
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to match with an existing ANT sell order or fail
+<<<<<<< Updated upstream
 function fixed_price.handleAntOrder(args, validPair)
 	-- Swap the pair to get [ANT, ARIO] since we're buying ANT with ARIO
 	local antDominant = validPair[1]  -- ANT token (swap to become dominant)
@@ -100,19 +136,35 @@ function fixed_price.handleAntOrder(args, validPair)
 	end
 	
 	local currentOrders = pairData.orders
+=======
+--- Handle ANT-dominant order (selling ANT for ARIO) for fixed price
+--- @param args table Order arguments
+--- @param validPair string[] The validated pair [ANT, ARIO]
+--- @param pair Pair The pair object from orderbook
+function fixed_price.handleAntOrder(args, validPair, pair)
+	local currentOrders = pair.orders
+>>>>>>> Stashed changes
 	local matches = {}
 	local matchedOrderId = nil
 
 	-- Attempt to match with existing orders for immediate trade
 	for orderId, currentOrderEntry in pairs(currentOrders) do
 		-- Check if order has expired
+<<<<<<< Updated upstream
 		if currentOrderEntry.expirationTime and bint(currentOrderEntry.expirationTime) < bint(args.createdAt) then
+=======
+		if utils.isExpired(currentOrderEntry.expirationTime, args.createdAt) then
+>>>>>>> Stashed changes
 			-- Skip expired orders
 			goto continue
 		end
 
 		-- Check if the order is a fixed order
+<<<<<<< Updated upstream
 		if currentOrderEntry.orderType ~= 'fixed' then
+=======
+		if currentOrderEntry.orderType ~= ORDER_TYPES.FIXED then
+>>>>>>> Stashed changes
 			goto continue
 		end
 
@@ -155,7 +207,6 @@ function fixed_price.handleAntOrder(args, validPair)
 				utils.sendFeeToTreasury(originalSendAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
 				-- Execute token transfers
-				local ucm = require('ucm')
 				ucm.executeTokenTransfers(
 					args,
 					currentOrderEntry,
@@ -167,7 +218,6 @@ function fixed_price.handleAntOrder(args, validPair)
 				-- Refund any excess ARIO sent over the required amount
 				if sentAmount > requiredAmount then
 					local refundAmount = sentAmount - requiredAmount
-					local ucm = require('ucm')
 					ucm.transfer(args.msg, {
 						Target = args.dominantToken,
 						Action = 'Transfer',
@@ -178,8 +228,20 @@ function fixed_price.handleAntOrder(args, validPair)
 					})
 				end
 
-				-- Record the match
-				local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
+				-- Mark order as executed and update fields
+				currentOrderEntry.status = ORDER_STATUSES.EXECUTED
+				currentOrderEntry.endedAt = args.createdAt
+				currentOrderEntry.sender = currentOrderEntry.creator
+				currentOrderEntry.receiver = args.sender
+				currentOrderEntry.buyer = args.sender
+				currentOrderEntry.finalPrice = currentOrderEntry.price
+
+				-- Record the match for response
+				local match = {
+					Id = currentOrderEntry.id,
+					Quantity = calculatedFillAmount,
+					Price = tostring(currentOrderEntry.price),
+				}
 				table.insert(matches, match)
 
 				-- Mark the order ID for removal
@@ -194,15 +256,25 @@ function fixed_price.handleAntOrder(args, validPair)
 
 	-- Remove the matched order from the orderbook
 	if matchedOrderId then
+<<<<<<< Updated upstream
 		pairData.orders[matchedOrderId] = nil
 	end
 
 	-- Update VWAP and get total volume
 	local sumVolume = updateVwapData(antDominant, arioSwap, matches, args, args.dominantToken)
+=======
+		pair.orders[matchedOrderId] = nil
+		-- Remove from index
+		OrderIndex[matchedOrderId] = nil
+	end
+
+	-- Update VWAP and get total volume
+	local sumVolume = fixed_price.updateVwapData(pair, matches, args, args.dominantToken)
+>>>>>>> Stashed changes
 
 	-- Send success response if any matches occurred
 	if sumVolume > 0 then
-		ao.send({
+		utils.Send(args.msg, {
 			Target = args.sender,
 			Action = 'Order-Success',
 			Tags = {

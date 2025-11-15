@@ -82,6 +82,7 @@
 --- @field price string|nil Order price
 --- @field expirationTime number|nil Expiration timestamp
 --- @field orderType "fixed"|"dutch"|"english" Order type
+<<<<<<< Updated upstream
 --- @field minimumPrice string|nil Minimum price (dutch auction)
 --- @field decreaseInterval string|nil Decrease interval (dutch auction)
 --- @field decreaseStep string|nil Decrease step (dutch auction)
@@ -90,6 +91,21 @@
 --- @field pair string[] Token pair [tokenA, tokenB]
 --- @field orders Order[] Orders for this pair
 --- @field priceData table|nil Price data for the pair
+=======
+--- @field status "active"|"executed"|"cancelled"|"ready-for-settlement"|"expired" Order status
+--- @field minimumPrice string|nil Minimum price (dutch auction)
+--- @field decreaseInterval string|nil Decrease interval (dutch auction)
+--- @field decreaseStep string|nil Decrease step (dutch auction)
+--- @field sender string|nil Order sender (set after execution)
+--- @field receiver string|nil Order receiver (set after execution)
+--- @field endedAt number|nil Timestamp when order ended
+
+--- @class Pair
+--- @field pair string[] Token pair [dominantToken, swapToken] - directional
+--- @field orders table<string, Order> Dictionary of orders keyed by OrderId
+--- @field priceData table|nil Price data for the pair
+--- Note: Pairs are stored in Orderbook as Orderbook[dominantToken][swapToken] = Pair
+>>>>>>> Stashed changes
 
 --- @class SendParams
 --- @field Target string Target process ID
@@ -120,5 +136,57 @@
 --- @field byStatus table<string, number> Intent counts by status
 --- @field byType table<string, number> Intent counts by type
 --- @field byAction table<string, number> Intent counts by action
+<<<<<<< Updated upstream
+=======
+
+--- @class ExecutedOrder
+--- @field id string Executed order ID
+--- @field dominantToken string Token that was deposited
+--- @field swapToken string Token that was received
+--- @field sender string Order sender address
+--- @field receiver string Order receiver address
+--- @field quantity string Quantity transferred
+--- @field price string Execution price
+--- @field createdAt number Creation timestamp
+--- @field executedAt number Execution timestamp
+--- @field orderType "fixed"|"dutch"|"english" Type of order
+
+--- @class BidInfo
+--- @field bidder string Address of the bidder
+--- @field amount string Bid amount
+--- @field timestamp number When bid was placed
+--- @field orderId string Order being bid on
+
+--- @class AuctionBidInfo
+--- @field bids table<string, BidInfo> Dictionary mapping user address to their bid
+--- @field highestBid string|nil Current highest bid amount
+--- @field highestBidder string|nil Address of current highest bidder
+--- @field settlement table|nil Settlement information if auction completed
+
+--- @class OrderIndexEntry
+--- @field dominantToken string The dominant token in the pair
+--- @field swapToken string The swap token in the pair
+
+--- @class ActivityInfo
+--- @field totalOrders number Total number of orders in the orderbook
+--- @field activeOrders number Number of currently active orders
+--- @field readyForSettlement number Number of orders ready for settlement
+--- @field executedOrders number Number of executed orders
+--- @field cancelledOrders number Number of cancelled orders
+--- @field expiredOrders number Number of expired orders
+--- @field listedOrders number Total listed orders (active + ready for settlement)
+
+--- @class UCMInfo
+--- @field totalPairs number Number of trading pairs in the orderbook
+--- @field accruedFees string Total fees collected by the marketplace
+--- @field arioTokenProcess string The ARIO token process ID
+
+--- @class InfoResponse
+--- @field name string The marketplace name
+--- @field processId string The AO process ID
+--- @field activity ActivityInfo Activity statistics
+--- @field intents IntentStats Intent workflow statistics
+--- @field ucm UCMInfo UCM marketplace information
+>>>>>>> Stashed changes
 
 return {}

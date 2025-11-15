@@ -1,11 +1,18 @@
 local utils = require('utils')
-local activity = require('activity')
+local constants = require('constants')
 local bint = require('.bint')(256)
-
--- Note: ucm is lazy-loaded within functions to avoid circular dependency
--- (ucm requires dutch_auction, and dutch_auction requires ucm)
+local ucm = require('ucm')
 
 local dutch_auction = {}
+local ORDER_STATUSES = constants.ORDER_STATUSES
+local ORDER_TYPES = constants.ORDER_TYPES
+
+--- Prune an expired Dutch auction
+--- @param order table The order to prune
+function dutch_auction.pruneExpiredAuction(order)
+	order.status = ORDER_STATUSES.EXPIRED
+	order.endedAt = order.expirationTime
+end
 
 function dutch_auction.calculateDecreaseStep(args)
 	local intervalsCount = (bint(args.expirationTime) - bint(args.createdAt)) / bint(args.decreaseInterval)
@@ -13,11 +20,23 @@ function dutch_auction.calculateDecreaseStep(args)
 	return math.floor(priceDecreaseMax / intervalsCount)
 end
 
+<<<<<<< Updated upstream
 function dutch_auction.handleArioOrder(args)
 	local decreaseStep = dutch_auction.calculateDecreaseStep(args)
 
 	local orderId = args.orderId
 	Orderbook[args.dominantToken][args.swapToken].orders[orderId] = {
+=======
+--- Handle ARIO-dominant order (buying ANT with ARIO) for Dutch auction
+--- @param args table Order arguments
+--- @param validPair string[] The validated pair [ARIO, ANT]
+--- @param pair Pair The pair object from orderbook
+function dutch_auction.handleArioOrder(args, validPair, pair)
+	local decreaseStep = dutch_auction.calculateDecreaseStep(args)
+
+	-- Use dictionary-style (lookup table) for efficient order management
+	pair.orders[args.orderId] = {
+>>>>>>> Stashed changes
 		id = args.orderId,
 		quantity = tostring(args.quantity),
 		originalQuantity = tostring(args.quantity),
@@ -26,30 +45,35 @@ function dutch_auction.handleArioOrder(args)
 		dateCreated = args.createdAt,
 		price = args.price and tostring(args.price),
 		expirationTime = args.expirationTime,
+<<<<<<< Updated upstream
 		orderType = 'dutch',
 		minimumPrice = args.minimumPrice and tostring(args.minimumPrice),
 		decreaseInterval = args.decreaseInterval and tostring(args.decreaseInterval),
 		decreaseStep = tostring(decreaseStep),
+=======
+		orderType = ORDER_TYPES.DUTCH,
+		minimumPrice = args.minimumPrice and tostring(args.minimumPrice),
+		decreaseInterval = args.decreaseInterval and tostring(args.decreaseInterval),
+		decreaseStep = tostring(decreaseStep),
+		status = ORDER_STATUSES.ACTIVE,
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+>>>>>>> Stashed changes
 	}
 
-	activity.recordListedOrder({
-		Id = args.orderId,
-		DominantToken = args.dominantToken,
-		SwapToken = args.swapToken,
-		Sender = args.sender,
-		Receiver = nil,
-		Quantity = tostring(args.quantity),
-		Price = args.price and tostring(args.price),
-		ExpirationTime = args.expirationTime,
-		CreatedAt = args.createdAt,
-		OrderType = 'dutch',
-		MinimumPrice = args.minimumPrice and tostring(args.minimumPrice),
-		DecreaseInterval = args.decreaseInterval and tostring(args.decreaseInterval),
-		DecreaseStep = tostring(decreaseStep),
-	})
+	-- Add to index for O(1) lookup
+	OrderIndex[args.orderId] = {
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+	}
+
+	-- Schedule pruning for expiration if needed
+	if args.expirationTime then
+		ucm.scheduleNextOrderbookPruning(args.expirationTime)
+	end
 
 	-- Notify sender of successful order creation
-	ao.send({
+	utils.Send(args.msg, {
 		Target = args.sender,
 		Action = 'Order-Success',
 		Tags = {
@@ -62,11 +86,12 @@ function dutch_auction.handleArioOrder(args)
 			Price = args.price and tostring(args.price),
 			Message = 'ARIO order added to orderbook for Dutch auction!',
 			['X-Group-ID'] = args.orderGroupId,
-			OrderType = 'dutch',
+			OrderType = ORDER_TYPES.DUTCH,
 		},
 	})
 end
 
+<<<<<<< Updated upstream
 function dutch_auction.handleAntOrder(args, validPair)
 	-- Swap the pair to get [ARIO, ANT] since we're buying ANT with ARIO
 	local arioDominant = validPair[2] -- ARIO token
@@ -86,26 +111,63 @@ function dutch_auction.handleAntOrder(args, validPair)
 	end
 
 	local currentOrders = pairData.orders
+=======
+--- Handle ANT-dominant order (selling ANT for ARIO) for Dutch auction
+--- @param args table Order arguments
+--- @param validPair string[] The validated pair [ANT, ARIO]
+--- @param pair Pair The pair object from orderbook
+function dutch_auction.handleAntOrder(args, validPair, pair)
+	print('DEBUG handleAntOrder called, requestedOrderId=', args.requestedOrderId)
+	print('  Orders in pair:', pair.orders)
+	-- Count orders
+	local count = 0
+	for _ in pairs(pair.orders) do
+		count = count + 1
+	end
+	print('  Order count:', count)
+
+	local currentOrders = pair.orders
+>>>>>>> Stashed changes
 	local matches = {}
 	local matchedOrderId = nil
 
 	-- Attempt to match with existing Dutch orders for immediate trade
 	for orderId, currentOrderEntry in pairs(currentOrders) do
+		print('DEBUG handleAntOrder: Checking order', orderId, currentOrderEntry.id)
 		-- Check if order has expired
+<<<<<<< Updated upstream
 		if currentOrderEntry.expirationTime and bint(currentOrderEntry.expirationTime) < bint(args.createdAt) then
+=======
+		if utils.isExpired(currentOrderEntry.expirationTime, args.createdAt) then
+>>>>>>> Stashed changes
 			-- Skip expired orders
+			print('  Order expired, skipping')
 			goto continue
 		end
+		print('  Not expired')
 
 		-- Check if the order is a Dutch auction order
+<<<<<<< Updated upstream
 		if currentOrderEntry.orderType ~= 'dutch' then
+=======
+		if currentOrderEntry.orderType ~= ORDER_TYPES.DUTCH then
+			print('  Not dutch type:', currentOrderEntry.orderType)
+>>>>>>> Stashed changes
 			goto continue
 		end
+		print('  Is dutch type')
 
 		-- Check if this is the specific order we're looking for
+<<<<<<< Updated upstream
 		if currentOrderEntry.id ~= args.requestedOrderId then
+=======
+		print('  Comparing IDs:', currentOrderEntry.id, 'vs', args.requestedOrderId)
+		if currentOrderEntry.id ~= args.requestedOrderId then
+			print('  ID mismatch, skipping')
+>>>>>>> Stashed changes
 			goto continue
 		end
+		print('  ID matches! Proceeding to price check')
 
 		-- Calculate current price based on time passed since order creation
 		local timePassed = bint(args.createdAt) - bint(currentOrderEntry.dateCreated)
@@ -163,7 +225,10 @@ function dutch_auction.handleAntOrder(args, validPair)
 			utils.sendFeeToTreasury(requiredAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
 			-- Execute token transfers
+<<<<<<< Updated upstream
 			local ucm = require('ucm')
+=======
+>>>>>>> Stashed changes
 			ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
 
 			-- Handle refund if sent amount was more than required
@@ -179,10 +244,30 @@ function dutch_auction.handleAntOrder(args, validPair)
 				})
 			end
 
+<<<<<<< Updated upstream
 			-- Record the match
 			local match = activity.recordMatch(args, currentOrderEntry, validPair, calculatedFillAmount)
 			table.insert(matches, match)
 
+=======
+			-- Mark order as executed and update fields
+			currentOrderEntry.status = ORDER_STATUSES.EXECUTED
+			currentOrderEntry.endedAt = args.createdAt
+			currentOrderEntry.sender = currentOrderEntry.creator
+			currentOrderEntry.receiver = args.sender
+			currentOrderEntry.buyer = args.sender
+			currentOrderEntry.price = currentPrice
+			currentOrderEntry.finalPrice = tostring(currentPrice)
+
+			-- Record the match for response
+			local match = {
+				Id = currentOrderEntry.id,
+				Quantity = calculatedFillAmount,
+				Price = tostring(currentPrice),
+			}
+			table.insert(matches, match)
+
+>>>>>>> Stashed changes
 			-- Mark the order ID for removal
 			matchedOrderId = orderId
 			break -- Only match with one order, no partial matching
@@ -193,12 +278,18 @@ function dutch_auction.handleAntOrder(args, validPair)
 
 	-- Remove the matched order from the orderbook
 	if matchedOrderId then
+<<<<<<< Updated upstream
 		pairData.orders[matchedOrderId] = nil
+=======
+		pair.orders[matchedOrderId] = nil
+		-- Remove from index
+		OrderIndex[matchedOrderId] = nil
+>>>>>>> Stashed changes
 	end
 
 	-- Send success response if any matches occurred
 	if #matches > 0 then
-		ao.send({
+		utils.Send(args.msg, {
 			Target = args.sender,
 			Action = 'Order-Success',
 			Tags = {
@@ -211,7 +302,7 @@ function dutch_auction.handleAntOrder(args, validPair)
 				Price = args.price and tostring(args.price) or 'None',
 				Message = 'ANT order executed immediately in Dutch auction!',
 				['X-Group-ID'] = args.orderGroupId or 'None',
-				OrderType = 'dutch',
+				OrderType = ORDER_TYPES.DUTCH,
 			},
 		})
 	else

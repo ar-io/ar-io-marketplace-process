@@ -1,16 +1,13 @@
-package.path = package.path .. ';../src/?.lua'
-
--- Mock global Intents table BEFORE requiring the module
-_G.Intents = {}
-
+print('\n=== Loading intents module for testing ===')
+local testGlobals = require('test_globals')
 local intents = require('intents')
+print('✓ intents module loaded')
 
 describe('Intent Management', function()
+	print('\n--- Starting Intent Management tests ---')
 	before_each(function()
-		-- Clear all intent entries
-		for k in pairs(_G.Intents) do
-			_G.Intents[k] = nil
-		end
+		-- Reset global state
+		testGlobals.resetState()
 	end)
 
 	describe('createParent', function()
@@ -28,15 +25,15 @@ describe('Intent Management', function()
 
 			local intent = intents.createParent(msg, 'Create-Order', forwardedTags)
 
-			assert.are.equal('test-intent-123', intent.IntentId)
-			assert.are.equal('parent', intent.Type)
-			assert.are.equal('user-address-abc', intent.Initiator)
-			assert.are.equal('Create-Order', intent.Action)
-			assert.are.equal('pending', intent.Status)
-			assert.are.equal(1234567890, intent.CreatedAt)
-			assert.is_nil(intent.ParentIntentId)
-			assert.is_table(intent.ChildIntentIds)
-			assert.are.same(forwardedTags, intent.ForwardedTags)
+		assert.are.equal('test-intent-123', intent.intentId)
+		assert.are.equal('parent', intent.type)
+		assert.are.equal('user-address-abc', intent.initiator)
+		assert.are.equal('Create-Order', intent.action)
+		assert.are.equal('pending', intent.status)
+		assert.are.equal(1234567890, intent.createdAt)
+		assert.is_nil(intent.parentIntentId)
+		assert.is_table(intent.childIntentIds)
+		assert.are.same(forwardedTags, intent.forwardedTags)
 		end)
 
 		it('should add parent intent to Intents table', function()
@@ -48,8 +45,8 @@ describe('Intent Management', function()
 
 			intents.createParent(msg, 'Cancel-Order', {})
 
-			assert.is_not_nil(Intents['test-intent-456'])
-			assert.are.equal('parent', Intents['test-intent-456'].Type)
+		assert.is_not_nil(Intents['test-intent-456'])
+		assert.are.equal('parent', Intents['test-intent-456'].type)
 		end)
 	end)
 
@@ -77,13 +74,13 @@ describe('Intent Management', function()
 
 			local childIntent = intents.createChild('parent-123', childMsg, 'token-process-id', forwardedTags)
 
-			assert.are.equal('child', childIntent.Type)
-			assert.are.equal('parent-123', childIntent.ParentIntentId)
-			assert.are.equal('Transfer', childIntent.Action)
-			assert.are.equal('Debit-Notice', childIntent.ExpectedMessage)
-			assert.are.equal('token-process-id', childIntent.ExpectedFrom)
-			assert.are.equal('pending', childIntent.Status)
-			assert.are.same(forwardedTags, childIntent.ForwardedTags)
+		assert.are.equal('child', childIntent.type)
+		assert.are.equal('parent-123', childIntent.parentIntentId)
+		assert.are.equal('Transfer', childIntent.action)
+		assert.are.equal('Debit-Notice', childIntent.expectedMessage)
+		assert.are.equal('token-process-id', childIntent.expectedFrom)
+		assert.are.equal('pending', childIntent.status)
+		assert.are.same(forwardedTags, childIntent.forwardedTags)
 		end)
 
 		it("should add child to parent's ChildIntentIds map", function()
@@ -103,8 +100,8 @@ describe('Intent Management', function()
 
 			local childIntent = intents.createChild('parent-456', childMsg, 'token-123', {})
 
-			local parent = Intents['parent-456']
-			assert.is_true(parent.ChildIntentIds[childIntent.IntentId])
+		local parent = Intents['parent-456']
+		assert.is_true(parent.childIntentIds[childIntent.intentId])
 		end)
 	end)
 
@@ -119,9 +116,9 @@ describe('Intent Management', function()
 
 			local result = intents.resolve('parent-789', 1234567900)
 
-			assert.is_true(result)
-			assert.are.equal('active', Intents['parent-789'].Status)
-			assert.are.equal(1234567900, Intents['parent-789'].ResolvedAt)
+		assert.is_true(result)
+		assert.are.equal('active', Intents['parent-789'].status)
+		assert.are.equal(1234567900, Intents['parent-789'].resolvedAt)
 		end)
 
 		it('should update child status to resolved', function()
@@ -140,11 +137,11 @@ describe('Intent Management', function()
 			}
 			local childIntent = intents.createChild('parent-999', childMsg, 'token-123', {})
 
-			local result = intents.resolve(childIntent.IntentId, 1234567950)
+		local result = intents.resolve(childIntent.intentId, 1234567950)
 
-			assert.is_true(result)
-			assert.are.equal('resolved', Intents[childIntent.IntentId].Status)
-			assert.are.equal(1234567950, Intents[childIntent.IntentId].ResolvedAt)
+		assert.is_true(result)
+		assert.are.equal('resolved', Intents[childIntent.intentId].status)
+		assert.are.equal(1234567950, Intents[childIntent.intentId].resolvedAt)
 		end)
 
 		it('should return false for non-existent intent', function()
@@ -165,8 +162,8 @@ describe('Intent Management', function()
 			local result = intents.fail('parent-fail', 'Insufficient balance')
 
 			assert.is_true(result)
-			assert.are.equal('failed', Intents['parent-fail'].Status)
-			assert.are.equal('Insufficient balance', Intents['parent-fail'].FailureReason)
+		assert.are.equal('failed', Intents['parent-fail'].status)
+		assert.are.equal('Insufficient balance', Intents['parent-fail'].failureReason)
 		end)
 
 		it('should return false for non-existent intent', function()
@@ -187,7 +184,7 @@ describe('Intent Management', function()
 			local result = intents.updateStatus('parent-status', 'settling')
 
 			assert.is_true(result)
-			assert.are.equal('settling', Intents['parent-status'].Status)
+			assert.are.equal('settling', Intents['parent-status'].status)
 		end)
 
 		it('should set CompletedAt when status is completed', function()
@@ -200,8 +197,8 @@ describe('Intent Management', function()
 
 			intents.updateStatus('parent-complete', 'completed')
 
-			assert.are.equal('completed', Intents['parent-complete'].Status)
-			assert.is_not_nil(Intents['parent-complete'].CompletedAt)
+		assert.are.equal('completed', Intents['parent-complete'].status)
+		assert.is_not_nil(Intents['parent-complete'].completedAt)
 		end)
 	end)
 
@@ -216,8 +213,8 @@ describe('Intent Management', function()
 
 			local intent = intents.getById('test-get')
 
-			assert.is_not_nil(intent)
-			assert.are.equal('test-get', intent.IntentId)
+		assert.is_not_nil(intent)
+		assert.are.equal('test-get', intent.intentId)
 		end)
 
 		it('should return nil for non-existent intent', function()
@@ -247,8 +244,8 @@ describe('Intent Management', function()
 
 			local pending = intents.getPending()
 
-			assert.are.equal(1, #pending)
-			assert.are.equal('pending-1', pending[1].IntentId)
+		assert.are.equal(1, #pending)
+		assert.are.equal('pending-1', pending[1].intentId)
 		end)
 	end)
 
@@ -272,8 +269,8 @@ describe('Intent Management', function()
 
 			local failed = intents.getByStatus('failed')
 
-			assert.are.equal(1, #failed)
-			assert.are.equal('intent-2', failed[1].IntentId)
+		assert.are.equal(1, #failed)
+		assert.are.equal('intent-2', failed[1].intentId)
 		end)
 	end)
 
@@ -339,11 +336,11 @@ describe('Intent Management', function()
 			}
 			local child2 = intents.createChild('parent-check', childMsg2, 'token-2', {})
 
-			-- Resolve both children
-			intents.resolve(child1.IntentId, 1234567950)
-			intents.resolve(child2.IntentId, 1234567960)
+		-- Resolve both children
+		intents.resolve(child1.intentId, 1234567950)
+		intents.resolve(child2.intentId, 1234567960)
 
-			assert.is_true(intents.areAllChildrenResolved('parent-check'))
+		assert.is_true(intents.areAllChildrenResolved('parent-check'))
 		end)
 
 		it('should return false when not all children are resolved', function()
@@ -368,10 +365,10 @@ describe('Intent Management', function()
 			}
 			intents.createChild('parent-check-2', childMsg2, 'token-2', {})
 
-			-- Only resolve one child
-			intents.resolve(child1.IntentId, 1234567950)
+		-- Only resolve one child
+		intents.resolve(child1.intentId, 1234567950)
 
-			assert.is_false(intents.areAllChildrenResolved('parent-check-2'))
+		assert.is_false(intents.areAllChildrenResolved('parent-check-2'))
 		end)
 	end)
 end)

@@ -24,9 +24,9 @@ describe('Activity Tracking', () => {
     await ao_mock.reset();
   });
 
-  describe('Get-Listed-Orders', () => {
+  describe('Get-Orders (Listed)', () => {
     it('should return empty list when no orders exist', async () => {
-      const result = await marketplaceProcess.getListedOrders();
+      const result = await marketplaceProcess.getOrders({ status: 'listed' });
 
       console.dir({ emptyListedOrders: result }, { depth: null });
 
@@ -38,7 +38,10 @@ describe('Activity Tracking', () => {
     });
 
     it('should support pagination', async () => {
-      const result = await marketplaceProcess.getListedOrders({ limit: 10 });
+      const result = await marketplaceProcess.getOrders({
+        status: 'listed',
+        limit: 10,
+      });
 
       console.dir({ paginatedListedOrders: result }, { depth: null });
 
@@ -49,7 +52,8 @@ describe('Activity Tracking', () => {
     });
 
     it('should support filtering', async () => {
-      const result = await marketplaceProcess.getListedOrders({
+      const result = await marketplaceProcess.getOrders({
+        status: 'listed',
         filters: { Status: 'active' },
       });
 
@@ -60,9 +64,11 @@ describe('Activity Tracking', () => {
     });
   });
 
-  describe('Get-Completed-Orders', () => {
+  describe('Get-Orders (Completed)', () => {
     it('should return empty list when no completed orders exist', async () => {
-      const result = await marketplaceProcess.getCompletedOrders();
+      const result = await marketplaceProcess.getOrders({
+        status: 'completed',
+      });
 
       console.dir({ emptyCompletedOrders: result }, { depth: null });
 
@@ -78,7 +84,8 @@ describe('Activity Tracking', () => {
     });
 
     it('should support pagination and sorting', async () => {
-      const result = await marketplaceProcess.getCompletedOrders({
+      const result = await marketplaceProcess.getOrders({
+        status: 'completed',
         limit: 5,
         sortBy: 'CreatedAt',
         sortOrder: 'desc',
@@ -94,11 +101,9 @@ describe('Activity Tracking', () => {
     });
   });
 
-  describe('Get-Order-By-Id', () => {
+  describe('Get-Order', () => {
     it('should return Order-Not-Found for non-existent order', async () => {
-      const result = await marketplaceProcess.getOrderById(
-        'non-existent-order-id',
-      );
+      const result = await marketplaceProcess.getOrder('non-existent-order-id');
 
       console.dir({ nonExistentOrder: result }, { depth: null });
 
@@ -106,9 +111,9 @@ describe('Activity Tracking', () => {
       assert.strictEqual(result.Action, 'Order-Not-Found');
     });
 
-    it('should handle missing OrderId parameter', async () => {
+    it('should handle missing Id parameter', async () => {
       const result = (await marketplaceProcess.process.read({
-        tags: [{ name: 'Action', value: 'Get-Order-By-Id' }],
+        tags: [{ name: 'Action', value: 'Get-Order' }],
       })) as any;
 
       console.dir({ missingOrderId: result }, { depth: null });
@@ -170,26 +175,29 @@ describe('Activity Tracking', () => {
     });
   });
 
-  describe('Get-Activity-Lengths', () => {
-    it('should return counts of all activity arrays', async () => {
-      const result = await marketplaceProcess.getActivityLengths();
+  describe('Info (Activity Counts)', () => {
+    it('should return counts of all activity via info handler', async () => {
+      const info = await marketplaceProcess.info();
 
-      console.dir({ activityLengths: result }, { depth: null });
+      console.dir({ info }, { depth: null });
 
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
-      const data = JSON.parse(result.Data);
+      assert(info, 'Info should be defined');
+      assert(info.activity, 'Activity should be defined');
       assert(
-        typeof data.ListedOrders === 'number',
-        'ListedOrders should be a number',
+        typeof info.activity.listedOrders === 'number',
+        'listedOrders should be a number',
       );
       assert(
-        typeof data.ExecutedOrders === 'number',
-        'ExecutedOrders should be a number',
+        typeof info.activity.executedOrders === 'number',
+        'executedOrders should be a number',
       );
       assert(
-        typeof data.CancelledOrders === 'number',
-        'CancelledOrders should be a number',
+        typeof info.activity.cancelledOrders === 'number',
+        'cancelledOrders should be a number',
+      );
+      assert(
+        typeof info.activity.totalOrders === 'number',
+        'totalOrders should be a number',
       );
     });
   });
