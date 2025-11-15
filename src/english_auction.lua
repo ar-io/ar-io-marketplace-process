@@ -81,12 +81,12 @@ function english_auction.handleAntOrder(args, _, pair)
 	-- Check if orderId is provided (required for bid identification)
 	if not args.orderId then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'Order ID is required for bidding',
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'Order ID is required for bidding',
+			quantity = args.quantity,
+			transferToken = args.dominantToken,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -105,12 +105,12 @@ function english_auction.handleAntOrder(args, _, pair)
 	-- Check if the auction exists
 	if not targetOrder then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'English auction not found',
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'English auction not found',
+			quantity = args.quantity,
+			transferToken = args.dominantToken,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -118,12 +118,12 @@ function english_auction.handleAntOrder(args, _, pair)
 	-- Ensure bidding is allowed only on active orders
 	if targetOrder.status ~= ORDER_STATUSES.ACTIVE then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'Bidding allowed only on active orders',
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'Bidding allowed only on active orders',
+			quantity = args.quantity,
+			transferToken = args.dominantToken,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -131,12 +131,12 @@ function english_auction.handleAntOrder(args, _, pair)
 	-- Check if auction has expired
 	if not english_auction.isAuctionActive(targetOrder.expirationTime, args.createdAt) then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'Auction has expired',
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'Auction has expired',
+			quantity = args.quantity,
+			transferToken = args.dominantToken,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -152,12 +152,12 @@ function english_auction.handleAntOrder(args, _, pair)
 
 	if not isValidBid then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = bidError,
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = bidError,
+			quantity = args.quantity,
+			transferToken = args.dominantToken,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -235,7 +235,6 @@ function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapTok
 
 		if not success then
 			-- If settlement fails, mark as ready for manual settlement
-			print('Auto-settlement failed for ' .. order.id .. ': ' .. tostring(err))
 			order.status = constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
 		end
 	else

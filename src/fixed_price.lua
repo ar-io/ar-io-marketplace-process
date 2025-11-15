@@ -134,21 +134,21 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 			local requiredAmount = bint(currentOrderEntry.price)
 			local sentAmount = bint(args.quantity)
 			if sentAmount >= requiredAmount then
-				-- User buys 1 ANT token
-				fillAmount = bint(1) -- always 1 for ANT orders
+			-- User buys 1 ANT token
+			fillAmount = bint(1) -- always 1 for ANT orders
 
-				-- Validate we have a valid fill amount
-				if fillAmount <= bint(0) then
-					utils.handleError({
-						Target = args.sender,
-						Action = 'Order-Error',
-						Message = 'No amount to fill',
-						Quantity = args.quantity,
-						TransferToken = args.dominantToken,
-						OrderGroupId = args.orderGroupId,
-					})
-					return
-				end
+			-- Validate we have a valid fill amount
+			if fillAmount <= bint(0) then
+				utils.handleError({
+					target = args.sender,
+					action = 'Order-Error',
+					message = 'No amount to fill',
+					quantity = args.quantity,
+					transferToken = args.dominantToken,
+					orderGroupId = args.orderGroupId,
+				})
+				return
+			end
 
 				-- Apply fees and calculate final amounts based on required amount
 				local calculatedSendAmount = utils.calculateSendAmount(requiredAmount)
@@ -238,12 +238,12 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 	else
 		-- No matches found for ANT token - return error
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'No matching orders found for immediate ANT trade - exact ARIO amount match required',
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'No matching orders found for immediate ANT trade - exact ARIO amount match required',
+			quantity = args.quantity,
+			transferToken = args.dominantToken,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end

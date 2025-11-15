@@ -81,44 +81,27 @@ end
 --- @param validPair string[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
 function dutch_auction.handleAntOrder(args, validPair, pair)
-	print('DEBUG handleAntOrder called, requestedOrderId=', args.requestedOrderId)
-	print('  Orders in pair:', pair.orders)
-	-- Count orders
-	local count = 0
-	for _ in pairs(pair.orders) do
-		count = count + 1
-	end
-	print('  Order count:', count)
-
 	local currentOrders = pair.orders
 	local matches = {}
 	local matchedOrderId = nil
 
 	-- Attempt to match with existing Dutch orders for immediate trade
 	for orderId, currentOrderEntry in pairs(currentOrders) do
-		print('DEBUG handleAntOrder: Checking order', orderId, currentOrderEntry.id)
 		-- Check if order has expired
 		if utils.isExpired(currentOrderEntry.expirationTime, args.createdAt) then
 			-- Skip expired orders
-			print('  Order expired, skipping')
 			goto continue
 		end
-		print('  Not expired')
 
 		-- Check if the order is a Dutch auction order
 		if currentOrderEntry.orderType ~= ORDER_TYPES.DUTCH then
-			print('  Not dutch type:', currentOrderEntry.orderType)
 			goto continue
 		end
-		print('  Is dutch type')
 
 		-- Check if this is the specific order we're looking for
-		print('  Comparing IDs:', currentOrderEntry.id, 'vs', args.requestedOrderId)
 		if currentOrderEntry.id ~= args.requestedOrderId then
-			print('  ID mismatch, skipping')
 			goto continue
 		end
-		print('  ID matches! Proceeding to price check')
 
 		-- Calculate current price based on time passed since order creation
 		local timePassed = bint(args.createdAt) - bint(currentOrderEntry.dateCreated)
@@ -138,12 +121,12 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 			-- Validate we have a valid fill amount
 			if fillAmount <= bint(0) then
 				utils.handleError({
-					Target = args.sender,
-					Action = 'Order-Error',
-					Message = 'No amount to fill',
-					Quantity = args.quantity,
-					TransferToken = args.dominantToken,
-					OrderGroupId = args.orderGroupId,
+					target = args.sender,
+					action = 'Order-Error',
+					message = 'No amount to fill',
+					quantity = args.quantity,
+					transferToken = args.dominantToken,
+					orderGroupId = args.orderGroupId,
 				})
 				return
 			end
@@ -155,12 +138,12 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 
 			if sentAmount < requiredAmount then
 				utils.handleError({
-					Target = args.sender,
-					Action = 'Order-Error',
-					Message = 'Insufficient payment for current Dutch auction price',
-					Quantity = args.quantity, -- Refund the ARIO amount that was sent
-					TransferToken = args.dominantToken, -- Send to ARIO token process (dominantToken)
-					OrderGroupId = args.orderGroupId,
+					target = args.sender,
+					action = 'Order-Error',
+					message = 'Insufficient payment for current Dutch auction price',
+					quantity = args.quantity, -- Refund the ARIO amount that was sent
+					transferToken = args.dominantToken, -- Send to ARIO token process (dominantToken)
+					orderGroupId = args.orderGroupId,
 					RequiredAmount = tostring(requiredAmount),
 					SentAmount = tostring(sentAmount),
 				})
@@ -246,12 +229,12 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 	else
 		-- No matches found for ANT token - return error
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'No matching Dutch auction order found for immediate ANT trade',
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'No matching Dutch auction order found for immediate ANT trade',
+			quantity = args.quantity,
+			transferToken = args.dominantToken,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end

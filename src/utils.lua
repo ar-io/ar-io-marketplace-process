@@ -172,6 +172,9 @@ function utils.splitString(input, delimiter)
 	return result
 end
 
+--- Checks if an address is valid (Arweave length and format)
+--- @param address string|nil The address to check
+--- @return boolean isValid Whether the address is valid
 function utils.checkValidAddress(address)
 	if not address or type(address) ~= 'string' then
 		return false
@@ -180,14 +183,25 @@ function utils.checkValidAddress(address)
 	return string.match(address, '^[%w%-_]+$') ~= nil and #address == constants.ADDRESS.ARWEAVE_LENGTH
 end
 
+--- Checks if an amount is valid (greater than 0)
+--- @param data string|number The amount to check
+--- @return boolean isValid Whether the amount is valid
 function utils.checkValidAmount(data)
 	return bint(data) > bint(0)
 end
 
+--- Checks if a token address is the ARIO token
+--- @param tokenAddress string The token address to check
+--- @return boolean isArioToken Whether the token is ARIO
 function utils.isArioToken(tokenAddress)
 	return tokenAddress == ARIO_TOKEN_PROCESS_ID
 end
 
+--- Validates that at least one token in a trade is ARIO
+--- @param dominantToken string The dominant token address
+--- @param swapToken string The swap token address
+--- @return boolean isValid Whether the trade includes ARIO
+--- @return string|nil error The error message if invalid
 function utils.validateArioInTrade(dominantToken, swapToken)
 	-- At least one of the tokens in the trade must be ARIO
 	if dominantToken == ARIO_TOKEN_PROCESS_ID or swapToken == ARIO_TOKEN_PROCESS_ID then
@@ -196,6 +210,10 @@ function utils.validateArioInTrade(dominantToken, swapToken)
 	return false, 'At least one token in the trade must be ARIO'
 end
 
+--- Decodes JSON message data
+--- @param data string The JSON string to decode
+--- @return boolean success Whether decoding was successful
+--- @return table|nil decodedData The decoded data or nil if failed
 function utils.decodeMessageData(data)
 	local status, decodedData = pcall(json.decode, data)
 
@@ -206,30 +224,33 @@ function utils.decodeMessageData(data)
 	return true, decodedData
 end
 
+--- Validates a trading pair (two token addresses)
+--- @param data table The pair data to validate
+--- @return table|nil pairData The validated pair data
+--- @return string|nil error The error message if invalid
 function utils.validatePairData(data)
 	if type(data) ~= 'table' or #data ~= 2 then
-		print('Pair must be a list of exactly two strings - [TokenId, TokenId]')
 		return nil, 'Pair must be a list of exactly two strings - [TokenId, TokenId]'
 	end
 
 	if type(data[1]) ~= 'string' or type(data[2]) ~= 'string' then
-		print('Both pair elements must be strings')
 		return nil, 'Both pair elements must be strings'
 	end
 
 	if not utils.checkValidAddress(data[1]) or not utils.checkValidAddress(data[2]) then
-		print('Both pair elements must be valid addresses')
 		return nil, 'Both pair elements must be valid addresses'
 	end
 
 	if data[1] == data[2] then
-		print('Pair addresses cannot be equal')
 		return nil, 'Pair addresses cannot be equal'
 	end
 
 	return data
 end
 
+--- Calculates the send amount after applying fees
+--- @param amount string|number The original amount
+--- @return string sendAmount The amount to send (after fee deduction)
 function utils.calculateSendAmount(amount)
 	local factor = bint(constants.FEE.FACTOR_NUMERATOR)
 	local divisor = bint(constants.FEE.FACTOR_DENOMINATOR)
@@ -237,6 +258,9 @@ function utils.calculateSendAmount(amount)
 	return tostring(sendAmount)
 end
 
+--- Calculates the fee amount from an original amount
+--- @param amount string|number The original amount
+--- @return string feeAmount The fee amount
 function utils.calculateFeeAmount(amount)
 	local factor = bint(constants.FEE.AMOUNT_NUMERATOR)
 	local divisor = bint(constants.FEE.AMOUNT_DENOMINATOR)
@@ -244,6 +268,9 @@ function utils.calculateFeeAmount(amount)
 	return tostring(feeAmount)
 end
 
+--- Calculates the fill amount by flooring the value
+--- @param amount string|number The amount to calculate
+--- @return string fillAmount The floored fill amount as string
 function utils.calculateFillAmount(amount)
 	-- Convert to string first (handles bint objects), then to number
 	return tostring(math.floor(tonumber(tostring(amount)) or 0))
@@ -266,6 +293,9 @@ function utils.Send(msg, sendParams)
 	end
 end
 
+--- Prints a table in a formatted way (serializes to string)
+--- @param t table The table to print
+--- @param indent number|nil The indentation level (optional)
 function utils.printTable(t, indent)
 	local function serialize(tbl, indentLevel)
 		local isArray = #tbl > 0
@@ -301,9 +331,12 @@ function utils.printTable(t, indent)
 	end
 
 	local jsonStr = serialize(t, indent or 0)
-	print(jsonStr)
 end
 
+--- Recursively checks if two tables are equal
+--- @param t1 any The first table
+--- @param t2 any The second table
+--- @return boolean areEqual Whether the tables are equal
 function utils.checkTables(t1, t2)
 	if t1 == t2 then
 		return true
@@ -324,6 +357,11 @@ function utils.checkTables(t1, t2)
 	return true
 end
 
+--- Checks if an expiration time is valid
+--- @param expirationTime string|number|nil The expiration timestamp
+--- @param timestamp string|number The current timestamp
+--- @return boolean isValid Whether the expiration time is valid
+--- @return string|nil error The error message if invalid
 function utils.checkValidExpirationTime(expirationTime, timestamp)
 	-- If expiration time is nil, return true
 	if not expirationTime then
@@ -363,36 +401,42 @@ function utils.isExpired(expirationTime, currentTimestamp)
 	return expirationTime < currentTimestamp
 end
 
-function utils.handleError(args) -- Target, TransferToken, Quantity, msg
+--- Handles errors by refunding tokens and sending error notice
+--- @param args {target: string, action: string, message: string, transferToken: string?, quantity: string?, orderGroupId: string?, msg: table?} Error handling parameters
+function utils.handleError(args) -- target, transferToken, quantity, msg
 	-- If there is a valid quantity then return the funds
 	local msg = args.msg or { Tags = {} }
-	if args.TransferToken and args.Quantity and utils.checkValidAmount(args.Quantity) then
+	if args.transferToken and args.quantity and utils.checkValidAmount(args.quantity) then
 		local ucm = require('ucm')
 		ucm.transfer(msg, {
-			Target = args.TransferToken,
+			Target = args.transferToken,
 			Action = 'Transfer',
 			Tags = {
-				Recipient = args.Target,
-				Quantity = tostring(args.Quantity),
+				Recipient = args.target,
+				Quantity = tostring(args.quantity),
 			},
 		})
 	end
 	utils.Send(msg, {
-		Target = args.Target,
-		Action = args.Action,
-		Tags = { Status = 'Error', Message = args.Message, ['X-Group-ID'] = args.OrderGroupId },
+		Target = args.target,
+		Action = args.action,
+		Tags = { Status = 'Error', Message = args.message, ['X-Group-ID'] = args.orderGroupId },
 	})
 end
 
--- Helper function to refund deposits on validation failures
+--- Helper function to refund deposits on validation failures
+--- @param msg table The original message
+--- @param sender string The sender address to refund to
+--- @param message string The error message
+--- @param action string|nil The action type (defaults to 'Validation-Error')
 function utils.refundAndError(msg, sender, message, action)
 	utils.handleError({
-		Target = sender,
-		Action = action or 'Validation-Error',
-		Message = message,
-		Quantity = msg.Tags.Quantity,
-		TransferToken = msg.From,
-		OrderGroupId = msg.Tags['X-Group-ID'] or 'None',
+		target = sender,
+		action = action or 'Validation-Error',
+		message = message,
+		quantity = msg.Tags.Quantity,
+		transferToken = msg.From,
+		orderGroupId = msg.Tags['X-Group-ID'] or 'None',
 		msg = msg,
 	})
 end
@@ -510,6 +554,10 @@ function utils.paginateTableWithCursor(tableArray, cursor, cursorField, limit, s
 	}
 end
 
+--- Creates a lookup table from an array or table
+--- @param tbl table The table to create lookup from
+--- @param valueFn function|nil Optional function to transform values (defaults to returning true)
+--- @return table lookupTable The lookup table with keys from input and values from valueFn
 function utils.createLookupTable(tbl, valueFn)
 	local lookupTable = {}
 	valueFn = valueFn or function()
@@ -758,6 +806,11 @@ function utils.filterArray(array, filterFn)
 	return result
 end
 
+--- Sends fee amount to treasury address
+--- @param originalAmount string|number The original amount before fees
+--- @param calculatedAmount string|number The calculated amount after fees
+--- @param feeToken string The token process ID for the fee
+--- @param msg table|nil The message context (optional)
 function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg)
 	if not TREASURY_ADDRESS or TREASURY_ADDRESS == 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks' then
 		return

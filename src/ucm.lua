@@ -201,12 +201,12 @@ function ucm.validateAntDominantOrder(args, validPair)
 	-- ANT tokens can only be sold in quantities of exactly 1
 	if bint(args.quantity) ~= bint(constants.AUCTION.ANT_EXACT_QUANTITY) then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = 'ANT tokens can only be sold in quantities of exactly ' .. constants.AUCTION.ANT_EXACT_QUANTITY,
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = 'ANT tokens can only be sold in quantities of exactly ' .. constants.AUCTION.ANT_EXACT_QUANTITY,
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -214,12 +214,12 @@ function ucm.validateAntDominantOrder(args, validPair)
 	-- Price is required when selling ANT
 	if not args.price then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = 'Price is required when selling ANT tokens',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = 'Price is required when selling ANT tokens',
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -228,12 +228,12 @@ function ucm.validateAntDominantOrder(args, validPair)
 	local isValidExpiration, expirationError = utils.checkValidExpirationTime(args.expirationTime, args.createdAt)
 	if not isValidExpiration then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = expirationError,
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = expirationError,
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -242,12 +242,12 @@ function ucm.validateAntDominantOrder(args, validPair)
 	local isValidPrice, priceError = utils.checkValidAmount(args.price)
 	if not isValidPrice then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = priceError,
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = priceError,
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -262,12 +262,12 @@ function ucm.validateArioDominantOrder(args, validPair)
 	-- This function is a placeholder for future ARIO-specific validation rules
 	if not args.requestedOrderId then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = 'Requested order ID is required',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = 'Requested order ID is required',
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 		return false
 	end
@@ -281,12 +281,12 @@ function ucm.validateOrderParams(args)
 	local validPair, pairError = utils.validatePairData({ args.dominantToken, args.swapToken })
 	if not validPair then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = pairError or 'Error validating pair',
-			Quantity = args.quantity,
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = pairError or 'Error validating pair',
+			quantity = args.quantity,
+			transferToken = nil,
+			orderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
@@ -295,12 +295,12 @@ function ucm.validateOrderParams(args)
 	local isArioValid, arioError = utils.validateArioInTrade(args.dominantToken, args.swapToken)
 	if not isArioValid then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = arioError or 'Invalid trade - ARIO must be involved',
-			Quantity = args.quantity,
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = arioError or 'Invalid trade - ARIO must be involved',
+			quantity = args.quantity,
+			transferToken = nil,
+			orderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
@@ -308,12 +308,12 @@ function ucm.validateOrderParams(args)
 	-- 3. Check quantity is positive integer
 	if not utils.checkValidAmount(args.quantity) then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = 'Quantity must be an integer greater than zero',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = 'Quantity must be an integer greater than zero',
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
@@ -324,12 +324,12 @@ function ucm.validateOrderParams(args)
 		or args.orderType ~= 'fixed' and args.orderType ~= 'dutch' and args.orderType ~= 'english'
 	then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Validation-Error',
-			Message = 'Order type must be "fixed" or "dutch" or "english"',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Validation-Error',
+			message = 'Order type must be "fixed" or "dutch" or "english"',
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 		return nil
 	end
@@ -347,12 +347,12 @@ function ucm.validateOrderParams(args)
 			local isValidDutch, dutchError = dutch_auction.validateDutchParams(args)
 			if not isValidDutch then
 				utils.handleError({
-					Target = args.sender,
-					Action = 'Validation-Error',
-					Message = dutchError,
-					Quantity = args.quantity,
-					TransferToken = validPair[1],
-					OrderGroupId = args.orderGroupId,
+					target = args.sender,
+					action = 'Validation-Error',
+					message = dutchError,
+					quantity = args.quantity,
+					transferToken = validPair[1],
+					orderGroupId = args.orderGroupId,
 				})
 				return nil
 			end
@@ -372,17 +372,14 @@ end
 --- @return Pair The pair object
 function ucm.ensurePairExists(validPair)
 	local dominantToken, swapToken = validPair[1], validPair[2]
-	print('DEBUG ensurePairExists: Looking for pair', dominantToken, swapToken)
 
 	-- Create dominantToken level if it doesn't exist
 	if not Orderbook[dominantToken] then
-		print('  Creating dominantToken level:', dominantToken)
 		Orderbook[dominantToken] = {}
 	end
 
 	-- Create pair if it doesn't exist
 	if not Orderbook[dominantToken][swapToken] then
-		print('  Creating new pair:', dominantToken, '->', swapToken)
 		Orderbook[dominantToken][swapToken] = {
 			pair = validPair,
 			orders = {},
@@ -397,25 +394,21 @@ end
 --- @param validPair string[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
 function ucm.handleAntOrderAuctions(args, validPair, pair)
-	print('DEBUG handleAntOrderAuctions: orderType=', args.orderType)
 	if args.orderType == constants.ORDER_TYPES.FIXED then
 		fixed_price.handleAntOrder(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.DUTCH then
-		print('DEBUG: Loading and calling dutch_auction.handleAntOrder')
 		local dutch_auction = require('dutch_auction')
-		print('DEBUG: dutch_auction module loaded, calling handleAntOrder')
 		dutch_auction.handleAntOrder(args, validPair, pair)
-		print('DEBUG: dutch_auction.handleAntOrder returned')
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
 		english_auction.handleAntOrder(args, validPair, pair)
 	else
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'Order type not implemented yet',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'Order type not implemented yet',
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 	end
 end
@@ -430,12 +423,12 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 	for _, existingOrder in pairs(currentOrders) do
 		if existingOrder.token == args.dominantToken then
 			utils.handleError({
-				Target = args.sender,
-				Action = 'Validation-Error',
-				Message = 'This ANT token is already being sold - cannot create duplicate sell order',
-				Quantity = args.quantity,
-				TransferToken = validPair[1],
-				OrderGroupId = args.orderGroupId,
+				target = args.sender,
+				action = 'Validation-Error',
+				message = 'This ANT token is already being sold - cannot create duplicate sell order',
+				quantity = args.quantity,
+				transferToken = validPair[1],
+				orderGroupId = args.orderGroupId,
 			})
 			return
 		end
@@ -449,12 +442,12 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 		english_auction.handleArioOrder(args, validPair, pair)
 	else
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'Order type not implemented yet',
-			Quantity = args.quantity,
-			TransferToken = validPair[1],
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Order-Error',
+			message = 'Order type not implemented yet',
+			quantity = args.quantity,
+			transferToken = validPair[1],
+			orderGroupId = args.orderGroupId,
 		})
 	end
 end
@@ -472,18 +465,9 @@ function ucm.createOrder(args)
 	-- Check if the desired token is ARIO (add to orderbook) or ANT (immediate trade only)
 	local isBuyingAnt = utils.isArioToken(args.dominantToken) -- If dominantToken is ARIO, we're buying ANT
 	local isBuyingArio = not isBuyingAnt -- If dominantToken is not ARIO, we're selling ANT
-	print(
-		'DEBUG createOrder: dominantToken=',
-		args.dominantToken,
-		'isBuyingAnt=',
-		isBuyingAnt,
-		'orderType=',
-		args.orderType
-	)
 
 	-- Handle ANT token orders - check for immediate trades only, don't add to orderbook
 	if isBuyingAnt then
-		print('DEBUG: Calling handleAntOrderAuctions')
 		-- When buying ANT, we need to look for ANT sell orders in the ANT->ARIO pair (opposite direction)
 		local oppositePair = { validPair[2], validPair[1] } -- [ANT, ARIO]
 		local oppositePairObj = ucm.ensurePairExists(oppositePair)
@@ -499,12 +483,12 @@ function ucm.createOrder(args)
 
 	-- Placeholder for future order type handling
 	utils.handleError({
-		Target = args.sender,
-		Action = 'Order-Error',
-		Message = 'Order type not implemented yet',
-		Quantity = args.quantity,
-		TransferToken = validPair[1],
-		OrderGroupId = args.orderGroupId,
+		target = args.sender,
+		action = 'Order-Error',
+		message = 'Order type not implemented yet',
+		quantity = args.quantity,
+		transferToken = validPair[1],
+		orderGroupId = args.orderGroupId,
 	})
 end
 
@@ -514,12 +498,12 @@ function ucm.settleAuction(args)
 
 	if not targetOrder then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Settlement-Error',
-			Message = 'Auction order not found',
-			Quantity = '0',
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Settlement-Error',
+			message = 'Auction order not found',
+			quantity = '0',
+			transferToken = nil,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -527,12 +511,12 @@ function ucm.settleAuction(args)
 	-- Validate it's an English auction
 	if targetOrder.orderType ~= constants.ORDER_TYPES.ENGLISH then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Settlement-Error',
-			Message = 'Order is not an English auction',
-			Quantity = '0',
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Settlement-Error',
+			message = 'Order is not an English auction',
+			quantity = '0',
+			transferToken = nil,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -540,12 +524,12 @@ function ucm.settleAuction(args)
 	-- Check if auction has bids
 	if not targetOrder.highestBidder then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Settlement-Error',
-			Message = 'No bids found for auction',
-			Quantity = '0',
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Settlement-Error',
+			message = 'No bids found for auction',
+			quantity = '0',
+			transferToken = nil,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
@@ -553,12 +537,12 @@ function ucm.settleAuction(args)
 	-- Check if auction has expired
 	if not utils.isExpired(targetOrder.expirationTime, args.timestamp) then
 		utils.handleError({
-			Target = args.sender,
-			Action = 'Settlement-Error',
-			Message = 'Auction has not expired yet',
-			Quantity = '0',
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
+			target = args.sender,
+			action = 'Settlement-Error',
+			message = 'Auction has not expired yet',
+			quantity = '0',
+			transferToken = nil,
+			orderGroupId = args.orderGroupId,
 		})
 		return
 	end
