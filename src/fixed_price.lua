@@ -1,7 +1,7 @@
 local bint = require('.bint')(256)
 local utils = require('utils')
 local constants = require('constants')
-local ucm = require('ucm')
+-- ucm is required at runtime to avoid circular dependency
 
 local fixed_price = {}
 local ORDER_STATUSES = constants.ORDER_STATUSES
@@ -23,25 +23,27 @@ end
 --- @param currentToken string Current token ID (the dominant token in the trading pair)
 --- @return number Sum of volumes across all matches
 function fixed_price.updateVwapData(pair, matches, args, currentToken)
-	local sumVolumePrice, sumVolume = 0, 0
-	if #matches > 0 then
-		for _, match in ipairs(matches) do
-			local volume = bint(match.quantity)
-			local price = bint(match.price)
-			sumVolumePrice = sumVolumePrice + (volume * price)
-			sumVolume = sumVolume + volume
-		end
-
-		-- Calculate and store VWAP
-		local vwap = sumVolumePrice / sumVolume
-		---@diagnostic disable-next-line: inject-field
-		pair.priceData = {
-			vwap = tostring(math.floor(vwap)),
-			block = tostring(args.blockheight),
-			dominantToken = currentToken,
-			matchLogs = matches,
-		}
+	if #matches == 0 then
+		return 0
 	end
+
+	local sumVolumePrice, sumVolume = bint(0), bint(0)
+	for _, match in ipairs(matches) do
+		local volume = bint(match.quantity)
+		local price = bint(match.price)
+		sumVolumePrice = sumVolumePrice + (volume * price)
+		sumVolume = sumVolume + volume
+	end
+
+	-- Calculate and store VWAP using integer division
+	local vwap = sumVolumePrice // sumVolume
+	---@diagnostic disable-next-line: inject-field
+	pair.priceData = {
+		vwap = tostring(vwap),
+		block = tostring(args.blockheight),
+		dominantToken = currentToken,
+		matchLogs = matches,
+	}
 
 	return sumVolume
 end
@@ -76,6 +78,7 @@ function fixed_price.handleArioOrder(args, validPair, pair)
 
 	-- Schedule pruning for expiration if needed
 	if args.expirationTime then
+		local ucm = require('ucm')
 		ucm.scheduleNextOrderbookPruning(args.expirationTime)
 	end
 
@@ -154,6 +157,7 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 			utils.sendFeeToTreasury(originalSendAmount, calculatedSendAmount, args.dominantToken, args.msg)
 
 			-- Execute token transfers
+			local ucm = require('ucm')
 			ucm.executeTokenTransfers({
 				sender = args.sender,
 				dominantToken = args.dominantToken,
@@ -168,6 +172,7 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 			-- Refund any excess ARIO sent over the required amount
 			if sentAmount > requiredAmount then
 				local refundAmount = sentAmount - requiredAmount
+				local ucm = require('ucm')
 				ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
 			end
 
@@ -183,9 +188,9 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 
 				-- Record the match for response
 				local match = {
-					Id = currentOrderEntry.id,
-					Quantity = calculatedFillAmount,
-					Price = tostring(currentOrderEntry.price),
+					id = currentOrderEntry.id,
+					quantity = calculatedFillAmount,
+					price = tostring(currentOrderEntry.price),
 				}
 				table.insert(matches, match)
 

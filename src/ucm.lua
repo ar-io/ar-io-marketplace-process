@@ -204,6 +204,7 @@ function ucm.validateAntDominantOrder(args, validPair)
 		utils.refundAndError(args.msg, args.sender, priceError or 'Unknown price error')
 		return
 	end
+	return true
 end
 
 --- Validate ARIO dominant token orders (buying ANT with ARIO)
@@ -218,6 +219,7 @@ function ucm.validateArioDominantOrder(args, validPair)
 		utils.refundAndError(args.msg, args.sender, 'Requested order ID is required')
 		return
 	end
+	return true
 end
 
 --- Validate order parameters

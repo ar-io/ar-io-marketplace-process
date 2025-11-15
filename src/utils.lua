@@ -351,7 +351,7 @@ function utils.isExpired(expirationTime, currentTimestamp)
 	if not expirationTime then
 		return false
 	end
-	return expirationTime < currentTimestamp
+	return tonumber(expirationTime) <= tonumber(currentTimestamp)
 end
 
 --- Handles errors by refunding tokens and sending error notice
@@ -786,6 +786,7 @@ end
 --- @param feeToken string The token process ID for the fee
 --- @param msg table|nil The message context (optional)
 function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg)
+	-- Skip if treasury address is not set
 	if not TREASURY_ADDRESS then
 		return
 	end

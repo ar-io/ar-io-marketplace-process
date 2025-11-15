@@ -21,6 +21,9 @@ describe('Dutch Auction', function()
 		-- Reset global state using the utility function
 		testGlobals.resetState()
 
+		-- Disable treasury fees for these tests
+		_G.TREASURY_ADDRESS = nil
+
 		-- Override ao.send to track messages and transfers
 		_G.ao.send = function(msg)
 			table.insert(sentMessages, msg)
@@ -52,6 +55,7 @@ describe('Dutch Auction', function()
 				expirationTime = '1736035200000',
 				minimumPrice = '100000000000',
 				decreaseInterval = '86400000',
+				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			})
 
 			-- Validate no transfers occurred (just adding to orderbook)
@@ -145,6 +149,7 @@ describe('Dutch Auction', function()
 				blockheight = '123456790',
 				orderType = 'dutch',
 				requestedOrderId = 'ant-sell-order',
+				msg = { Tags = { Quantity = '500000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
 			})
 
 			print('DEBUG: Orderbook after buy order')
@@ -241,6 +246,7 @@ describe('Dutch Auction', function()
 				blockheight = '123456791',
 				orderType = 'dutch',
 				requestedOrderId = 'ant-sell-order',
+				msg = { Tags = { Quantity = '400000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
 			})
 
 			-- Validate transfers occurred
@@ -253,44 +259,52 @@ describe('Dutch Auction', function()
 
 	describe('Dutch auction validation', function()
 		it('should reject order without minimum price', function()
-			ucm.createOrder({
-				orderId = 'invalid-order',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'test-sender',
-				quantity = 1,
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'dutch',
-				expirationTime = '1736035200000',
-				-- minimumPrice missing
-				decreaseInterval = '86400000',
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'invalid-order',
+					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					sender = 'test-sender',
+					quantity = 1,
+					price = '500000000000',
+					createdAt = '1735689600000',
+					blockheight = '123456789',
+					orderType = 'dutch',
+					expirationTime = '1736035200000',
+					-- minimumPrice missing
+					decreaseInterval = '86400000',
+					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+				})
+			end)
 
 			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
+			assert.is_false(success)
 			assert.is_true(#sentMessages >= 2, 'Should have at least two messages (refund + error)')
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order without decrease interval', function()
-			ucm.createOrder({
-				orderId = 'invalid-order-2',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'test-sender',
-				quantity = 1,
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'dutch',
-				expirationTime = '1736035200000',
-				minimumPrice = '100000000000',
-				-- decreaseInterval missing
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'invalid-order-2',
+					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					sender = 'test-sender',
+					quantity = 1,
+					price = '500000000000',
+					createdAt = '1735689600000',
+					blockheight = '123456789',
+					orderType = 'dutch',
+					expirationTime = '1736035200000',
+					minimumPrice = '100000000000',
+					-- decreaseInterval missing
+					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+				})
+			end)
 
 			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
+			assert.is_false(success)
 			assert.is_true(#sentMessages >= 2, 'Should have at least two messages (refund + error)')
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)

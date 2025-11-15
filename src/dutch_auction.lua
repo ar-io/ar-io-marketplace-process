@@ -1,7 +1,7 @@
 local utils = require('utils')
 local constants = require('constants')
 local bint = require('.bint')(256)
-local ucm = require('ucm')
+-- ucm is required at runtime to avoid circular dependency
 
 local dutch_auction = {}
 local ORDER_STATUSES = constants.ORDER_STATUSES
@@ -54,6 +54,7 @@ function dutch_auction.handleArioOrder(args, validPair, pair)
 
 	-- Schedule pruning for expiration if needed
 	if args.expirationTime then
+		local ucm = require('ucm')
 		ucm.scheduleNextOrderbookPruning(args.expirationTime)
 	end
 

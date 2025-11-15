@@ -19,6 +19,9 @@ describe('English Auction', function()
 		sentMessages = {}
 		testGlobals.resetState()
 
+		-- Disable treasury fees for these tests
+		_G.TREASURY_ADDRESS = nil
+
 		-- Mock ao.send to track transfers
 		_G.ao.send = function(msg)
 			-- Mock activity query response for status checks
@@ -57,6 +60,7 @@ describe('English Auction', function()
 				orderType = 'english',
 				orderGroupId = 'test-group',
 				expirationTime = '1736035200000',
+				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			})
 
 			-- No transfers should occur (just adding to orderbook)
@@ -84,6 +88,7 @@ describe('English Auction', function()
 				blockheight = '123456789',
 				orderType = 'english',
 				orderGroupId = 'test-group',
+				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			})
 
 			assert.is_not_nil(Orderbook[ANT_TOKEN])
@@ -94,92 +99,112 @@ describe('English Auction', function()
 		end)
 
 		it('should reject order with negative expiration time', function()
-			ucm.createOrder({
-				orderId = 'ant-sell-order',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'ant-seller',
-				quantity = 1,
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'english',
-				expirationTime = '-1000',
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'ant-sell-order',
+					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					sender = 'ant-seller',
+					quantity = 1,
+					price = '500000000000',
+					createdAt = '1735689600000',
+					blockheight = '123456789',
+					orderType = 'english',
+					expirationTime = '-1000',
+					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+				})
+			end)
 
 			-- After pair validation, refund is sent first, then error
+			assert.is_false(success)
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order with expired time', function()
-			ucm.createOrder({
-				orderId = 'ant-sell-order',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'ant-seller',
-				quantity = 1,
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'english',
-				expirationTime = '1735689500000', -- Before createdAt
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'ant-sell-order',
+					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					sender = 'ant-seller',
+					quantity = 1,
+					price = '500000000000',
+					createdAt = '1735689600000',
+					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+					blockheight = '123456789',
+					orderType = 'english',
+					expirationTime = '1735689500000', -- Before createdAt
+				})
+			end)
 
 			-- After pair validation, refund is sent first, then error
+			assert.is_false(success)
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order without price', function()
-			ucm.createOrder({
-				orderId = 'ant-sell-order',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'ant-seller',
-				quantity = 1,
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'english',
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'ant-sell-order',
+					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					sender = 'ant-seller',
+					quantity = 1,
+					createdAt = '1735689600000',
+					blockheight = '123456789',
+					orderType = 'english',
+					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+				})
+			end)
 
 			-- After pair validation, refund is sent first, then error
+			assert.is_false(success)
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order with negative price', function()
-			ucm.createOrder({
-				orderId = 'ant-sell-order',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'ant-seller',
-				quantity = 1,
-				price = '-500',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'english',
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'ant-sell-order',
+					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					sender = 'ant-seller',
+					quantity = 1,
+					price = '-500',
+					createdAt = '1735689600000',
+					blockheight = '123456789',
+					orderType = 'english',
+					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+				})
+			end)
 
 			-- After pair validation, refund is sent first, then error
+			assert.is_false(success)
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order with quantity not equal to 1', function()
-			ucm.createOrder({
-				orderId = 'ant-sell-order',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'ant-seller',
-				quantity = 2, -- Should be 1 for ANT
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'english',
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'ant-sell-order',
+					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					sender = 'ant-seller',
+					quantity = 2, -- Should be 1 for ANT
+					price = '500000000000',
+					createdAt = '1735689600000',
+					blockheight = '123456789',
+					orderType = 'english',
+					msg = { Tags = { Quantity = '2' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+				})
+			end)
 
 			-- After pair validation, refund is sent first, then error
+			assert.is_false(success)
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
@@ -188,7 +213,7 @@ describe('English Auction', function()
 	describe('Bidding validation', function()
 		it('should reject bid with negative amount', function()
 			-- Setup auction (Orders is a dictionary!)
-			Orderbook = {
+			_G.Orderbook = {
 				[ANT_TOKEN] = {
 					[ARIO_TOKEN] = {
 						pair = { ANT_TOKEN, ARIO_TOKEN },
@@ -210,39 +235,47 @@ describe('English Auction', function()
 			}
 
 			-- Add to OrderIndex for O(1) lookup
-			OrderIndex['auction-1'] = {
+			_G.OrderIndex['auction-1'] = {
 				dominantToken = ANT_TOKEN,
 				swapToken = ARIO_TOKEN,
 			}
 
-			ucm.createOrder({
-				orderId = 'bid-1',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				sender = 'bidder-1',
-				quantity = '-100', -- Negative
-				createdAt = '1735689601000',
-				blockheight = '123456790',
-				requestedOrderId = 'auction-1',
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'bid-1',
+					dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					sender = 'bidder-1',
+					quantity = '-100', -- Negative
+					createdAt = '1735689601000',
+					blockheight = '123456790',
+					requestedOrderId = 'auction-1',
+					msg = { Tags = { Quantity = '-100' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+				})
+			end)
 
 			-- Negative quantity fails validation without refund
+			assert.is_false(success)
 			assert.are.equal('Validation-Error', sentMessages[1].Action)
 		end)
 
 		it('should reject bid without orderId', function()
-			ucm.createOrder({
-				orderId = 'bid-1',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				sender = 'bidder-1',
-				quantity = '1100000000000',
-				createdAt = '1735689601000',
-				blockheight = '123456790',
-				-- requestedOrderId missing
-			})
+			local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'bid-1',
+					dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					sender = 'bidder-1',
+					quantity = '1100000000000',
+					createdAt = '1735689601000',
+					blockheight = '123456790',
+					-- requestedOrderId missing
+					msg = { Tags = { Quantity = '1100000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+				})
+			end)
 
 			-- After pair validation, refund is sent first, then error
+			assert.is_false(success)
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
@@ -251,7 +284,7 @@ describe('English Auction', function()
 	describe('Bidding logic', function()
 		it('should accept first bid on active auction', function()
 			-- Setup auction
-			Orderbook = {
+			_G.Orderbook = {
 				[ANT_TOKEN] = {
 					[ARIO_TOKEN] = {
 						pair = { ANT_TOKEN, ARIO_TOKEN },
@@ -274,7 +307,7 @@ describe('English Auction', function()
 			}
 
 			-- Add to OrderIndex for O(1) lookup
-			OrderIndex['auction-1'] = {
+			_G.OrderIndex['auction-1'] = {
 				dominantToken = ANT_TOKEN,
 				swapToken = ARIO_TOKEN,
 			}
@@ -287,20 +320,26 @@ describe('English Auction', function()
 				quantity = '1100000000000',
 				createdAt = '1735689601000',
 				blockheight = '123456790',
+				orderType = 'english',
 				requestedOrderId = 'auction-1',
+				msg = { Tags = { Quantity = '1100000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
 			})
 
-			-- Bid should be stored on the order
-			local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-			assert.is_not_nil(auction.bids)
-			assert.is_not_nil(auction.bids['bidder-1'])
-			assert.are.equal('bidder-1', auction.highestBidder)
-			assert.are.equal('1100000000000', auction.highestBid)
+		-- Bid should be stored on the order
+		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
+		---@diagnostic disable-next-line: undefined-field
+		assert.is_not_nil(auction.bids)
+		---@diagnostic disable-next-line: undefined-field
+		assert.is_not_nil(auction.bids['bidder-1'])
+		---@diagnostic disable-next-line: undefined-field
+		assert.are.equal('bidder-1', auction.highestBidder)
+		---@diagnostic disable-next-line: undefined-field
+		assert.are.equal('1100000000000', auction.highestBid)
 		end)
 
 		it('should accept second bid and return first bid', function()
 			-- Setup auction with existing bid
-			Orderbook = {
+			_G.Orderbook = {
 				[ANT_TOKEN] = {
 					[ARIO_TOKEN] = {
 						pair = { ANT_TOKEN, ARIO_TOKEN },
@@ -328,16 +367,19 @@ describe('English Auction', function()
 				swapToken = ARIO_TOKEN,
 			}
 
-			-- Add initial bid directly to order
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
-				['bidder-1'] = {
-					bidder = 'bidder-1',
-					amount = '1100000000000',
-					timestamp = 1735689601000,
-				},
-			}
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1100000000000'
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
+		-- Add initial bid directly to order
+		---@diagnostic disable-next-line: inject-field
+		Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
+			['bidder-1'] = {
+				bidder = 'bidder-1',
+				amount = '1100000000000',
+				timestamp = 1735689601000,
+			},
+		}
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1100000000000'
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
 
 			ucm.createOrder({
 				orderId = 'bid-2',
@@ -347,13 +389,17 @@ describe('English Auction', function()
 				quantity = '1200000000000',
 				createdAt = '1735689602000',
 				blockheight = '123456791',
+				orderType = 'english',
 				requestedOrderId = 'auction-1',
+				msg = { Tags = { Quantity = '1200000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
 			})
 
-			-- Second bid should be highest
-			local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-			assert.are.equal('bidder-2', auction.highestBidder)
-			assert.are.equal('1200000000000', auction.highestBid)
+		-- Second bid should be highest
+		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
+		---@diagnostic disable-next-line: undefined-field
+		assert.are.equal('bidder-2', auction.highestBidder)
+		---@diagnostic disable-next-line: undefined-field
+		assert.are.equal('1200000000000', auction.highestBid)
 
 			-- First bid should be returned (Transfer to bidder-1)
 			local returnTransfer = nil
@@ -370,7 +416,7 @@ describe('English Auction', function()
 
 		it('should reject bid lower than current highest', function()
 			-- Setup auction with existing bid
-			Orderbook = {
+			_G.Orderbook = {
 				[ANT_TOKEN] = {
 					[ARIO_TOKEN] = {
 						pair = { ANT_TOKEN, ARIO_TOKEN },
@@ -393,23 +439,27 @@ describe('English Auction', function()
 			}
 
 			-- Add to OrderIndex for O(1) lookup
-			OrderIndex['auction-1'] = {
+			_G.OrderIndex['auction-1'] = {
 				dominantToken = ANT_TOKEN,
 				swapToken = ARIO_TOKEN,
 			}
 
-			-- Add bid directly to order
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
-				['bidder-1'] = {
-					bidder = 'bidder-1',
-					amount = '1200000000000',
-					timestamp = 1735689601000,
-				},
-			}
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1200000000000'
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
+		-- Add bid directly to order
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
+			['bidder-1'] = {
+				bidder = 'bidder-1',
+				amount = '1200000000000',
+				timestamp = 1735689601000,
+			},
+		}
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1200000000000'
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
 
-			ucm.createOrder({
+			local success = pcall(function()
+				ucm.createOrder({
 				orderId = 'bid-2',
 				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
@@ -417,16 +467,21 @@ describe('English Auction', function()
 				quantity = '1100000000000', -- Lower than 1200000000000
 				createdAt = '1735689602000',
 				blockheight = '123456791',
+				orderType = 'english',
 				requestedOrderId = 'auction-1',
-			})
+				msg = { Tags = { Quantity = '1100000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+				})
+			end)
 
 			-- Should get error
-			assert.are.equal('Validation-Error', sentMessages[1].Action)
+			assert.is_false(success)
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject bid below minimum 1 ARIO increment', function()
 			-- Setup auction with existing bid
-			Orderbook = {
+			_G.Orderbook = {
 				[ANT_TOKEN] = {
 					[ARIO_TOKEN] = {
 						pair = { ANT_TOKEN, ARIO_TOKEN },
@@ -449,40 +504,49 @@ describe('English Auction', function()
 			}
 
 			-- Add to OrderIndex for O(1) lookup
-			OrderIndex['auction-1'] = {
+			_G.OrderIndex['auction-1'] = {
 				dominantToken = ANT_TOKEN,
 				swapToken = ARIO_TOKEN,
 			}
 
-			-- Add bid directly to order
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
-				['bidder-1'] = {
-					bidder = 'bidder-1',
-					amount = '1100000000000',
-					timestamp = 1735689601000,
-				},
-			}
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1100000000000'
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
+		-- Add bid directly to order
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
+			['bidder-1'] = {
+				bidder = 'bidder-1',
+				amount = '1100000000000',
+				timestamp = 1735689601000,
+			},
+		}
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1100000000000'
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
 
-			ucm.createOrder({
-				orderId = 'bid-2',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				sender = 'bidder-2',
-				quantity = '1100500000000', -- Only 0.5 ARIO more (1 ARIO = 1000000000 mARIO)
-				createdAt = '1735689602000',
-				blockheight = '123456791',
-				requestedOrderId = 'auction-1',
-			})
+		local success = pcall(function()
+				ucm.createOrder({
+					orderId = 'bid-2',
+					dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					sender = 'bidder-2',
+					quantity = '1100500000000', -- Only 0.5 ARIO more (1 ARIO = 1000000000 mARIO)
+					createdAt = '1735689602000',
+					blockheight = '123456791',
+					orderType = 'english',
+					requestedOrderId = 'auction-1',
+					msg = { Tags = { Quantity = '1100500000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+				})
+			end)
 
 			-- Should get error for insufficient increment
-			assert.are.equal('Validation-Error', sentMessages[1].Action)
+			assert.is_false(success)
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should accept bid that meets minimum 1 ARIO increment', function()
 			-- Setup auction with existing bid
-			Orderbook = {
+			_G.Orderbook = {
 				[ANT_TOKEN] = {
 					[ARIO_TOKEN] = {
 						pair = { ANT_TOKEN, ARIO_TOKEN },
@@ -510,32 +574,39 @@ describe('English Auction', function()
 				swapToken = ARIO_TOKEN,
 			}
 
-			-- Add bid directly to order
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
-				['bidder-1'] = {
-					bidder = 'bidder-1',
-					amount = '1100000000000',
-					timestamp = 1735689601000,
-				},
-			}
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1100000000000'
-			Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
+		-- Add bid directly to order
+		---@diagnostic disable-next-line: inject-field
+		Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
+			['bidder-1'] = {
+				bidder = 'bidder-1',
+				amount = '1100000000000',
+				timestamp = 1735689601000,
+			},
+		}
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1100000000000'
+		---@diagnostic disable-next-line: inject-field
+		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
 
-			ucm.createOrder({
-				orderId = 'bid-2',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+		ucm.createOrder({
+			orderId = 'bid-2',
+			dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 				sender = 'bidder-2',
 				quantity = '1101000000000', -- Exactly 1 ARIO more
 				createdAt = '1735689602000',
 				blockheight = '123456791',
+				orderType = 'english',
 				requestedOrderId = 'auction-1',
+				msg = { Tags = { Quantity = '1101000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
 			})
 
-			-- Bid should be accepted
-			local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-			assert.are.equal('bidder-2', auction.highestBidder)
-			assert.are.equal('1101000000000', auction.highestBid)
+		-- Bid should be accepted
+		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
+		---@diagnostic disable-next-line: undefined-field
+		assert.are.equal('bidder-2', auction.highestBidder)
+		---@diagnostic disable-next-line: undefined-field
+		assert.are.equal('1101000000000', auction.highestBid)
 		end)
 	end)
 
@@ -585,17 +656,19 @@ describe('English Auction', function()
 				assert.are.equal('Bids equal to or lower than the current bid are not allowed', err)
 			end)
 
-			it('should reject bid not meeting minimum increment', function()
-				local isValid, err = english_auction.validateBidAmount('1001', '1000', nil)
-				assert.is_false(isValid)
-				assert.are.equal('The next bid must be at least 1 ARIO higher than the current highest bid', err)
-			end)
+		it('should reject bid not meeting minimum increment', function()
+			-- Current bid: 1000000000000, new bid: 1000500000000 (0.5 ARIO increment)
+			local isValid, err = english_auction.validateBidAmount('1000500000000', '1000000000000', nil)
+			assert.is_false(isValid)
+			assert.are.equal('The next bid must be at least 1 ARIO higher than the current highest bid', err)
+		end)
 
-			it('should accept bid meeting minimum increment', function()
-				local isValid, err = english_auction.validateBidAmount('1002', '1000', nil)
-				assert.is_true(isValid)
-				assert.is_nil(err)
-			end)
+		it('should accept bid meeting minimum increment', function()
+			-- Current bid: 1000000000000, new bid: 1001000000000 (exactly 1 ARIO increment)
+			local isValid, err = english_auction.validateBidAmount('1001000000000', '1000000000000', nil)
+			assert.is_true(isValid)
+			assert.is_nil(err)
+		end)
 
 			it('should reject first bid below minimum starting price', function()
 				local isValid, err = english_auction.validateBidAmount('999', nil, '1000')

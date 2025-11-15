@@ -23,7 +23,6 @@ end
 -- Force-load all source modules for coverage tracking
 print('\nForce-loading modules for coverage...')
 local modules_to_load = {
-	'activity',
 	'dutch_auction',
 	'english_auction',
 	'fixed_price',

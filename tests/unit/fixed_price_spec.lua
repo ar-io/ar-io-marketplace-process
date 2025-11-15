@@ -24,9 +24,9 @@ describe('fixed_price helpers', function()
 			local pair = { orders = {} }
 			local matches = {
 				{
-					Id = 'order-1',
-					Quantity = '1000',
-					Price = '100',
+					id = 'order-1',
+					quantity = '1000',
+					price = '100',
 				},
 			}
 			local args = { blockheight = '1000' }
@@ -36,25 +36,25 @@ describe('fixed_price helpers', function()
 
 			-- Expected: volume = 1000, price = 100, vwap = (1000 * 100) / 1000 = 100
 			assert.are.equal(bint(1000), sumVolume)
-			assert.is_not_nil(pair.PriceData)
-			assert.are.equal('100', pair.PriceData.Vwap)
-			assert.are.equal('1000', pair.PriceData.Block)
-			assert.are.equal(currentToken, pair.PriceData.DominantToken)
-			assert.are.same(matches, pair.PriceData.MatchLogs)
+			assert.is_not_nil(pair.priceData)
+			assert.are.equal('100', pair.priceData.vwap)
+			assert.are.equal('1000', pair.priceData.block)
+			assert.are.equal(currentToken, pair.priceData.dominantToken)
+			assert.are.same(matches, pair.priceData.matchLogs)
 		end)
 
 		it('should calculate VWAP correctly for multiple matches', function()
 			local pair = { orders = {} }
 			local matches = {
 				{
-					Id = 'order-1',
-					Quantity = '1000',
-					Price = '100',
+					id = 'order-1',
+					quantity = '1000',
+					price = '100',
 				},
 				{
-					Id = 'order-2',
-					Quantity = '2000',
-					Price = '150',
+					id = 'order-2',
+					quantity = '2000',
+					price = '150',
 				},
 			}
 			local args = { blockheight = '2000' }
@@ -67,18 +67,18 @@ describe('fixed_price helpers', function()
 			-- sumVolume = 1000 + 2000 = 3000
 			-- vwap = 400,000 / 3000 = 133.333... = floor(133) = 133
 			assert.are.equal(bint(3000), sumVolume)
-			assert.is_not_nil(pair.PriceData)
-			assert.are.equal('133', pair.PriceData.Vwap)
-			assert.are.equal('2000', pair.PriceData.Block)
+			assert.is_not_nil(pair.priceData)
+			assert.are.equal('133', pair.priceData.vwap)
+			assert.are.equal('2000', pair.priceData.block)
 		end)
 
 		it('should handle large volume and price values', function()
 			local pair = { orders = {} }
 			local matches = {
 				{
-					Id = 'order-1',
-					Quantity = '1000000000000',
-					Price = '50000000',
+					id = 'order-1',
+					quantity = '1000000000000',
+					price = '50000000',
 				},
 			}
 			local args = { blockheight = '5000' }
@@ -87,18 +87,18 @@ describe('fixed_price helpers', function()
 			local sumVolume = fixed_price.updateVwapData(pair, matches, args, currentToken)
 
 			assert.are.equal(bint('1000000000000'), sumVolume)
-			assert.is_not_nil(pair.PriceData)
+			assert.is_not_nil(pair.priceData)
 			-- vwap = (1000000000000 * 50000000) / 1000000000000 = 50000000
-			assert.are.equal('50000000', pair.PriceData.Vwap)
+			assert.are.equal('50000000', pair.priceData.vwap)
 		end)
 
 		it('should floor VWAP to integer', function()
 			local pair = { orders = {} }
 			local matches = {
 				{
-					Id = 'order-1',
-					Quantity = '3',
-					Price = '10',
+					id = 'order-1',
+					quantity = '3',
+					price = '10',
 				},
 			}
 			local args = { blockheight = '3000' }
@@ -108,7 +108,7 @@ describe('fixed_price helpers', function()
 
 			-- vwap = (3 * 10) / 3 = 10
 			assert.are.equal(bint(3), sumVolume)
-			assert.are.equal('10', pair.PriceData.Vwap)
+			assert.are.equal('10', pair.priceData.vwap)
 		end)
 	end)
 end)

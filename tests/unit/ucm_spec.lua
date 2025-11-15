@@ -10,7 +10,7 @@ describe('ucm helpers', function()
 	local function resetGlobals()
 		_G.Orderbook = {}
 		_G.OrderIndex = {}
-		_G.ARIO_TOKEN_PROCESS_ID = 'TEST_ARIO_PROCESS_ID_12345678901234567890123'
+		_G.ARIO_TOKEN_PROCESS_ID = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
 	end
 
 	before_each(function()
@@ -115,12 +115,17 @@ describe('ucm helpers', function()
 				quantity = '2',
 				sender = 'test-sender',
 				orderGroupId = 'group-1',
+				msg = { Tags = { Quantity = '2' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateAntDominantOrder(args, validPair)
-			assert.is_false(result)
-			assert.are.equal(1, #sentMessages)
-			assert.are.equal('Validation-Error', sentMessages[1].Action)
+			local success, err = pcall(function()
+				ucm.validateAntDominantOrder(args, validPair)
+			end)
+			assert.is_false(success)
+			assert.is_string(err)
+			assert.are.equal(2, #sentMessages) -- Transfer (refund) + Validation-Error
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject missing price', function()
@@ -128,12 +133,17 @@ describe('ucm helpers', function()
 				quantity = '1',
 				sender = 'test-sender',
 				orderGroupId = 'group-1',
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateAntDominantOrder(args, validPair)
-			assert.is_false(result)
-			assert.are.equal(1, #sentMessages)
-			assert.are.equal('Validation-Error', sentMessages[1].Action)
+			local success, err = pcall(function()
+				ucm.validateAntDominantOrder(args, validPair)
+			end)
+			assert.is_false(success)
+			assert.is_string(err)
+			assert.are.equal(2, #sentMessages)
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject invalid price', function()
@@ -143,10 +153,14 @@ describe('ucm helpers', function()
 				sender = 'test-sender',
 				orderGroupId = 'group-1',
 				createdAt = 1000,
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateAntDominantOrder(args, validPair)
-			assert.is_false(result)
+			local success, err = pcall(function()
+				ucm.validateAntDominantOrder(args, validPair)
+			end)
+			assert.is_false(success)
+			assert.is_string(err)
 		end)
 
 		it('should accept valid ANT order', function()
@@ -157,6 +171,7 @@ describe('ucm helpers', function()
 				createdAt = 1000,
 				sender = 'test-sender',
 				orderGroupId = 'group-1',
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
 			local result = ucm.validateAntDominantOrder(args, validPair)
@@ -180,12 +195,17 @@ describe('ucm helpers', function()
 			local args = {
 				sender = 'test-sender',
 				orderGroupId = 'group-1',
+				msg = { Tags = { Quantity = '1000' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateArioDominantOrder(args, validPair)
-			assert.is_false(result)
-			assert.are.equal(1, #sentMessages)
-			assert.are.equal('Validation-Error', sentMessages[1].Action)
+			local success, err = pcall(function()
+				ucm.validateArioDominantOrder(args, validPair)
+			end)
+			assert.is_false(success)
+			assert.is_string(err)
+			assert.are.equal(2, #sentMessages)
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should accept valid ARIO order', function()
@@ -193,6 +213,7 @@ describe('ucm helpers', function()
 				requestedOrderId = 'order-123',
 				sender = 'test-sender',
 				orderGroupId = 'group-1',
+				msg = { Tags = { Quantity = '1000' }, From = 'token-process-id' },
 			}
 
 			local result = ucm.validateArioDominantOrder(args, validPair)
@@ -218,10 +239,13 @@ describe('ucm helpers', function()
 				quantity = '1',
 				orderType = 'fixed',
 				sender = 'test-sender',
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateOrderParams(args)
-			assert.is_nil(result)
+			local success, result = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			assert.is_false(success)
 		end)
 
 		it('should reject trade without ARIO', function()
@@ -231,10 +255,13 @@ describe('ucm helpers', function()
 				quantity = '1',
 				orderType = 'fixed',
 				sender = 'test-sender',
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateOrderParams(args)
-			assert.is_nil(result)
+			local success, result = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			assert.is_false(success)
 		end)
 
 		it('should reject invalid quantity', function()
@@ -244,10 +271,13 @@ describe('ucm helpers', function()
 				quantity = '0',
 				orderType = 'fixed',
 				sender = 'test-sender',
+				msg = { Tags = { Quantity = '0' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateOrderParams(args)
-			assert.is_nil(result)
+			local success, result = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			assert.is_false(success)
 		end)
 
 		it('should reject invalid order type', function()
@@ -257,16 +287,19 @@ describe('ucm helpers', function()
 				quantity = '1',
 				orderType = 'invalid',
 				sender = 'test-sender',
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local result = ucm.validateOrderParams(args)
-			assert.is_nil(result)
+			local success, result = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			assert.is_false(success)
 		end)
 
 		it('should accept valid fixed order', function()
 			local args = {
-				dominantToken = 'ANT_TOKEN_ID_12345678901234567890123456789012',
-				swapToken = _G.ARIO_TOKEN_PROCESS_ID,
+				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+				swapToken = ARIO_TOKEN_PROCESS_ID,
 				quantity = '1',
 				price = '1000',
 				expirationTime = 2000,
@@ -274,6 +307,7 @@ describe('ucm helpers', function()
 				orderType = 'fixed',
 				sender = 'test-sender',
 				orderGroupId = 'group-1',
+				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			}
 
 			local result = ucm.validateOrderParams(args)

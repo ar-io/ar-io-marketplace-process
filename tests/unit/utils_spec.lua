@@ -282,8 +282,8 @@ describe('utils', function()
 			{ exp = 1000, ts = '1001', expected = true, description = 'expiration < timestamp (both types)' },
 			{ exp = '1001', ts = 1000, expected = false, description = 'expiration > timestamp (not expired)' },
 			{ exp = 1001, ts = '1000', expected = false, description = 'expiration > timestamp (mixed types)' },
-			{ exp = '1000', ts = 1000, expected = false, description = 'expiration == timestamp (not expired)' },
-			{ exp = 1000, ts = 1000, expected = false, description = 'expiration == timestamp (both numbers)' },
+			{ exp = '1000', ts = 1000, expected = true, description = 'expiration == timestamp (expired)' },
+			{ exp = 1000, ts = 1000, expected = true, description = 'expiration == timestamp (both numbers)' },
 			{ exp = '999', ts = '1000', expected = true, description = 'past expiration (both strings)' },
 			{ exp = '1000000', ts = '999', expected = false, description = 'future expiration (both strings)' },
 		}
@@ -476,11 +476,15 @@ describe('utils', function()
 		local testCases = {
 			{
 				description = 'sends tokens to seller and buyer with expected quantities (no fees recorded)',
-				args = makeArgs({}),
-				order = makeOrderEntry({}),
-				pair = { SELL_TOKEN, BUY_TOKEN },
-				calcSend = '995',
-				calcFill = '1',
+				args = {
+					sender = 'buyer-addr',
+					dominantToken = SELL_TOKEN,
+					swapToken = BUY_TOKEN,
+					currentOrderEntry = makeOrderEntry({}),
+					calculatedSendAmount = '995',
+					calculatedFillAmount = '1',
+					msg = { Tags = {} },
+				},
 				expectedMessages = {
 					{
 						Target = SELL_TOKEN,
@@ -493,11 +497,16 @@ describe('utils', function()
 			},
 			{
 				description = 'records fee when originalSendAmount greater than calculatedSendAmount',
-				args = makeArgs({ originalSendAmount = '1000' }),
-				order = makeOrderEntry({}),
-				pair = { SELL_TOKEN, BUY_TOKEN },
-				calcSend = '995',
-				calcFill = '1',
+				args = {
+					sender = 'buyer-addr',
+					dominantToken = SELL_TOKEN,
+					swapToken = BUY_TOKEN,
+					originalSendAmount = '1000',
+					currentOrderEntry = makeOrderEntry({}),
+					calculatedSendAmount = '995',
+					calculatedFillAmount = '1',
+					msg = { Tags = {} },
+				},
 				expectedMessages = {
 					{
 						Target = SELL_TOKEN,
@@ -510,11 +519,16 @@ describe('utils', function()
 			},
 			{
 				description = 'does not record fee when original equals calculated',
-				args = makeArgs({ originalSendAmount = '995' }),
-				order = makeOrderEntry({}),
-				pair = { SELL_TOKEN, BUY_TOKEN },
-				calcSend = '995',
-				calcFill = '1',
+				args = {
+					sender = 'buyer-addr',
+					dominantToken = SELL_TOKEN,
+					swapToken = BUY_TOKEN,
+					originalSendAmount = '995',
+					currentOrderEntry = makeOrderEntry({}),
+					calculatedSendAmount = '995',
+					calculatedFillAmount = '1',
+					msg = { Tags = {} },
+				},
 				expectedMessages = {
 					{
 						Target = SELL_TOKEN,
@@ -527,11 +541,16 @@ describe('utils', function()
 			},
 			{
 				description = 'does not record fee when original less than calculated',
-				args = makeArgs({ originalSendAmount = '990' }),
-				order = makeOrderEntry({}),
-				pair = { SELL_TOKEN, BUY_TOKEN },
-				calcSend = '995',
-				calcFill = '1',
+				args = {
+					sender = 'buyer-addr',
+					dominantToken = SELL_TOKEN,
+					swapToken = BUY_TOKEN,
+					originalSendAmount = '990',
+					currentOrderEntry = makeOrderEntry({}),
+					calculatedSendAmount = '995',
+					calculatedFillAmount = '1',
+					msg = { Tags = {} },
+				},
 				expectedMessages = {
 					{
 						Target = SELL_TOKEN,
@@ -549,7 +568,7 @@ describe('utils', function()
 				resetMocks()
 				local ucm = require('ucm')
 				local beforeFees = _G.AccruedFeesAmount or 0
-				ucm.executeTokenTransfers(tc.args, tc.order, tc.pair, tc.calcSend, tc.calcFill)
+				ucm.executeTokenTransfers(tc.args)
 				local afterFees = _G.AccruedFeesAmount or 0
 				-- Need to check if Tags contain X-Intent-Id (should be nil when no parent intent)
 				for _, msg in ipairs(sentMessages) do
@@ -630,11 +649,11 @@ describe('utils', function()
 			{
 				description = 'refund occurs then error notice when valid quantity and transfer token provided',
 				args = {
-					Target = validTarget,
-					TransferToken = validTransferToken,
-					Quantity = '1000',
-					Action = 'Some-Error',
-					Message = 'Something went wrong',
+					target = validTarget,
+					transferToken = validTransferToken,
+					quantity = '1000',
+					action = 'Some-Error',
+					message = 'Something went wrong',
 				},
 				expected = {
 					{
@@ -645,6 +664,7 @@ describe('utils', function()
 					{
 						Target = validTarget,
 						Action = 'Some-Error',
+						Error = 'Something went wrong',
 						Tags = { Status = 'Error', Message = 'Something went wrong', ['X-Group-ID'] = nil },
 					},
 				},
@@ -652,15 +672,16 @@ describe('utils', function()
 			{
 				description = 'no refund when transfer token missing; only error notice sent',
 				args = {
-					Target = validTarget,
-					Quantity = '1000',
-					Action = 'Another-Error',
-					Message = 'Missing transfer token',
+					target = validTarget,
+					quantity = '1000',
+					action = 'Another-Error',
+					message = 'Missing transfer token',
 				},
 				expected = {
 					{
 						Target = validTarget,
 						Action = 'Another-Error',
+						Error = 'Missing transfer token',
 						Tags = { Status = 'Error', Message = 'Missing transfer token', ['X-Group-ID'] = nil },
 					},
 				},
@@ -668,16 +689,17 @@ describe('utils', function()
 			{
 				description = 'no refund when quantity invalid (zero); only error notice sent',
 				args = {
-					Target = validTarget,
-					TransferToken = validTransferToken,
-					Quantity = '0',
-					Action = 'Zero-Qty-Error',
-					Message = 'Zero quantity',
+					target = validTarget,
+					transferToken = validTransferToken,
+					quantity = '0',
+					action = 'Zero-Qty-Error',
+					message = 'Zero quantity',
 				},
 				expected = {
 					{
 						Target = validTarget,
 						Action = 'Zero-Qty-Error',
+						Error = 'Zero quantity',
 						Tags = { Status = 'Error', Message = 'Zero quantity', ['X-Group-ID'] = nil },
 					},
 				},
@@ -685,15 +707,16 @@ describe('utils', function()
 			{
 				description = 'no refund when quantity missing; only error notice sent',
 				args = {
-					Target = validTarget,
-					TransferToken = validTransferToken,
-					Action = 'No-Qty-Error',
-					Message = 'No quantity provided',
+					target = validTarget,
+					transferToken = validTransferToken,
+					action = 'No-Qty-Error',
+					message = 'No quantity provided',
 				},
 				expected = {
 					{
 						Target = validTarget,
 						Action = 'No-Qty-Error',
+						Error = 'No quantity provided',
 						Tags = { Status = 'Error', Message = 'No quantity provided', ['X-Group-ID'] = nil },
 					},
 				},
@@ -701,15 +724,16 @@ describe('utils', function()
 			{
 				description = 'error notice includes X-Group-ID when provided',
 				args = {
-					Target = validTarget,
-					Action = 'Grouped-Error',
-					Message = 'Grouped message',
-					OrderGroupId = 'group-123',
+					target = validTarget,
+					action = 'Grouped-Error',
+					message = 'Grouped message',
+					orderGroupId = 'group-123',
 				},
 				expected = {
 					{
 						Target = validTarget,
 						Action = 'Grouped-Error',
+						Error = 'Grouped message',
 						Tags = { Status = 'Error', Message = 'Grouped message', ['X-Group-ID'] = 'group-123' },
 					},
 				},
@@ -993,8 +1017,8 @@ describe('utils', function()
 			assert.are.same({}, sentMessages)
 		end)
 
-		it('no send when TREASURY_ADDRESS is default placeholder', function()
-			_G.TREASURY_ADDRESS = DEFAULT_TREASURY
+		it('no send when TREASURY_ADDRESS is nil', function()
+			_G.TREASURY_ADDRESS = nil
 			resetMocks()
 			utils.sendFeeToTreasury('1000', '995', 'ARIO_TOKEN')
 			assert.are.same({}, sentMessages)

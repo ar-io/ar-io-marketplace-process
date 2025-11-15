@@ -53,7 +53,7 @@ constants.ADDRESS = {
 
 -- Auction and bidding constants
 constants.AUCTION = {
-	MINIMUM_BID_INCREMENT = 1, -- Minimum bid increment in ARIO
+	MINIMUM_BID_INCREMENT = '1000000000', -- Minimum bid increment in ARIO (1 ARIO = 1000000000 mARIO)
 	ANT_EXACT_QUANTITY = 1, -- ANT tokens must trade in exact units of 1
 }
 

@@ -195,7 +195,7 @@ export class MarketplaceProcess {
   }
 
   // UCM handlers
-  
+
   /**
    * Get orders for a specific trading pair
    * @param dominantToken - Dominant token address

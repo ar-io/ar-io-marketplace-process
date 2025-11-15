@@ -28,11 +28,8 @@ function english_auction.validateBidAmount(bidAmount, currentHighestBid, minimum
 
 		-- Minimum Bid Increment: The next bid must be at least 1 ARIO higher than the current highest bid
 		local minimumIncrement = bint(constants.AUCTION.MINIMUM_BID_INCREMENT)
-		if bint(bidAmount) <= bint(currentHighestBid) + minimumIncrement then
-			return false,
-				'The next bid must be at least '
-					.. constants.AUCTION.MINIMUM_BID_INCREMENT
-					.. ' ARIO higher than the current highest bid'
+		if bint(bidAmount) < bint(currentHighestBid) + minimumIncrement then
+			return false, 'The next bid must be at least 1 ARIO higher than the current highest bid'
 		end
 	else
 		-- No current bids yet: enforce minimum starting price if provided
@@ -52,16 +49,16 @@ function english_auction.returnPreviousBid(orderId, previousBidder, previousAmou
 		ucm.transfer(previousBidder, tostring(previousAmount), biddingToken, msg)
 
 		-- Notify previous bidder of refund
-	utils.Send(msg, {
-		Target = previousBidder,
-		Action = 'Bid-Returned',
-		Tags = {
-			Status = 'Success',
-			['Order-Id'] = orderId,
-			Amount = tostring(previousAmount),
-			Message = 'Your previous bid has been returned as a higher bid was placed',
-		},
-	})
+		utils.Send(msg, {
+			Target = previousBidder,
+			Action = 'Bid-Returned',
+			Tags = {
+				Status = 'Success',
+				OrderId = orderId,
+				Amount = tostring(previousAmount),
+				Message = 'Your previous bid has been returned as a higher bid was placed',
+			},
+		})
 	end
 end
 
