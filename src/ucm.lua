@@ -313,7 +313,8 @@ function ucm.handleAntOrderAuctions(args, validPair, pair)
 		local dutch_auction = require('dutch_auction')
 		dutch_auction.handleAntOrder(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
-		english_auction.handleAntOrder(args, validPair, pair)
+		args.pair = pair
+		english_auction.handleAntOrder(args)
 	else
 		utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
 		return

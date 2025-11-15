@@ -124,8 +124,7 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 			return
 		end
 
-			-- Check if sent amount is sufficient for current price
-
+		-- Check if sent amount is sufficient for current price
 		local requiredAmount = currentPrice
 		local sentAmount = bint(args.quantity) -- User pays the current Dutch auction price
 
@@ -223,6 +222,10 @@ function dutch_auction.handleAntOrder(args, validPair, pair)
 	end
 end
 
+--- Validate Dutch auction specific parameters
+--- @param args table Order arguments containing minimumPrice, decreaseInterval, expirationTime, and price
+--- @return boolean success True if validation passes, false otherwise
+--- @return string? error Optional error message if validation fails
 function dutch_auction.validateDutchParams(args)
 	if not args.minimumPrice then
 		return false, 'Minimum price must be provided'

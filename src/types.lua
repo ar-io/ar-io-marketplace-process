@@ -72,6 +72,9 @@
 --- @field executionPrice string|nil Execution price (dutch auction)
 --- @field msg Message|nil Message context for intent tracking
 
+--- @class EnglishAuctionBidArgs : OrderArgs
+--- @field pair Pair The orderbook pair object containing orders
+
 --- @class Order
 --- @field id string Order identifier
 --- @field creator string Order creator address

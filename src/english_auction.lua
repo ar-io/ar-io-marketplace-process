@@ -52,32 +52,30 @@ function english_auction.returnPreviousBid(orderId, previousBidder, previousAmou
 		ucm.transfer(previousBidder, tostring(previousAmount), biddingToken, msg)
 
 		-- Notify previous bidder of refund
-		utils.Send(msg, {
-			Target = previousBidder,
-			Action = 'Bid-Returned',
-			Tags = {
-				Status = 'Success',
-				OrderId = orderId,
-				Amount = tostring(previousAmount),
-				Message = 'Your previous bid has been returned as a higher bid was placed',
-			},
-		})
+	utils.Send(msg, {
+		Target = previousBidder,
+		Action = 'Bid-Returned',
+		Tags = {
+			Status = 'Success',
+			['Order-Id'] = orderId,
+			Amount = tostring(previousAmount),
+			Message = 'Your previous bid has been returned as a higher bid was placed',
+		},
+	})
 	end
 end
 
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to place bids on English auctions
 --- Handle ANT-dominant order (selling ANT for ARIO) for English auction
---- @param args table Order arguments
---- @param _ string[] The validated pair [ANT, ARIO]
---- @param pair Pair The pair object from orderbook
-function english_auction.handleAntOrder(args, _, pair)
+--- @param args EnglishAuctionBidArgs Bid arguments
+function english_auction.handleAntOrder(args)
 	-- Check if orderId is provided (required for bid identification)
 	if not args.orderId then
 		utils.refundAndError(args.msg, args.sender, 'Order ID is required for bidding', 'Order-Error')
 		return
 	end
 
-	local currentOrders = pair.orders
+	local currentOrders = args.pair.orders
 	local targetOrder = nil
 
 	-- Find the English auction order to bid on
@@ -156,14 +154,14 @@ function english_auction.handleAntOrder(args, _, pair)
 		Action = 'Bid-Success',
 		Tags = {
 			Status = 'Success',
-			OrderId = targetOrder.id,
+			['Order-Id'] = targetOrder.id,
 			Handler = 'Create-Order',
-			DominantToken = args.dominantToken,
-			SwapToken = args.swapToken,
-			BidAmount = tostring(bidAmount), -- Use the quantity sent by user
+			['Dominant-Token'] = args.dominantToken,
+			['Swap-Token'] = args.swapToken,
+			['Bid-Amount'] = tostring(bidAmount), -- Use the quantity sent by user
 			Message = 'Bid placed successfully on English auction!',
 			['X-Group-ID'] = args.orderGroupId,
-			OrderType = ORDER_TYPES.ENGLISH,
+			['Order-Type'] = ORDER_TYPES.ENGLISH,
 		},
 	})
 end
@@ -265,11 +263,11 @@ function english_auction.settleAuction(args)
 		Action = 'Auction-Won',
 		Tags = {
 			Status = 'Success',
-			OrderId = orderId,
-			WinningBid = order.highestBid,
+			['Order-Id'] = orderId,
+			['Winning-Bid'] = order.highestBid,
 			Quantity = tostring(quantity),
 			Message = args.sender and 'You won the English auction!' or 'You won the English auction (auto-settled)!',
-			OrderType = ORDER_TYPES.ENGLISH,
+			['Order-Type'] = ORDER_TYPES.ENGLISH,
 		},
 	})
 
@@ -280,9 +278,9 @@ function english_auction.settleAuction(args)
 			Action = 'Settlement-Success',
 			Tags = {
 				Status = 'Success',
-				OrderId = orderId,
+				['Order-Id'] = orderId,
 				Winner = order.highestBidder,
-				WinningBid = order.highestBid,
+				['Winning-Bid'] = order.highestBid,
 				Message = 'Auction settled successfully!',
 				['X-Group-ID'] = args.orderGroupId or 'None',
 			},
@@ -334,16 +332,16 @@ function english_auction.handleArioOrder(args, validPair, pair)
 		Action = 'Order-Success',
 		Tags = {
 			Status = 'Success',
-			OrderId = args.orderId,
+			['Order-Id'] = args.orderId,
 			Handler = 'Create-Order',
-			DominantToken = args.dominantToken,
-			SwapToken = args.swapToken,
+			['Dominant-Token'] = args.dominantToken,
+			['Swap-Token'] = args.swapToken,
 			Quantity = tostring(args.quantity),
 			Price = args.price and tostring(args.price),
 			Message = 'ARIO order added to orderbook for English auction!',
 			['X-Group-ID'] = args.orderGroupId,
-			OrderType = ORDER_TYPES.ENGLISH,
-			ExpirationTime = args.expirationTime,
+			['Order-Type'] = ORDER_TYPES.ENGLISH,
+			['Expiration-Time'] = args.expirationTime,
 		},
 	})
 end
