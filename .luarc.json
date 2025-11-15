@@ -7,21 +7,15 @@
     "workspace": {
       "library": [
         "src",
-        "spec",
+        "tests/unit",
         "${3rd}/busted/library",
         "${3rd}/luassert/library"
       ],
-      "ignoreDir": [
-        "dist",
-        "node_modules",
-        ".git",
-        "tests"
-      ]
+      "ignoreDir": ["dist", "node_modules", ".git"]
     },
     "diagnostics": {
       "enable": true,
       "globals": [
-<<<<<<< Updated upstream
         "describe",
         "it",
         "before_each",
@@ -42,29 +36,38 @@
         "Owner",
         "Name",
         "Handlers",
-        "ao"
-      ],
-      "disable": [
-        "lowercase-global",
-        "duplicate-set-field",
-        "redundant-parameter"
-      ]
-=======
-        "Handlers",
         "ao",
         "OrderIndex",
         "Orderbook",
         "EnglishAuctionBids",
         "Intents",
-        "Name",
         "ARIO_TOKEN_PROCESS_ID"
+      ],
+      "disable": [
+        "lowercase-global",
+        "duplicate-set-field",
+        "redundant-parameter"
       ],
       "neededFileStatus": {
         "unused-local": "Any",
         "unused-function": "Any",
         "unused-vararg": "Any"
+      },
+      "severity": {
+        "missing-fields": "Error!",
+        "need-check-nil": "Error!",
+        "undefined-field": "Error!"
       }
->>>>>>> Stashed changes
+    },
+    "type": {
+      "castNumberToInteger": true,
+      "weakUnionCheck": true
+    },
+    "hint": {
+      "enable": true,
+      "paramName": "All",
+      "paramType": true,
+      "setType": true
     }
   },
   "workspace.checkThirdParty": false

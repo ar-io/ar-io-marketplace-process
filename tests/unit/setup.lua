@@ -1,5 +1,5 @@
--- Set up package paths for both source and spec directories
-package.path = './src/?.lua;./src/common/?.lua;./spec/?.lua;' .. package.path
+-- Set up package paths for both source and test directories
+package.path = './src/?.lua;./src/common/?.lua;./tests/unit/?.lua;' .. package.path
 
 -- Load source globals FIRST to initialize all state variables
 print('Loading source globals...')

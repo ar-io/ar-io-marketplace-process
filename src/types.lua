@@ -82,16 +82,6 @@
 --- @field price string|nil Order price
 --- @field expirationTime number|nil Expiration timestamp
 --- @field orderType "fixed"|"dutch"|"english" Order type
-<<<<<<< Updated upstream
---- @field minimumPrice string|nil Minimum price (dutch auction)
---- @field decreaseInterval string|nil Decrease interval (dutch auction)
---- @field decreaseStep string|nil Decrease step (dutch auction)
-
---- @class Pair
---- @field pair string[] Token pair [tokenA, tokenB]
---- @field orders Order[] Orders for this pair
---- @field priceData table|nil Price data for the pair
-=======
 --- @field status "active"|"executed"|"cancelled"|"ready-for-settlement"|"expired" Order status
 --- @field minimumPrice string|nil Minimum price (dutch auction)
 --- @field decreaseInterval string|nil Decrease interval (dutch auction)
@@ -105,7 +95,6 @@
 --- @field orders table<string, Order> Dictionary of orders keyed by OrderId
 --- @field priceData table|nil Price data for the pair
 --- Note: Pairs are stored in Orderbook as Orderbook[dominantToken][swapToken] = Pair
->>>>>>> Stashed changes
 
 --- @class SendParams
 --- @field Target string Target process ID
@@ -136,8 +125,6 @@
 --- @field byStatus table<string, number> Intent counts by status
 --- @field byType table<string, number> Intent counts by type
 --- @field byAction table<string, number> Intent counts by action
-<<<<<<< Updated upstream
-=======
 
 --- @class ExecutedOrder
 --- @field id string Executed order ID
@@ -187,6 +174,6 @@
 --- @field activity ActivityInfo Activity statistics
 --- @field intents IntentStats Intent workflow statistics
 --- @field ucm UCMInfo UCM marketplace information
->>>>>>> Stashed changes
+
 
 return {}

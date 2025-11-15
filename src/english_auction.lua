@@ -73,15 +73,11 @@ function english_auction.returnPreviousBid(orderId, previousBidder, previousAmou
 end
 
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to place bids on English auctions
-<<<<<<< Updated upstream
-function english_auction.handleAntOrder(args, validPair)
-=======
 --- Handle ANT-dominant order (selling ANT for ARIO) for English auction
 --- @param args table Order arguments
 --- @param _ string[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
 function english_auction.handleAntOrder(args, _, pair)
->>>>>>> Stashed changes
 	-- Check if orderId is provided (required for bid identification)
 	if not args.orderId then
 		utils.handleError({
@@ -95,37 +91,12 @@ function english_auction.handleAntOrder(args, _, pair)
 		return
 	end
 
-<<<<<<< Updated upstream
-	-- Swap the pair to get [ANT, ARIO] since we're buying ANT with ARIO
-	local antDominant = validPair[1] -- ANT token
-	local arioSwap = validPair[2] -- ARIO token
-
-	local pairData = Orderbook[antDominant] and Orderbook[antDominant][arioSwap]
-	if not pairData then
-		utils.handleError({
-			Target = args.sender,
-			Action = 'Order-Error',
-			Message = 'English auction not found',
-			Quantity = args.quantity,
-			TransferToken = args.dominantToken,
-			OrderGroupId = args.orderGroupId,
-		})
-		return
-	end
-
-	local currentOrders = pairData.orders
-=======
 	local currentOrders = pair.orders
->>>>>>> Stashed changes
 	local targetOrder = nil
 
 	-- Find the English auction order to bid on
 	for _, order in pairs(currentOrders) do
-<<<<<<< Updated upstream
-		if order.orderType == 'english' and order.id == (args.requestedOrderId or args.orderId) then
-=======
 		if order.orderType == ORDER_TYPES.ENGLISH and order.id == (args.requestedOrderId or args.orderId) then
->>>>>>> Stashed changes
 			targetOrder = order
 			break
 		end
@@ -144,15 +115,8 @@ function english_auction.handleAntOrder(args, _, pair)
 		return
 	end
 
-<<<<<<< Updated upstream
-	-- Ensure bidding is allowed only on active orders (via internal Activity state)
-	local activityData = activity.findOrderById(targetOrder.id, args.createdAt)
-	print('activityData', activityData and activityData.Status or 'nil')
-	if not activityData or activityData.Status ~= 'active' then
-=======
 	-- Ensure bidding is allowed only on active orders
 	if targetOrder.status ~= ORDER_STATUSES.ACTIVE then
->>>>>>> Stashed changes
 		utils.handleError({
 			Target = args.sender,
 			Action = 'Order-Error',
@@ -165,11 +129,7 @@ function english_auction.handleAntOrder(args, _, pair)
 	end
 
 	-- Check if auction has expired
-<<<<<<< Updated upstream
-	if not isAuctionActive(targetOrder.expirationTime, args.createdAt) then
-=======
 	if not english_auction.isAuctionActive(targetOrder.expirationTime, args.createdAt) then
->>>>>>> Stashed changes
 		utils.handleError({
 			Target = args.sender,
 			Action = 'Order-Error',
@@ -273,29 +233,6 @@ function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapTok
 			})
 		end)
 
-<<<<<<< Updated upstream
-	-- Check if auction has bids
-	if not auctionBids or not auctionBids.HighestBidder then
-		utils.handleError({
-			Target = args.sender,
-			Action = 'Settlement-Error',
-			Message = 'No bids found for auction',
-			Quantity = '0',
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
-		})
-		return
-	end
-
-	-- Find the auction order using the provided tokens
-	local targetOrder = nil
-	local antToken = args.dominantToken -- ANT is the dominant token in the orderbook
-	local arioToken = args.swapToken -- ARIO is the swap token
-
-	-- Look for order in nested map structure
-	if Orderbook[antToken] and Orderbook[antToken][arioToken] then
-		targetOrder = Orderbook[antToken][arioToken].orders[orderId]
-=======
 		if not success then
 			-- If settlement fails, mark as ready for manual settlement
 			print('Auto-settlement failed for ' .. order.id .. ': ' .. tostring(err))
@@ -305,36 +242,9 @@ function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapTok
 		-- English auction without bids - mark as expired
 		order.status = constants.ORDER_STATUSES.EXPIRED
 		order.endedAt = order.expirationTime
->>>>>>> Stashed changes
 	end
 end
 
-<<<<<<< Updated upstream
-	if not targetOrder then
-		utils.handleError({
-			Target = args.sender,
-			Action = 'Settlement-Error',
-			Message = 'Auction order not found',
-			Quantity = '0',
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
-		})
-		return
-	end
-
-	-- Check if auction has expired
-	if isAuctionActive(targetOrder.expirationTime, args.timestamp) then
-		utils.handleError({
-			Target = args.sender,
-			Action = 'Settlement-Error',
-			Message = 'Auction has not expired yet',
-			Quantity = '0',
-			TransferToken = nil,
-			OrderGroupId = args.orderGroupId,
-		})
-		return
-	end
-=======
 --- Settle an English auction with the winning bid
 --- Optimized to accept pre-fetched order and pair data
 --- @param args table Settlement arguments with order, pair, timestamp, msg, and optional sender
@@ -342,21 +252,14 @@ function english_auction.settleAuction(args)
 	local order = args.order
 	local pair = args.pair
 	local orderId = order.id
->>>>>>> Stashed changes
 
 	-- Execute the settlement
 	-- For English auction settlement: seller gets ARIO tokens, buyer gets ANT tokens
 	-- The Orderbook pair is [ANT_token_process, ARIO_token_process]
 	-- We need validPair to be [ARIO_token_process, ANT_token_process] for correct transfers
-<<<<<<< Updated upstream
-	local validPair = { arioToken, antToken } -- Swap the order to get [ARIO, ANT]
-	local winningBidAmount = bint(auctionBids.HighestBid)
-	local quantity = bint(targetOrder.quantity)
-=======
 	local validPair = { pair.Pair[2], pair.Pair[1] } -- Swap the order to get [ARIO, ANT]
 	local winningBidAmount = bint(order.highestBid)
 	local quantity = bint(order.quantity)
->>>>>>> Stashed changes
 
 	-- Calculate amounts after fees
 	local calculatedSendAmount = utils.calculateSendAmount(winningBidAmount)
@@ -372,17 +275,10 @@ function english_auction.settleAuction(args)
 		price = order.highestBid,
 		originalSendAmount = winningBidAmount,
 		orderId = orderId,
-<<<<<<< Updated upstream
-		orderGroupId = args.orderGroupId,
-		swapToken = targetOrder.token, -- ANT token process for the second transfer
-		msg = args.msg, -- Pass msg context for intent tracking
-	}, targetOrder, validPair, calculatedSendAmount, calculatedFillAmount)
-=======
 		orderGroupId = 'auto-settlement',
 		swapToken = order.token, -- ANT token process
 		msg = args.msg,
 	}, order, validPair, calculatedSendAmount, calculatedFillAmount)
->>>>>>> Stashed changes
 
 	-- Record the settlement directly on the order
 	order.settlement = {
@@ -392,29 +288,6 @@ function english_auction.settleAuction(args)
 		timestamp = args.timestamp,
 	}
 
-<<<<<<< Updated upstream
-	activity.recordAuctionSettlement(settlement)
-
-	-- Also mark order as executed/completed internally so it appears in completed orders
-	activity.recordExecutedOrder({
-		Id = orderId,
-		DominantToken = validPair[2],
-		SwapToken = validPair[1],
-		Sender = targetOrder.creator,
-		Receiver = auctionBids.HighestBidder,
-		Quantity = tostring(quantity),
-		Price = tostring(auctionBids.HighestBid),
-		CreatedAt = targetOrder.dateCreated,
-		EndedAt = args.timestamp,
-		ExecutionTime = args.timestamp,
-	})
-
-	-- Remove the auction from orderbook
-	Orderbook[antToken][arioToken].orders[orderId] = nil
-
-	-- Clear auction bids
-	EnglishAuctionBids[orderId] = nil
-=======
 	-- Mark order as executed and update fields
 	order.status = ORDER_STATUSES.EXECUTED
 	order.endedAt = args.timestamp
@@ -428,7 +301,6 @@ function english_auction.settleAuction(args)
 	pair.orders[orderId] = nil
 	-- Remove from index
 	OrderIndex[orderId] = nil
->>>>>>> Stashed changes
 
 	-- Notify winner
 	utils.Send(args.msg, {
@@ -462,12 +334,6 @@ function english_auction.settleAuction(args)
 end
 
 -- Helper function to handle ARIO token orders: we are selling ANT token, so we need to add to orderbook
-<<<<<<< Updated upstream
-function english_auction.handleArioOrder(args)
-	-- Add the new order to the orderbook (buy now functionality)
-	local orderId = args.orderId
-	Orderbook[args.dominantToken][args.swapToken].orders[orderId] = {
-=======
 --- Handle ARIO-dominant order (buying ANT with ARIO) for English auction
 --- @param args table Order arguments
 --- @param validPair string[] The validated pair [ARIO, ANT]
@@ -475,7 +341,6 @@ function english_auction.handleArioOrder(args)
 function english_auction.handleArioOrder(args, validPair, pair)
 	-- Add the new order to the orderbook (buy now functionality)
 	pair.orders[args.orderId] = {
->>>>>>> Stashed changes
 		id = args.orderId,
 		quantity = tostring(args.quantity),
 		originalQuantity = tostring(args.quantity),
@@ -484,9 +349,6 @@ function english_auction.handleArioOrder(args, validPair, pair)
 		dateCreated = args.createdAt,
 		price = args.price and tostring(args.price),
 		expirationTime = args.expirationTime,
-<<<<<<< Updated upstream
-		orderType = 'english',
-=======
 		orderType = ORDER_TYPES.ENGLISH,
 		status = ORDER_STATUSES.ACTIVE,
 		-- Initialize English auction specific fields
@@ -495,7 +357,6 @@ function english_auction.handleArioOrder(args, validPair, pair)
 		highestBidder = nil,
 		dominantToken = validPair[1],
 		swapToken = validPair[2],
->>>>>>> Stashed changes
 	}
 
 	-- Add to index for O(1) lookup

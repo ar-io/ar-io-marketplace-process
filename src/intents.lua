@@ -11,20 +11,12 @@ local constants = require('constants')
 function intents.createParent(msg, action, forwardedTags)
 	local intent = {
 		intentId = msg.Id,
-<<<<<<< Updated upstream
-		type = 'parent',
-=======
 		type = constants.INTENT_TYPES.PARENT,
->>>>>>> Stashed changes
 		initiator = msg.From,
 		parentIntentId = nil,
 		childIntentIds = {}, -- map for O(1) lookup
 		action = action,
-<<<<<<< Updated upstream
-		status = 'pending',
-=======
 		status = constants.INTENT_STATUSES.PENDING,
->>>>>>> Stashed changes
 		createdAt = msg.Timestamp,
 		resolvedAt = nil,
 		completedAt = nil,
@@ -47,15 +39,6 @@ function intents.createChild(parentId, msg, expectedFrom, forwardedTags)
 
 	local childIntent = {
 		intentId = childId,
-<<<<<<< Updated upstream
-		type = 'child',
-		initiator = ao.id, -- marketplace process
-		parentIntentId = parentId,
-		action = 'Transfer',
-		expectedMessage = 'Debit-Notice',
-		expectedFrom = expectedFrom,
-		status = 'pending',
-=======
 		type = constants.INTENT_TYPES.CHILD,
 		initiator = ao.id, -- marketplace process
 		parentIntentId = parentId,
@@ -63,7 +46,6 @@ function intents.createChild(parentId, msg, expectedFrom, forwardedTags)
 		expectedMessage = constants.EXPECTED_MESSAGES.DEBIT_NOTICE,
 		expectedFrom = expectedFrom,
 		status = constants.INTENT_STATUSES.PENDING,
->>>>>>> Stashed changes
 		createdAt = msg.Timestamp,
 		resolvedAt = nil,
 		failureReason = nil,
@@ -92,17 +74,6 @@ function intents.resolve(intentId, timestamp)
 		return false
 	end
 
-<<<<<<< Updated upstream
-	if intent.type == 'parent' then
-		-- Parent intent resolution (pending -> active)
-		if intent.status == 'pending' then
-			intent.status = 'active'
-			intent.resolvedAt = timestamp
-		end
-	elseif intent.type == 'child' then
-		-- Child intent resolution
-		intent.status = 'resolved'
-=======
 	if intent.type == constants.INTENT_TYPES.PARENT then
 		-- Parent intent resolution (pending -> active)
 		if intent.status == constants.INTENT_STATUSES.PENDING then
@@ -112,7 +83,6 @@ function intents.resolve(intentId, timestamp)
 	elseif intent.type == constants.INTENT_TYPES.CHILD then
 		-- Child intent resolution
 		intent.status = constants.INTENT_STATUSES.RESOLVED
->>>>>>> Stashed changes
 		intent.resolvedAt = timestamp
 	end
 
@@ -129,11 +99,7 @@ function intents.fail(intentId, reason)
 		return false
 	end
 
-<<<<<<< Updated upstream
-	intent.status = 'failed'
-=======
 	intent.status = constants.INTENT_STATUSES.FAILED
->>>>>>> Stashed changes
 	intent.failureReason = reason
 
 	return true
@@ -152,11 +118,7 @@ function intents.updateStatus(intentId, status)
 	intent.status = status
 
 	-- Set completedAt timestamp if moving to completed
-<<<<<<< Updated upstream
-	if status == 'completed' then
-=======
 	if status == constants.INTENT_STATUSES.COMPLETED then
->>>>>>> Stashed changes
 		intent.completedAt = os.time()
 	end
 
@@ -175,11 +137,7 @@ end
 function intents.getPending()
 	local pending = {}
 	for _, intent in pairs(Intents) do
-<<<<<<< Updated upstream
-		if intent.type == 'parent' and intent.status == 'pending' then
-=======
 		if intent.type == constants.INTENT_TYPES.PARENT and intent.status == constants.INTENT_STATUSES.PENDING then
->>>>>>> Stashed changes
 			table.insert(pending, intent)
 		end
 	end
@@ -221,21 +179,13 @@ end
 --- @return boolean allResolved Boolean indicating if all children are resolved
 function intents.areAllChildrenResolved(parentId)
 	local parent = Intents[parentId]
-<<<<<<< Updated upstream
-	if not parent or parent.type ~= 'parent' then
-=======
 	if not parent or parent.type ~= constants.INTENT_TYPES.PARENT then
->>>>>>> Stashed changes
 		return false
 	end
 
 	for childId in pairs(parent.childIntentIds) do
 		local child = Intents[childId]
-<<<<<<< Updated upstream
-		if not child or child.status ~= 'resolved' then
-=======
 		if not child or child.status ~= constants.INTENT_STATUSES.RESOLVED then
->>>>>>> Stashed changes
 			return false
 		end
 	end
@@ -319,11 +269,7 @@ function intents.getIntentByIdHandler(msg)
 	-- If parent, include all child intents
 	---@type table
 	local response = utils.deepCopy(intent) or intent
-<<<<<<< Updated upstream
-	if intent.type == 'parent' then
-=======
 	if intent.type == constants.INTENT_TYPES.PARENT then
->>>>>>> Stashed changes
 		---@diagnostic disable-next-line: inject-field
 		response.Children = {}
 		for childId in pairs(intent.childIntentIds) do
@@ -335,27 +281,4 @@ function intents.getIntentByIdHandler(msg)
 	return json.encode(response)
 end
 
-<<<<<<< Updated upstream
--- Handler: Get-Intent-Stats
-function intents.getIntentStatsHandler(_)
-	local json = require('json')
-	local stats = {
-		total = 0,
-		byStatus = {},
-		byType = {},
-		byAction = {},
-	}
-
-	for _, intent in pairs(Intents) do
-		stats.total = stats.total + 1
-		stats.byStatus[intent.status] = (stats.byStatus[intent.status] or 0) + 1
-		stats.byType[intent.type] = (stats.byType[intent.type] or 0) + 1
-		stats.byAction[intent.action] = (stats.byAction[intent.action] or 0) + 1
-	end
-
-	return json.encode(stats)
-end
-
-=======
->>>>>>> Stashed changes
 return intents

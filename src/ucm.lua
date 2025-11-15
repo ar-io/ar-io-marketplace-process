@@ -4,42 +4,9 @@ require('types')
 local utils = require('utils')
 local constants = require('constants')
 local json = require('json')
-<<<<<<< Updated upstream
-local constants = require('constants')
-
--- Note: fixed_price, dutch_auction, and english_auction are lazy-loaded
--- within functions to avoid circular dependencies
-
-if Name ~= 'ANT Marketplace' then
-	Name = 'ANT Marketplace'
-end
-
--- Orderbook {
--- 	Pair [TokenId, TokenId],
--- 	Orders {
--- 		Id,
--- 		Creator,
--- 		Quantity,
--- 		OriginalQuantity,
--- 		Token,
--- 		DateCreated,
--- 		Price
--- 		ExpirationTime
--- 		Type
--- 		MinimumPrice (dutch)
--- 		DecreaseInterval (dutch)
--- 		DecreaseStep (dutch)
--- 	} []
--- } []
-
-if not Orderbook then
-	Orderbook = {}
-end
-=======
 local fixed_price = require('fixed_price')
 local dutch_auction = require('dutch_auction')
 local english_auction = require('english_auction')
->>>>>>> Stashed changes
 
 local ucm = {}
 
@@ -177,11 +144,7 @@ function ucm.transfer(msg, sendParams)
 end
 
 -- Helper function to execute token transfers for order matching
-<<<<<<< Updated upstream
-function ucm.executeTokenTransfers(args, currentOrderEntry, validPair, calculatedSendAmount, calculatedFillAmount)
-=======
 function ucm.executeTokenTransfers(args, currentOrderEntry, _, calculatedSendAmount, calculatedFillAmount)
->>>>>>> Stashed changes
 	-- Optionally record fee (difference between original send amount and calculated amount)
 	if args and args.originalSendAmount then
 		local ok1, orig = pcall(function()
@@ -222,26 +185,6 @@ function ucm.executeTokenTransfers(args, currentOrderEntry, _, calculatedSendAmo
 	})
 end
 
-<<<<<<< Updated upstream
--- Helper function to get or create pair entry in orderbook
--- Returns the pair table and boolean indicating if it was created
-local function getPairEntry(dominantToken, swapToken)
-	-- Initialize first level if needed
-	if not Orderbook[dominantToken] then
-		Orderbook[dominantToken] = {}
-	end
-
-	-- Initialize second level if needed
-	if not Orderbook[dominantToken][swapToken] then
-		Orderbook[dominantToken][swapToken] = {
-			pair = { dominantToken, swapToken },
-			orders = {},
-		}
-		return Orderbook[dominantToken][swapToken], true
-	end
-
-	return Orderbook[dominantToken][swapToken], false
-=======
 --- Get a trading pair from the orderbook (directional)
 --- @param dominantToken string The dominant token ID
 --- @param swapToken string The swap token ID
@@ -251,7 +194,6 @@ function ucm.getPair(dominantToken, swapToken)
 		return Orderbook[dominantToken][swapToken]
 	end
 	return nil
->>>>>>> Stashed changes
 end
 
 -- Helper function to validate ANT dominant token orders (selling ANT for ARIO)
@@ -425,24 +367,6 @@ function ucm.validateOrderParams(args)
 	return validPair
 end
 
--- Helper function to ensure trading pair exists in orderbook
-<<<<<<< Updated upstream
-local function ensurePairExists(dominantToken, swapToken)
-	local pairEntry = getPairEntry(dominantToken, swapToken)
-	return pairEntry
-end
-
-local function handleAntOrderAuctions(args, validPair)
-	if args.orderType == 'fixed' then
-		local fixed_price = require('fixed_price')
-		fixed_price.handleAntOrder(args, validPair)
-	elseif args.orderType == 'dutch' then
-		local dutch_auction = require('dutch_auction')
-		dutch_auction.handleAntOrder(args, validPair)
-	elseif args.orderType == 'english' then
-		local english_auction = require('english_auction')
-		english_auction.handleAntOrder(args, validPair)
-=======
 --- Ensure a trading pair exists in the orderbook, creating it if necessary
 --- @param validPair string[] The pair as [dominantToken, swapToken]
 --- @return Pair The pair object
@@ -484,7 +408,6 @@ function ucm.handleAntOrderAuctions(args, validPair, pair)
 		print('DEBUG: dutch_auction.handleAntOrder returned')
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
 		english_auction.handleAntOrder(args, validPair, pair)
->>>>>>> Stashed changes
 	else
 		utils.handleError({
 			Target = args.sender,
@@ -497,36 +420,6 @@ function ucm.handleAntOrderAuctions(args, validPair, pair)
 	end
 end
 
-<<<<<<< Updated upstream
-local function handleArioOrderAuctions(args, validPair)
-	-- Check if the desired token is already being sold (prevent duplicate sell orders)
-	local pairEntry = Orderbook[args.dominantToken] and Orderbook[args.dominantToken][args.swapToken]
-	if pairEntry then
-		for _, existingOrder in pairs(pairEntry.orders) do
-			if existingOrder.token == args.dominantToken then
-				utils.handleError({
-					Target = args.sender,
-					Action = 'Validation-Error',
-					Message = 'This ANT token is already being sold - cannot create duplicate sell order',
-					Quantity = args.quantity,
-					TransferToken = validPair[1],
-					OrderGroupId = args.orderGroupId,
-				})
-				return
-			end
-		end
-	end
-
-	if args.orderType == 'fixed' then
-		local fixed_price = require('fixed_price')
-		fixed_price.handleArioOrder(args)
-	elseif args.orderType == 'dutch' then
-		local dutch_auction = require('dutch_auction')
-		dutch_auction.handleArioOrder(args)
-	elseif args.orderType == 'english' then
-		local english_auction = require('english_auction')
-		english_auction.handleArioOrder(args)
-=======
 --- Handle ARIO-dominant orders (buying ANT with ARIO) for different auction types
 --- @param args table Order arguments
 --- @param validPair string[] The validated pair [ARIO, ANT]
@@ -551,11 +444,9 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 	if args.orderType == constants.ORDER_TYPES.FIXED then
 		fixed_price.handleArioOrder(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.DUTCH then
-		local dutch_auction = require('dutch_auction')
 		dutch_auction.handleArioOrder(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
 		english_auction.handleArioOrder(args, validPair, pair)
->>>>>>> Stashed changes
 	else
 		utils.handleError({
 			Target = args.sender,
@@ -576,21 +467,11 @@ function ucm.createOrder(args)
 	end
 
 	-- Ensure trading pair exists in orderbook
-<<<<<<< Updated upstream
-	ensurePairExists(args.dominantToken, args.swapToken)
-=======
 	local pair = ucm.ensurePairExists(validPair)
->>>>>>> Stashed changes
 
 	-- Check if the desired token is ARIO (add to orderbook) or ANT (immediate trade only)
 	local isBuyingAnt = utils.isArioToken(args.dominantToken) -- If dominantToken is ARIO, we're buying ANT
 	local isBuyingArio = not isBuyingAnt -- If dominantToken is not ARIO, we're selling ANT
-<<<<<<< Updated upstream
-
-	-- Handle ANT token orders - check for immediate trades only, don't add to orderbook
-	if isBuyingAnt then
-		handleAntOrderAuctions(args, validPair)
-=======
 	print(
 		'DEBUG createOrder: dominantToken=',
 		args.dominantToken,
@@ -607,17 +488,12 @@ function ucm.createOrder(args)
 		local oppositePair = { validPair[2], validPair[1] } -- [ANT, ARIO]
 		local oppositePairObj = ucm.ensurePairExists(oppositePair)
 		ucm.handleAntOrderAuctions(args, oppositePair, oppositePairObj)
->>>>>>> Stashed changes
 		return
 	end
 
 	-- Handle ARIO token orders - add to orderbook for buy now
 	if isBuyingArio then
-<<<<<<< Updated upstream
-		handleArioOrderAuctions(args, validPair)
-=======
 		ucm.handleArioOrderAuctions(args, validPair, pair)
->>>>>>> Stashed changes
 		return
 	end
 
@@ -688,10 +564,6 @@ function ucm.settleAuction(args)
 	end
 
 	-- Call the core settlement function with pre-fetched data
-<<<<<<< Updated upstream
-	local english_auction = require('english_auction')
-=======
->>>>>>> Stashed changes
 	english_auction.settleAuction({
 		order = targetOrder,
 		pair = targetPair,
@@ -733,33 +605,6 @@ function ucm.cancelOrderHandler(msg)
 		'Order cannot be cancelled because it is not active or expired'
 	)
 
-<<<<<<< Updated upstream
-	-- Find and remove order from orderbook
-	local orderFound = false
-	for _, swapTokens in pairs(Orderbook) do
-		for _, pairData in pairs(swapTokens) do
-			local currentOrderEntry = pairData.orders[orderId]
-			if currentOrderEntry then
-				-- Return funds to the creator
-				ucm.transfer(msg, {
-					Target = currentOrderEntry.token,
-					Action = 'Transfer',
-					Tags = {
-						Recipient = currentOrderEntry.creator,
-						Quantity = currentOrderEntry.quantity,
-					},
-				})
-
-				-- Remove the order from the orderbook
-				pairData.orders[orderId] = nil
-				orderFound = true
-				break
-			end
-		end
-		if orderFound then
-			break
-		end
-=======
 	-- Update order status before removing
 	currentOrderEntry.status = constants.ORDER_STATUSES.CANCELLED
 	currentOrderEntry.endedAt = msg.Timestamp
@@ -777,7 +622,6 @@ function ucm.cancelOrderHandler(msg)
 	-- Remove the order from the orderbook and index
 	if pairData then
 		pairData.orders[orderId] = nil
->>>>>>> Stashed changes
 	end
 	OrderIndex[orderId] = nil
 
@@ -790,9 +634,6 @@ function ucm.cancelOrderHandler(msg)
 end
 
 -- Handler: Info
-<<<<<<< Updated upstream
-function ucm.info(_)
-=======
 --- Returns comprehensive information about the marketplace state
 --- @param msg Message The incoming message
 --- @return string JSON-encoded InfoResponse
@@ -842,7 +683,6 @@ function ucm.infoHandler(msg)
 		intentStats.byAction[intent.action] = (intentStats.byAction[intent.action] or 0) + 1
 	end
 
->>>>>>> Stashed changes
 	return json.encode({
 		name = Name,
 		processId = ao.id,
@@ -872,18 +712,10 @@ function ucm.getOrderbookByPairHandler(msg)
 	if not msg.Tags.DominantToken or not msg.Tags.SwapToken then
 		return
 	end
-<<<<<<< Updated upstream
-
-	local pairData = Orderbook[msg.Tags.DominantToken] and Orderbook[msg.Tags.DominantToken][msg.Tags.SwapToken]
-
-	if pairData then
-		return json.encode({ Orderbook = pairData })
-=======
 	local pair = ucm.getPair(msg.Tags.DominantToken, msg.Tags.SwapToken)
 
 	if pair then
 		return json.encode({ Orderbook = pair })
->>>>>>> Stashed changes
 	end
 end
 
@@ -897,17 +729,10 @@ function ucm.readOrdersHandler(msg)
 	end
 
 	local readOrders = {}
-<<<<<<< Updated upstream
-	local pairData = Orderbook[msg.Tags.DominantToken] and Orderbook[msg.Tags.DominantToken][msg.Tags.SwapToken]
-
-	if pairData then
-		for _, order in pairs(pairData.orders) do
-=======
 	local pair = ucm.getPair(msg.Tags.DominantToken, msg.Tags.SwapToken)
 
 	if pair then
 		for _, order in pairs(pair.orders) do
->>>>>>> Stashed changes
 			if not msg.Tags.Creator or order.creator == msg.Tags.Creator then
 				table.insert(readOrders, {
 					id = order.id,
@@ -924,15 +749,6 @@ function ucm.readOrdersHandler(msg)
 end
 
 -- Handler: Read-Pair
-<<<<<<< Updated upstream
-function ucm.readPair(msg)
-	local pairData = Orderbook[msg.Tags.DominantToken] and Orderbook[msg.Tags.DominantToken][msg.Tags.SwapToken]
-
-	if pairData then
-		return json.encode({
-			Pair = pairData.pair,
-			Orderbook = pairData,
-=======
 --- Read a specific trading pair
 --- @param msg table Message with DominantToken and SwapToken tags
 --- @return string|nil JSON-encoded pair info or nil if not found
@@ -942,7 +758,6 @@ function ucm.readPairHandler(msg)
 		return json.encode({
 			pair = pair.pair,
 			orderbook = pair,
->>>>>>> Stashed changes
 		})
 	end
 end

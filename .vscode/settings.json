@@ -1,40 +1,15 @@
 {
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "biomejs.biome",
-  "javascript.format.enable": false,
-  "typescript.format.enable": false,
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/lib": true,
-    "**/dist": true,
-    "**/coverage": true
-  },
-  "Lua.codeLens.enable": true,
-  "Lua.workspace.library": ["${workspaceFolderBasename}/**"],
-  "Lua.completion.callSnippet": "Both",
-  "Lua.signatureHelp.enable": true,
-  "Lua.workspace.checkThirdParty": true,
-  "Lua.diagnostics.enable": true,
-  "Lua.diagnostics.disable": ["lowercase-global", "undefined-global"],
-  "Lua.diagnostics.neededFileStatus": {
-    "unused-local": "Any!",
-    "unused-function": "Any!",
-    "unused-vararg": "Any!"
-  },
   "Lua.diagnostics.severity": {
-    "unused-local": "Error!",
-    "unused-function": "Error!",
-    "unused-vararg": "Error!"
+    // Type checking - missing required fields
+    "missing-fields": "Error!",
+    // Nil safety checks
+    "need-check-nil": "Error!",
+    "undefined-field": "Error!"
   },
-  "Lua.format.defaultConfig": {
-    "indent_style": "space",
-    "indent_size": "2"
-  },
-  "[lua]": {
-    "editor.defaultFormatter": "JohnnyMorganz.stylua",
-    "editor.formatOnSave": true,
-    "editor.formatOnPaste": true,
-    "editor.formatOnSaveMode": "file"
-  },
-  "stylua.targetReleaseVersion": "latest"
+  "Lua.type.castNumberToInteger": true,
+  "Lua.type.weakUnionCheck": true,
+  "Lua.hint.enable": true,
+  "Lua.hint.paramName": "All",
+  "Lua.hint.paramType": true,
+  "Lua.hint.setType": true
 }

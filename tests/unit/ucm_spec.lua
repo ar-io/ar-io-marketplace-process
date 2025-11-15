@@ -37,7 +37,12 @@ describe('ucm helpers', function()
 						[orderId] = {
 							id = orderId,
 							quantity = '1',
+							originalQuantity = '1',
 							creator = 'creator-addr',
+							token = dominantToken,
+							dateCreated = 1000,
+							orderType = 'fixed',
+							status = 'active',
 						},
 					},
 				},
@@ -51,8 +56,10 @@ describe('ucm helpers', function()
 			local order, pair = ucm.findOrderById(orderId)
 			assert.is_not_nil(order)
 			assert.is_not_nil(pair)
-			assert.are.equal(orderId, order.id)
-			assert.are.equal('1', order.quantity)
+			if order then
+				assert.are.equal(orderId, order.id)
+				assert.are.equal('1', order.quantity)
+			end
 		end)
 
 		it('should clean up stale index when pair does not exist', function()
@@ -298,7 +305,18 @@ describe('ucm helpers', function()
 			_G.Orderbook[dominantToken] = {
 				[swapToken] = {
 					pair = validPair,
-					orders = { ['order-1'] = { id = 'order-1' } },
+					orders = {
+						['order-1'] = {
+							id = 'order-1',
+							creator = 'test-creator',
+							quantity = '1',
+							originalQuantity = '1',
+							token = dominantToken,
+							dateCreated = 1000,
+							orderType = 'fixed',
+							status = 'active',
+						},
+					},
 				},
 			}
 

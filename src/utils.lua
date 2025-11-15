@@ -814,7 +814,7 @@ function utils.onBeforeHandler(msg)
 
 	-- Normalize timestamp to ensure it's always a number
 	if msg.Timestamp then
-		msg.Timestamp = tonumber(msg.Timestamp)
+		msg.Timestamp = tonumber(msg.Timestamp) or msg.Timestamp
 	end
 
 	-- Prune expired orders from the orderbook (and auto-settle auctions)

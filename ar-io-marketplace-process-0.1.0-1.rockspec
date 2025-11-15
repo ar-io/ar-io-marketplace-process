@@ -24,7 +24,6 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["activity"] = "src/activity.lua",
     ["dutch_auction"] = "src/dutch_auction.lua",
     ["english_auction"] = "src/english_auction.lua",
     ["fixed_price"] = "src/fixed_price.lua",

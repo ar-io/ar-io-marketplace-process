@@ -1,13 +1,13 @@
 return {
 	default = {
-		ROOT = { 'spec' },
+		ROOT = { 'tests/unit' },
 		pattern = '_spec%.lua$',
 		exclude = {
 			'**/luarocks-3.9.1/**',
 			'**/lua-5.3.1/**',
-			'spec/._*',
+			'tests/unit/._*',
 		},
-		helper = 'spec/setup.lua',
+		helper = 'tests/unit/setup.lua',
 		verbose = true,
 		coverage = false,
 		output = 'utfTerminal',
