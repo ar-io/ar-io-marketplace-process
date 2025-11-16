@@ -89,11 +89,11 @@ function intents.resolveIntent(intentId, timestamp)
 	if intent.type == constants.INTENT_TYPES.PARENT then
 		-- Parent intent resolution (pending -> active)
 		if intent.status == constants.INTENT_STATUSES.PENDING then
-			intent.status = constants.INTENT_STATUSES.ACTIVE
-			intent.resolvedAt = timestamp
-		end
-		
-		-- Prune parent intents (and their children) when they reach terminal states
+		intent.status = constants.INTENT_STATUSES.ACTIVE
+		intent.resolvedAt = timestamp
+	end
+
+	-- Prune parent intents (and their children) when they reach terminal states
 		if intent.status == constants.INTENT_STATUSES.COMPLETED or intent.status == constants.INTENT_STATUSES.FAILED then
 			-- Capture intent data BEFORE pruning
 			resolvedIntent = {
@@ -209,7 +209,7 @@ function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
 	if parentIntentId then
 		-- Validate intent ID format
 		assert(utils.isValidIntentId(parentIntentId), 'Invalid X-Intent-Id format: ' .. tostring(parentIntentId))
-		
+
 		-- Validate parent intent exists
 		local parent = intents.getIntentById(parentIntentId)
 		if parent then

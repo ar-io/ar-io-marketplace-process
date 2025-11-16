@@ -105,9 +105,9 @@ end
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to match with an existing ANT sell order or fail
 --- Handle ANT-dominant order (selling ANT for ARIO) for fixed price
 --- @param args table Order arguments
---- @param validPair string[] The validated pair [ANT, ARIO]
+--- @param _validPair string[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
-function fixed_price.handleAntOrder(args, validPair, pair)
+function fixed_price.handleAntOrder(args, _validPair, pair)
 	local currentOrders = pair.orders
 	local matches = {}
 	local matchedOrderId = nil
@@ -172,7 +172,6 @@ function fixed_price.handleAntOrder(args, validPair, pair)
 			-- Refund any excess ARIO sent over the required amount
 			if sentAmount > requiredAmount then
 				local refundAmount = sentAmount - requiredAmount
-				local ucm = require('ucm')
 				ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
 			end
 

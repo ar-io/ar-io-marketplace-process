@@ -197,10 +197,10 @@ describe('Intent Management', function()
 			}
 			local intent = intents.createParentIntent(msg, 'Create-Order', {})
 
-			-- Mark as active first (required before completed transition)
-			intents.resolveIntent(intent.intentId, 1234567900)
-			
-			intents.updateIntentStatus(intent.intentId, 'completed')
+		-- Mark as active first (required before completed transition)
+		intents.resolveIntent(intent.intentId, 1234567900)
+
+		intents.updateIntentStatus(intent.intentId, 'completed')
 
 			-- Intent should be pruned after reaching terminal completed state
 			assert.is_nil(Intents[intent.intentId])

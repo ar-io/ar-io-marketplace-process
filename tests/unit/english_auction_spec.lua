@@ -687,53 +687,53 @@ describe('English Auction', function()
 				assert.is_true(isValid)
 				assert.is_nil(err)
 			end)
+	end)
+
+	describe('returnPreviousBid', function()
+		local returnBidMessages = {}
+
+	before_each(function()
+		returnBidMessages = {}
+		_G.ao.send = function(msg)
+				table.insert(returnBidMessages, msg)
+			end
 		end)
 
-		describe('returnPreviousBid', function()
-			local sentMessages = {}
+		it('should send refund and notification when all parameters provided', function()
+			local msg = { Tags = {} }
+			english_auction.returnPreviousBid('auction-1', 'prev-bidder', '1000', 'TOKEN_ID', msg)
 
-			before_each(function()
-				sentMessages = {}
-				_G.ao.send = function(msg)
-					table.insert(sentMessages, msg)
-				end
-			end)
+			assert.are.equal(2, #returnBidMessages)
 
-			it('should send refund and notification when all parameters provided', function()
-				local msg = { Tags = {} }
-				english_auction.returnPreviousBid('auction-1', 'prev-bidder', '1000', 'TOKEN_ID', msg)
+			-- Check transfer
+			assert.are.equal('TOKEN_ID', returnBidMessages[1].Target)
+			assert.are.equal('Transfer', returnBidMessages[1].Action)
+			assert.are.equal('prev-bidder', returnBidMessages[1].Tags.Recipient)
+			assert.are.equal('1000', returnBidMessages[1].Tags.Quantity)
 
-				assert.are.equal(2, #sentMessages)
+			-- Check notification
+			assert.are.equal('prev-bidder', returnBidMessages[2].Target)
+			assert.are.equal('Bid-Returned', returnBidMessages[2].Action)
+			assert.are.equal('auction-1', returnBidMessages[2].Tags.OrderId)
+		end)
 
-				-- Check transfer
-				assert.are.equal('TOKEN_ID', sentMessages[1].Target)
-				assert.are.equal('Transfer', sentMessages[1].Action)
-				assert.are.equal('prev-bidder', sentMessages[1].Tags.Recipient)
-				assert.are.equal('1000', sentMessages[1].Tags.Quantity)
+		it('should not send anything when bidder is nil', function()
+			local msg = { Tags = {} }
+			english_auction.returnPreviousBid('auction-1', nil, '1000', 'TOKEN_ID', msg)
+			assert.are.equal(0, #returnBidMessages)
+		end)
 
-				-- Check notification
-				assert.are.equal('prev-bidder', sentMessages[2].Target)
-				assert.are.equal('Bid-Returned', sentMessages[2].Action)
-				assert.are.equal('auction-1', sentMessages[2].Tags.OrderId)
-			end)
+		it('should not send anything when amount is nil', function()
+			local msg = { Tags = {} }
+			english_auction.returnPreviousBid('auction-1', 'prev-bidder', nil, 'TOKEN_ID', msg)
+			assert.are.equal(0, #returnBidMessages)
+		end)
 
-			it('should not send anything when bidder is nil', function()
-				local msg = { Tags = {} }
-				english_auction.returnPreviousBid('auction-1', nil, '1000', 'TOKEN_ID', msg)
-				assert.are.equal(0, #sentMessages)
-			end)
-
-			it('should not send anything when amount is nil', function()
-				local msg = { Tags = {} }
-				english_auction.returnPreviousBid('auction-1', 'prev-bidder', nil, 'TOKEN_ID', msg)
-				assert.are.equal(0, #sentMessages)
-			end)
-
-			it('should not send anything when token is nil', function()
-				local msg = { Tags = {} }
-				english_auction.returnPreviousBid('auction-1', 'prev-bidder', '1000', nil, msg)
-				assert.are.equal(0, #sentMessages)
-			end)
+		it('should not send anything when token is nil', function()
+			local msg = { Tags = {} }
+			english_auction.returnPreviousBid('auction-1', 'prev-bidder', '1000', nil, msg)
+			assert.are.equal(0, #returnBidMessages)
+		end)
 		end)
 	end)
 end)

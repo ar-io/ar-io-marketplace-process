@@ -1,4 +1,4 @@
-package = "arns-marketplace-process"
+package = "ar-io-marketplace-process"
 version = "0.1.0-1"
 
 description = {
@@ -13,12 +13,13 @@ tracking, auctions, and utilities.
 }
 
 source = {
-  dir = ".",
-  url = "https://github.com/blockydevs/arns-marketplace-process"
+  url = "."
 }
 
 dependencies = {
-  "lua = 5.3"
+  "lua = 5.3",
+  "busted >= 2.0.0",
+  "luacov >= 0.15.0"
 }
 
 build = {

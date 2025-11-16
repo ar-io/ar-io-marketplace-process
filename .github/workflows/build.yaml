@@ -5,12 +5,10 @@ on:
   pull_request:
     paths:
       - "src/**"
-      - "spec/**"
       - "tests/**"
   push:
     paths:
       - "src/**"
-      - "spec/**"
       - "tests/**"
     branches:
       - develop
@@ -31,7 +29,7 @@ jobs:
       - name: Install Luacheck
         run: luarocks install luacheck
 
-      - run: luacheck src spec
+      - run: luacheck src tests/unit
 
   integration:
     runs-on: ubuntu-latest
@@ -66,13 +64,21 @@ jobs:
       - name: Setup LuaRocks
         uses: leafo/gh-actions-luarocks@v4.3.0
 
-      - name: Install Busted
-        run: luarocks install ar-io-marketplace-process-0.1.0-1.rockspec
+      - name: Install Lua Dependencies
+        run: luarocks make ar-io-marketplace-process-0.1.0-1.rockspec
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install Node Dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run Busted Tests
         run: pnpm test:unit

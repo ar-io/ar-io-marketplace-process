@@ -174,7 +174,7 @@ function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapTok
 	if order.highestBidder then
 		-- English auction with bids - auto-settle it
 		-- Wrap in pcall to handle any settlement errors gracefully
-		local success, err = pcall(function()
+		local success = pcall(function()
 			english_auction.settleAuction({
 				order = order,
 				pair = pair,

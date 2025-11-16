@@ -1,7 +1,4 @@
 allow_defined = true
-exclude_files = {
-	'spec/crypto',
-}
 globals = {
 	'Handlers',
 	'ao',

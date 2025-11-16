@@ -242,10 +242,10 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local success, result = pcall(function()
-				return ucm.validateOrderParams(args)
-			end)
-			assert.is_false(success)
+		local success = pcall(function()
+			return ucm.validateOrderParams(args)
+		end)
+		assert.is_false(success)
 		end)
 
 		it('should reject trade without ARIO', function()
@@ -258,10 +258,10 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local success, result = pcall(function()
-				return ucm.validateOrderParams(args)
-			end)
-			assert.is_false(success)
+		local success = pcall(function()
+			return ucm.validateOrderParams(args)
+		end)
+		assert.is_false(success)
 		end)
 
 		it('should reject invalid quantity', function()
@@ -274,10 +274,10 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '0' }, From = 'token-process-id' },
 			}
 
-			local success, result = pcall(function()
-				return ucm.validateOrderParams(args)
-			end)
-			assert.is_false(success)
+		local success = pcall(function()
+			return ucm.validateOrderParams(args)
+		end)
+		assert.is_false(success)
 		end)
 
 		it('should reject invalid order type', function()
@@ -290,10 +290,10 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local success, result = pcall(function()
-				return ucm.validateOrderParams(args)
-			end)
-			assert.is_false(success)
+		local success = pcall(function()
+			return ucm.validateOrderParams(args)
+		end)
+		assert.is_false(success)
 		end)
 
 		it('should accept valid fixed order', function()

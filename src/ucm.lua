@@ -173,8 +173,8 @@ end
 --- Validate ANT dominant token orders (selling ANT for ARIO)
 --- Throws error if validation fails
 --- @param args table Order arguments containing quantity, price, expirationTime, createdAt, sender, orderGroupId
---- @param validPair string[] The validated pair [ANT, ARIO]
-function ucm.validateAntDominantOrder(args, validPair)
+--- @param _validPair string[] The validated pair [ANT, ARIO]
+function ucm.validateAntDominantOrder(args, _validPair)
 	-- ANT tokens can only be sold in quantities of exactly 1
 	if bint(args.quantity) ~= bint(constants.AUCTION.ANT_EXACT_QUANTITY) then
 		utils.refundAndError(
@@ -210,8 +210,8 @@ end
 --- Validate ARIO dominant token orders (buying ANT with ARIO)
 --- Throws error if validation fails
 --- @param args table Order arguments containing requestedOrderId, sender, quantity, orderGroupId
---- @param validPair string[] The validated pair [ARIO, ANT]
-function ucm.validateArioDominantOrder(args, validPair)
+--- @param _validPair string[] The validated pair [ARIO, ANT]
+function ucm.validateArioDominantOrder(args, _validPair)
 	-- Currently no specific validation rules for ARIO dominant orders
 	-- All general validations (quantity, pair, etc.) are handled in validateOrderParams
 	-- This function is a placeholder for future ARIO-specific validation rules
@@ -308,8 +308,8 @@ function ucm.handleAntOrderAuctions(args, validPair, pair)
 	if args.orderType == constants.ORDER_TYPES.FIXED then
 		fixed_price.handleAntOrder(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.DUTCH then
-		local dutch_auction = require('dutch_auction')
-		dutch_auction.handleAntOrder(args, validPair, pair)
+		local dutch_auction_module = require('dutch_auction')
+		dutch_auction_module.handleAntOrder(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
 		args.pair = pair
 		english_auction.handleAntOrder(args)
@@ -468,10 +468,9 @@ end
 
 -- Handler: Info
 --- Returns comprehensive information about the marketplace state
---- @param msg Message The incoming message
+--- @param _msg Message The incoming message
 --- @return string JSON-encoded InfoResponse
----@diagnostic disable-next-line: unused-local
-function ucm.infoHandler(msg)
+function ucm.infoHandler(_msg)
 	-- Count orders by status
 	local totalOrders = 0
 	local totalPairs = 0

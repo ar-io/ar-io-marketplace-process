@@ -79,9 +79,9 @@ end
 
 --- Handle ANT-dominant order (selling ANT for ARIO) for Dutch auction
 --- @param args table Order arguments
---- @param validPair string[] The validated pair [ANT, ARIO]
+--- @param _validPair string[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
-function dutch_auction.handleAntOrder(args, validPair, pair)
+function dutch_auction.handleAntOrder(args, _validPair, pair)
 	local currentOrders = pair.orders
 	local matches = {}
 	local matchedOrderId = nil

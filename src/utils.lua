@@ -41,12 +41,12 @@ function utils.isValidIntentId(intentId)
 	if not intentId or type(intentId) ~= 'string' then
 		return false
 	end
-	
+
 	-- Intent IDs should be non-empty strings containing only digits
 	if intentId == '' then
 		return false
 	end
-	
+
 	-- Check if it's a valid string integer (only digits)
 	return intentId:match('^%d+$') ~= nil
 end
@@ -423,12 +423,12 @@ function utils.parseIdsFilter(idsParam)
 	if not idsParam then
 		return nil
 	end
-	
+
 	local idsArray = utils.safeDecodeJson(idsParam)
 	if not idsArray or type(idsArray) ~= 'table' then
 		return nil
 	end
-	
+
 	-- Convert array to set for O(1) lookups
 	local idsSet = {}
 	for _, id in ipairs(idsArray) do
@@ -436,7 +436,7 @@ function utils.parseIdsFilter(idsParam)
 			idsSet[id] = true
 		end
 	end
-	
+
 	return idsSet
 end
 

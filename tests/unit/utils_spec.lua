@@ -451,18 +451,6 @@ describe('utils', function()
 		local SELL_TOKEN = 'SELL_TOKEN_PROCESS'
 		local BUY_TOKEN = 'BUY_TOKEN_PROCESS'
 
-		local function makeArgs(overrides)
-			local base = {
-				sender = 'buyer-addr',
-				swapToken = BUY_TOKEN,
-				target = 'ignored',
-			}
-			for k, v in pairs(overrides or {}) do
-				base[k] = v
-			end
-			return base
-		end
-
 		local function makeOrderEntry(overrides)
 			local base = {
 				creator = 'seller-addr',
@@ -985,7 +973,6 @@ describe('utils', function()
 
 	describe('sendFeeToTreasury', function()
 		local TEST_TREASURY = 'TEST_TREASURY_ADDRESS_ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-		local DEFAULT_TREASURY = 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks'
 
 		it('sends fee when original > calculated', function()
 			_G.TREASURY_ADDRESS = TEST_TREASURY
