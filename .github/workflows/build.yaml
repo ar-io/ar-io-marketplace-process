@@ -37,6 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -63,8 +69,13 @@ jobs:
       - name: Install Busted
         run: luarocks install ar-io-marketplace-process-0.1.0-1.rockspec
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Run Busted Tests
-        run: yarn test:unit
+        run: pnpm test:unit
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4

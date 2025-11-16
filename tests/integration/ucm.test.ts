@@ -8,7 +8,7 @@ import {
   PROCESS_OWNER,
 } from '../utils/constants.js';
 
-describe('UCM (Universal Continuous Market)', () => {
+describe('UCM (Universal Content Marketplace)', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
 
