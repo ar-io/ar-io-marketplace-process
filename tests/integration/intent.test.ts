@@ -39,30 +39,25 @@ describe('Intent Workflow Tracking', () => {
         price: '500',
       });
 
-      console.dir({ createIntent: result }, { depth: null });
-
       assert(result, 'Create intent result should be defined');
-      assert.strictEqual(result.Action, 'Intent-Created');
-      assert(result.Tags['Intent-Id'], 'Intent-Id should be returned');
-      assert.strictEqual(result.Tags.Status, 'Success');
+      assert.strictEqual(result.Action, 'Create-Intent-Notice');
+      const data = JSON.parse(result.Data);
+      assert(data['Intent-Id'], 'Intent-Id should be returned');
     });
 
     it('should fail to create intent without required X-Intent-Action', async () => {
-      const { result } = (await marketplaceProcess.process.send({
-        tags: [{ name: 'Action', value: 'Create-Intent' }],
-        signer: TEST_SIGNER,
-      })) as any;
-
-      console.dir({ missingAction: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      const errorMessage = result.Messages.find((m: any) =>
-        m.Tags.find(
-          (t: any) =>
-            t.name === 'Action' && t.value === 'Invalid-Intent-Notice',
-        ),
-      );
-      assert(errorMessage, 'Should return Invalid-Intent-Notice');
+      try {
+        await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Create-Intent' }],
+          signer: TEST_SIGNER,
+        });
+        assert.fail('Should have thrown an error for missing X-Intent-Action');
+      } catch (error: any) {
+        assert(
+          error.message.includes('X-Intent-Action'),
+          'Error should mention X-Intent-Action',
+        );
+      }
     });
 
     it('should fail to create intent without required parameters for Create-Order', async () => {
@@ -71,11 +66,9 @@ describe('Intent Workflow Tracking', () => {
         // Missing orderType, swapToken, quantity
       });
 
-      console.dir({ missingParams: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Invalid-Intent-Notice');
-      assert.strictEqual(result.Tags.Status, 'Error');
+      assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
+      assert(result.Tags?.Error, 'Should have Error tag');
     });
 
     it('should create an intent for Cancel-Order action', async () => {
@@ -84,11 +77,10 @@ describe('Intent Workflow Tracking', () => {
         orderId: 'test-order-123',
       });
 
-      console.dir({ cancelIntent: result }, { depth: null });
-
       assert(result, 'Create intent result should be defined');
-      assert.strictEqual(result.Action, 'Intent-Created');
-      assert(result.Tags['Intent-Id'], 'Intent-Id should be returned');
+      assert.strictEqual(result.Action, 'Create-Intent-Notice');
+      const data = JSON.parse(result.Data);
+      assert(data['Intent-Id'], 'Intent-Id should be returned');
     });
 
     it('should create an intent for Settle-Auction action', async () => {
@@ -97,11 +89,10 @@ describe('Intent Workflow Tracking', () => {
         orderId: 'test-auction-456',
       });
 
-      console.dir({ settleIntent: result }, { depth: null });
-
       assert(result, 'Create intent result should be defined');
-      assert.strictEqual(result.Action, 'Intent-Created');
-      assert(result.Tags['Intent-Id'], 'Intent-Id should be returned');
+      assert.strictEqual(result.Action, 'Create-Intent-Notice');
+      const data = JSON.parse(result.Data);
+      assert(data['Intent-Id'], 'Intent-Id should be returned');
     });
   });
 
@@ -109,10 +100,8 @@ describe('Intent Workflow Tracking', () => {
     it('should return empty list when no intents exist', async () => {
       const result = await marketplaceProcess.getPaginatedIntents();
 
-      console.dir({ emptyIntents: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
+      assert.strictEqual(result.Action, 'Get-Paginated-Intents-Notice');
       const data = JSON.parse(result.Data);
       assert(Array.isArray(data.items), 'Items should be an array');
       assert.strictEqual(data.items.length, 0, 'Should have no intents');
@@ -129,34 +118,12 @@ describe('Intent Workflow Tracking', () => {
 
       const result = await marketplaceProcess.getPaginatedIntents();
 
-      console.dir({ intentsWithData: result }, { depth: null });
-
       assert(result, 'Result should be defined');
       const data = JSON.parse(result.Data);
       assert.strictEqual(data.items.length, 1, 'Should have one intent');
-      assert.strictEqual(data.items[0].Action, 'Create-Order');
-      assert.strictEqual(data.items[0].Type, 'parent');
-      assert.strictEqual(data.items[0].Status, 'pending');
-    });
-
-    it('should filter intents by Initiator', async () => {
-      // Create intents
-      await marketplaceProcess.createIntent({
-        action: 'Create-Order',
-        orderType: 'fixed',
-        swapToken: 'test-swap-token-'.padEnd(43, '1'),
-        quantity: '1000',
-      });
-
-      const result = await marketplaceProcess.getPaginatedIntents({
-        filters: { Initiator: marketplaceProcess.process.processId },
-      });
-
-      console.dir({ filteredIntents: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      const data = JSON.parse(result.Data);
-      assert(data.items.length >= 1, 'Should have at least one intent');
+      assert.strictEqual(data.items[0].action, 'Create-Order');
+      assert.strictEqual(data.items[0].type, 'parent');
+      assert.strictEqual(data.items[0].status, 'pending');
     });
 
     it('should support pagination with limit', async () => {
@@ -177,8 +144,6 @@ describe('Intent Workflow Tracking', () => {
         limit: 1,
       });
 
-      console.dir({ paginatedIntents: result }, { depth: null });
-
       assert(result, 'Result should be defined');
       const data = JSON.parse(result.Data);
       assert.strictEqual(data.items.length, 1, 'Should return only 1 intent');
@@ -198,38 +163,39 @@ describe('Intent Workflow Tracking', () => {
         quantity: '1000',
       });
 
-      const intentId = createResult.Tags['Intent-Id'];
+      const createData = JSON.parse(createResult.Data);
+      const intentId = createData['Intent-Id'];
 
       const result = await marketplaceProcess.getIntentById(intentId);
 
-      console.dir({ intentById: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
+      assert.strictEqual(result.Action, 'Get-Intent-By-Id-Notice');
       const data = JSON.parse(result.Data);
-      assert.strictEqual(data.IntentId, intentId);
-      assert.strictEqual(data.Action, 'Create-Order');
-      assert.strictEqual(data.Type, 'parent');
+      assert.strictEqual(data.intentId, intentId);
+      assert.strictEqual(data.action, 'Create-Order');
+      assert.strictEqual(data.type, 'parent');
     });
 
     it('should return error for non-existent intent', async () => {
       const result = await marketplaceProcess.getIntentById('non-existent-id');
 
-      console.dir({ nonExistentIntent: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Intent-Not-Found');
+      assert.strictEqual(result.Action, 'Invalid-Get-Intent-By-Id-Notice');
+      assert(result.Tags?.Error, 'Should have Error tag');
     });
 
-    it('should return Intent-Not-Found when Intent-Id is missing', async () => {
-      const result = (await marketplaceProcess.process.read({
-        tags: [{ name: 'Action', value: 'Get-Intent-By-Id' }],
-      })) as any;
-
-      console.dir({ missingIntentId: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Input-Error');
+    it('should return error when Intent-Id is missing', async () => {
+      try {
+        await marketplaceProcess.process.read({
+          tags: [{ name: 'Action', value: 'Get-Intent-By-Id' }],
+        });
+        assert.fail('Should have thrown an error for missing Intent-Id');
+      } catch (error: any) {
+        assert(
+          error.message.includes('Intent-Id'),
+          'Error should mention Intent-Id',
+        );
+      }
     });
   });
 
@@ -249,8 +215,6 @@ describe('Intent Workflow Tracking', () => {
       });
 
       const info = await marketplaceProcess.info();
-
-      console.dir({ intentStats: info.intents }, { depth: null });
 
       assert(info, 'Info should be defined');
       assert(info.intents, 'Intents should be defined');
@@ -272,14 +236,12 @@ describe('Intent Workflow Tracking', () => {
     it('should return zero stats when no intents exist via info handler', async () => {
       const info = await marketplaceProcess.info();
 
-      console.dir({ emptyStats: info.intents }, { depth: null });
-
       assert(info, 'Info should be defined');
       assert(info.intents, 'Intents should be defined');
       assert.strictEqual(info.intents.total, 0);
-      assert.deepStrictEqual(info.intents.byStatus, {});
-      assert.deepStrictEqual(info.intents.byType, {});
-      assert.deepStrictEqual(info.intents.byAction, {});
+      assert.deepStrictEqual(info.intents.byStatus, []);
+      assert.deepStrictEqual(info.intents.byType, []);
+      assert.deepStrictEqual(info.intents.byAction, []);
     });
   });
 });

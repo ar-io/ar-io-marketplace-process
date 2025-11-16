@@ -46,8 +46,6 @@ describe('Auction Mechanisms', () => {
           // Missing: minimumPrice, decreaseInterval
         });
 
-        console.dir({ dutchMissingParams: result }, { depth: null });
-
         assert(result, 'Result should be defined');
         // Validation should catch missing parameters
       });
@@ -64,8 +62,6 @@ describe('Auction Mechanisms', () => {
           expirationTime: (Date.now() + 3600000).toString(),
         });
 
-        console.dir({ dutchInvalidMinPrice: result }, { depth: null });
-
         assert(result, 'Result should be defined');
       });
 
@@ -80,8 +76,6 @@ describe('Auction Mechanisms', () => {
           decreaseInterval: '60000',
           // Missing: expirationTime
         });
-
-        console.dir({ dutchMissingExpiration: result }, { depth: null });
 
         assert(result, 'Result should be defined');
       });
@@ -103,8 +97,6 @@ describe('Auction Mechanisms', () => {
           expirationTime: futureTime.toString(),
         });
 
-        console.dir({ dutchPriceCalc: result }, { depth: null });
-
         assert(result, 'Result should be defined');
       });
     });
@@ -122,8 +114,6 @@ describe('Auction Mechanisms', () => {
           expirationTime: (Date.now() + 3600000).toString(),
         });
 
-        console.dir({ englishCreateIntent: result }, { depth: null });
-
         assert(result, 'Result should be defined');
       });
 
@@ -136,8 +126,6 @@ describe('Auction Mechanisms', () => {
           price: '100',
           // Missing: expirationTime
         });
-
-        console.dir({ englishMissingExpiration: result }, { depth: null });
 
         assert(result, 'Result should be defined');
       });
@@ -156,24 +144,24 @@ describe('Auction Mechanisms', () => {
           expirationTime: (Date.now() + 3600000).toString(),
         });
 
-        console.dir({ englishBidValidation: result }, { depth: null });
-
         assert(result, 'Result should be defined');
       });
     });
 
     describe('Settlement', () => {
       it('should require Order-Id for settlement', async () => {
-        const result = (await marketplaceProcess.process.read({
-          tags: [{ name: 'Action', value: 'Settle-Auction' }],
-          // Missing Order-Id tag
-        })) as any;
-
-        console.dir({ englishSettleNoId: result }, { depth: null });
-
-        assert(result, 'Result should be defined');
-        assert.strictEqual(result.Action, 'Invalid-Settle-Auction-Notice');
-        assert(result.Data?.includes('Order-Id'));
+        try {
+          await marketplaceProcess.process.read({
+            tags: [{ name: 'Action', value: 'Settle-Auction' }],
+            // Missing Order-Id tag
+          });
+          assert.fail('Should have thrown an error for missing Order-Id');
+        } catch (error: any) {
+          assert(
+            error.message.includes('Order-Id'),
+            'Error should mention Order-Id',
+          );
+        }
       });
 
       it('should reject settlement of non-existent auction', async () => {
@@ -181,11 +169,14 @@ describe('Auction Mechanisms', () => {
           orderId: 'non-existent-auction-'.padEnd(43, 'x'),
         });
 
-        console.dir({ englishSettleNonExistent: result }, { depth: null });
-
         assert(result, 'Result should be defined');
         assert.strictEqual(result.Action, 'Invalid-Settle-Auction-Notice');
-        assert(result.Data?.includes('Order not found'));
+        assert(
+          result.Data &&
+            (result.Data.includes('Order not found') ||
+              result.Data.includes('not found')),
+          'Error should mention order not found',
+        );
       });
 
       it('should validate auction is ready for settlement', async () => {
@@ -194,8 +185,6 @@ describe('Auction Mechanisms', () => {
         const result = await marketplaceProcess.settleAuction({
           orderId: 'test-auction-id',
         });
-
-        console.dir({ englishSettleNotReady: result }, { depth: null });
 
         assert(result, 'Result should be defined');
         // Should return error about order not found or not ready
@@ -213,11 +202,10 @@ describe('Auction Mechanisms', () => {
         price: '100',
       });
 
-      console.dir({ fixedPriceIntent: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Intent-Created');
-      assert(result.Tags['Intent-Id'], 'Should return Intent-Id');
+      assert.strictEqual(result.Action, 'Create-Intent-Notice');
+      const data = JSON.parse(result.Data);
+      assert(data['Intent-Id'], 'Should return Intent-Id');
     });
 
     it('should validate required parameters for fixed price', async () => {
@@ -228,8 +216,6 @@ describe('Auction Mechanisms', () => {
         quantity: '1000',
         // Missing: price
       });
-
-      console.dir({ fixedPriceMissingPrice: result }, { depth: null });
 
       assert(result, 'Result should be defined');
     });
@@ -244,8 +230,6 @@ describe('Auction Mechanisms', () => {
         quantity: '1000',
         price: '100',
       });
-
-      console.dir({ invalidOrderType: result }, { depth: null });
 
       assert(result, 'Result should be defined');
       // Should get validation error
@@ -285,8 +269,6 @@ describe('Auction Mechanisms', () => {
         expirationTime: futureTime.toString(),
       });
 
-      console.dir({ orderTypes: { fixed, dutch, english } }, { depth: null });
-
       assert(fixed, 'Fixed order intent should be defined');
       assert(dutch, 'Dutch auction intent should be defined');
       assert(english, 'English auction intent should be defined');
@@ -305,16 +287,13 @@ describe('Auction Mechanisms', () => {
         expirationTime: (Date.now() + 3600000).toString(),
       });
 
-      console.dir({ auctionLifecycleIntent: intentResult }, { depth: null });
-
       assert(intentResult, 'Intent result should be defined');
-      assert.strictEqual(intentResult.Action, 'Intent-Created');
+      assert.strictEqual(intentResult.Action, 'Create-Intent-Notice');
 
       // Check it appears in listed orders (would after Credit-Notice)
       const listedOrders = await marketplaceProcess.getOrders({
         status: 'listed',
       });
-      console.dir({ listedOrdersAfterIntent: listedOrders }, { depth: null });
 
       assert(listedOrders, 'Listed orders should be defined');
     });

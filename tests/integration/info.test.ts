@@ -31,7 +31,6 @@ describe('Info', () => {
 
   it('should return the info with correct structure', async () => {
     const info = await marketplaceProcess.info();
-    console.dir({ info }, { depth: null });
 
     // Validate top-level structure
     assert(info, 'Info should be defined');

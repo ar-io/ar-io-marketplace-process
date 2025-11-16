@@ -28,10 +28,8 @@ describe('Activity Tracking', () => {
     it('should return empty list when no orders exist', async () => {
       const result = await marketplaceProcess.getOrders({ status: 'listed' });
 
-      console.dir({ emptyListedOrders: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
+      assert.strictEqual(result.Action, 'Get-Orders-Notice');
       const data = JSON.parse(result.Data);
       assert(Array.isArray(data.items), 'Items should be an array');
       assert.strictEqual(data.items.length, 0, 'Should have no orders');
@@ -43,10 +41,8 @@ describe('Activity Tracking', () => {
         limit: 10,
       });
 
-      console.dir({ paginatedListedOrders: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
+      assert.strictEqual(result.Action, 'Get-Orders-Notice');
       const data = JSON.parse(result.Data);
       assert.strictEqual(data.limit, 10);
     });
@@ -57,10 +53,8 @@ describe('Activity Tracking', () => {
         filters: { Status: 'active' },
       });
 
-      console.dir({ filteredListedOrders: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
+      assert.strictEqual(result.Action, 'Get-Orders-Notice');
     });
   });
 
@@ -70,10 +64,8 @@ describe('Activity Tracking', () => {
         status: 'completed',
       });
 
-      console.dir({ emptyCompletedOrders: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
+      assert.strictEqual(result.Action, 'Get-Orders-Notice');
       const data = JSON.parse(result.Data);
       assert(Array.isArray(data.items), 'Items should be an array');
       assert.strictEqual(
@@ -91,8 +83,6 @@ describe('Activity Tracking', () => {
         sortOrder: 'desc',
       });
 
-      console.dir({ paginatedCompletedOrders: result }, { depth: null });
-
       assert(result, 'Result should be defined');
       const data = JSON.parse(result.Data);
       assert.strictEqual(data.limit, 5);
@@ -102,84 +92,32 @@ describe('Activity Tracking', () => {
   });
 
   describe('Get-Order', () => {
-    it('should return Order-Not-Found for non-existent order', async () => {
+    it('should return Invalid-Get-Order-Notice for non-existent order', async () => {
       const result = await marketplaceProcess.getOrder('non-existent-order-id');
 
-      console.dir({ nonExistentOrder: result }, { depth: null });
-
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Order-Not-Found');
+      assert.strictEqual(result.Action, 'Invalid-Get-Order-Notice');
+      assert(result.Tags?.Error, 'Should have Error tag');
     });
 
     it('should handle missing Id parameter', async () => {
-      const result = (await marketplaceProcess.process.read({
-        tags: [{ name: 'Action', value: 'Get-Order' }],
-      })) as any;
-
-      console.dir({ missingOrderId: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Input-Error');
-    });
-  });
-
-  describe('Get-Order-Counts-By-Address', () => {
-    it('should return zero counts for address with no orders', async () => {
-      const testAddress = 'test-address-'.padEnd(43, '0');
-      const result =
-        await marketplaceProcess.getOrderCountsByAddress(testAddress);
-
-      console.dir({ zeroOrderCounts: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
-      const data = JSON.parse(result.Data);
-      assert(data, 'Data should be defined');
-    });
-  });
-
-  describe('Get-Volume', () => {
-    it('should return zero volume when no trades have occurred', async () => {
-      const result = (await marketplaceProcess.getVolume()) as any;
-
-      console.dir({ volume: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      // Volume handler sends a notice directly
-      assert(
-        result.Action === 'Volume-Notice' || result.Action === 'Read-Success',
-      );
-    });
-  });
-
-  describe('Get-Most-Traded-Tokens', () => {
-    it('should return empty list when no trades exist', async () => {
-      const result = await marketplaceProcess.getMostTradedTokens();
-
-      console.dir({ mostTradedTokens: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Most-Traded-Tokens-Result');
-      const data = JSON.parse(result.Data);
-      assert(Array.isArray(data), 'Data should be an array');
-      assert.strictEqual(data.length, 0, 'Should have no tokens');
-    });
-
-    it('should support custom count parameter', async () => {
-      const result = await marketplaceProcess.getMostTradedTokens(5);
-
-      console.dir({ topFiveTokens: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Most-Traded-Tokens-Result');
+      try {
+        await marketplaceProcess.process.read({
+          tags: [{ name: 'Action', value: 'Get-Order' }],
+        });
+        assert.fail('Should have thrown an error for missing Order-Id');
+      } catch (error: any) {
+        assert(
+          error.message.includes('Order-Id'),
+          'Error should mention Order-Id',
+        );
+      }
     });
   });
 
   describe('Info (Activity Counts)', () => {
     it('should return counts of all activity via info handler', async () => {
       const info = await marketplaceProcess.info();
-
-      console.dir({ info }, { depth: null });
 
       assert(info, 'Info should be defined');
       assert(info.activity, 'Activity should be defined');

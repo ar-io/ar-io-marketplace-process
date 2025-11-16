@@ -77,11 +77,14 @@ end
 --- @param intentId string The intent ID to resolve
 --- @param timestamp number The timestamp of resolution
 --- @return boolean success Whether the resolution was successful
+--- @return table|nil resolvedIntent The resolved intent data if pruned, nil otherwise
 function intents.resolveIntent(intentId, timestamp)
 	local intent = Intents[intentId]
 	if not intent then
 		return false
 	end
+
+	local resolvedIntent = nil
 
 	if intent.type == constants.INTENT_TYPES.PARENT then
 		-- Parent intent resolution (pending -> active)
@@ -92,6 +95,16 @@ function intents.resolveIntent(intentId, timestamp)
 		
 		-- Prune parent intents (and their children) when they reach terminal states
 		if intent.status == constants.INTENT_STATUSES.COMPLETED or intent.status == constants.INTENT_STATUSES.FAILED then
+			-- Capture intent data BEFORE pruning
+			resolvedIntent = {
+				intentId = intent.intentId,
+				initiator = intent.initiator,
+				action = intent.action,
+				status = intent.status,
+				resolvedAt = timestamp,
+				failureReason = intent.failureReason,
+			}
+
 			-- Delete all child intents
 			for childId in pairs(intent.childIntentIds) do
 				Intents[childId] = nil
@@ -105,7 +118,7 @@ function intents.resolveIntent(intentId, timestamp)
 		intent.resolvedAt = timestamp
 	end
 
-	return true
+	return true, resolvedIntent
 end
 
 --- Fail an intent with a reason
@@ -122,7 +135,19 @@ function intents.failIntent(intentId, reason)
 	intent.failureReason = reason
 
 	-- Use resolveIntent to handle pruning logic centrally
-	intents.resolveIntent(intentId, os.time())
+	local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
+
+	-- Send Intent-Resolved notice AFTER pruning succeeds
+	if success and resolvedIntent then
+		ao.send({
+			Target = resolvedIntent.initiator,
+			Action = 'Intent-Resolved',
+			['Intent-Id'] = tostring(resolvedIntent.intentId),
+			Status = resolvedIntent.status,
+			['Intent-Action'] = resolvedIntent.action,
+			['Failure-Reason'] = resolvedIntent.failureReason or '',
+		})
+	end
 
 	return true
 end
@@ -146,7 +171,19 @@ function intents.updateIntentStatus(intentId, status)
 
 	-- Use resolveIntent to handle pruning logic centrally for terminal states
 	if status == constants.INTENT_STATUSES.COMPLETED or status == constants.INTENT_STATUSES.FAILED then
-		intents.resolveIntent(intentId, os.time())
+		local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
+
+		-- Send Intent-Resolved notice AFTER pruning succeeds
+		if success and resolvedIntent then
+			ao.send({
+				Target = resolvedIntent.initiator,
+				Action = 'Intent-Resolved',
+				['Intent-Id'] = tostring(resolvedIntent.intentId),
+				Status = resolvedIntent.status,
+				['Intent-Action'] = resolvedIntent.action,
+				['Failure-Reason'] = resolvedIntent.failureReason or '',
+			})
+		end
 	end
 
 	return true

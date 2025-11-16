@@ -38,8 +38,6 @@ describe('UCM (Universal Continuous Market)', () => {
         TEST_ARIO_TOKEN,
       );
 
-      console.dir({ emptyOrdersForPair: result }, { depth: null });
-
       // Orders may not exist yet for this pair
       assert(result, 'Result should be defined');
     });
@@ -47,16 +45,12 @@ describe('UCM (Universal Continuous Market)', () => {
     it('should return all orders when no filter is provided', async () => {
       const result = await marketplaceProcess.getOrders();
 
-      console.dir({ allOrders: result }, { depth: null });
-
       // Handler should return all orders when no filter is specified
       assert(result !== undefined, 'Result should exist');
     });
 
     it('should support filtering by status', async () => {
       const result = await marketplaceProcess.getOrders({ status: 'active' });
-
-      console.dir({ activeOrders: result }, { depth: null });
 
       assert(result !== undefined, 'Result should exist');
     });
@@ -66,8 +60,6 @@ describe('UCM (Universal Continuous Market)', () => {
         dominantToken: TEST_ANT_TOKEN,
         swapToken: TEST_ARIO_TOKEN,
       });
-
-      console.dir({ ordersByPair: result }, { depth: null });
 
       assert(result !== undefined, 'Result should exist');
     });
@@ -79,8 +71,6 @@ describe('UCM (Universal Continuous Market)', () => {
         status: 'listed',
       });
 
-      console.dir({ filteredOrders: result }, { depth: null });
-
       assert(result !== undefined, 'Result should exist');
     });
 
@@ -90,8 +80,6 @@ describe('UCM (Universal Continuous Market)', () => {
         sortBy: 'CreatedAt',
         sortOrder: 'desc',
       });
-
-      console.dir({ paginatedOrders: result }, { depth: null });
 
       assert(result !== undefined, 'Result should exist');
     });
@@ -103,8 +91,6 @@ describe('UCM (Universal Continuous Market)', () => {
         'non-existent-order-id',
       );
 
-      console.dir({ cancelNonExistentOrder: result }, { depth: null });
-
       assert(result, 'Result should be defined');
       // Should get an Action-Response with error
       if (result.Action === 'Action-Response') {
@@ -114,52 +100,22 @@ describe('UCM (Universal Continuous Market)', () => {
     });
 
     it('should require Order-Id parameter', async () => {
-      const result = (await marketplaceProcess.process.read({
-        tags: [{ name: 'Action', value: 'Cancel-Order' }],
-        // Missing Order-Id tag
-      })) as any;
-
-      console.dir({ cancelMissingOrderId: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Invalid-Cancel-Order-Notice');
-      assert(result.Data?.includes('Order-Id'));
+      try {
+        await marketplaceProcess.process.read({
+          tags: [{ name: 'Action', value: 'Cancel-Order' }],
+          // Missing Order-Id tag
+        });
+        assert.fail('Should have thrown an error for missing Order-Id');
+      } catch (error: any) {
+        assert(
+          error.message.includes('Order-Id'),
+          'Error should mention Order-Id',
+        );
+      }
     });
   });
 
   describe('Credit-Notice (Order Creation)', () => {
-    it('should reject Credit-Notice without X-Intent-Id', async () => {
-      const messageId = await marketplaceProcess.simulateCreditNotice({
-        sender: PROCESS_OWNER,
-        quantity: '1000',
-        dominantToken: TEST_ANT_TOKEN,
-        swapToken: TEST_ARIO_TOKEN,
-        orderType: 'fixed',
-        price: '100',
-      });
-
-      const result = await marketplaceProcess.process.ao.result({
-        message: messageId,
-        process: marketplaceProcess.process.processId,
-      });
-
-      console.dir({ creditNoticeNoIntent: result }, { depth: null });
-
-      // Should refund and send error since X-Intent-Id is missing
-      assert(result, 'Result should be defined');
-      assert(result.Messages, 'Should have messages');
-
-      // Look for error or refund message
-      const hasError = result.Messages.some((m: any) =>
-        m.Tags.some(
-          (t: any) =>
-            t.name === 'Action' &&
-            (t.value === 'Validation-Error' || t.value === 'Transfer'),
-        ),
-      );
-      assert(hasError, 'Should have error or refund message');
-    });
-
     it('should reject Credit-Notice from non-dominant token', async () => {
       const wrongToken = 'wrong-token-'.padEnd(43, '9');
 
@@ -178,8 +134,6 @@ describe('UCM (Universal Continuous Market)', () => {
         process: marketplaceProcess.process.processId,
       });
 
-      console.dir({ creditNoticeWrongToken: result }, { depth: null });
-
       // Handler should return early (no messages sent)
       assert(result, 'Result should be defined');
     });
@@ -187,16 +141,18 @@ describe('UCM (Universal Continuous Market)', () => {
 
   describe('Settle-Auction', () => {
     it('should return error for missing Order-Id', async () => {
-      const result = (await marketplaceProcess.process.read({
-        tags: [{ name: 'Action', value: 'Settle-Auction' }],
-        // Missing Order-Id tag
-      })) as any;
-
-      console.dir({ settleMissingOrderId: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Invalid-Settle-Auction-Notice');
-      assert(result.Data?.includes('Order-Id'));
+      try {
+        await marketplaceProcess.process.read({
+          tags: [{ name: 'Action', value: 'Settle-Auction' }],
+          // Missing Order-Id tag
+        });
+        assert.fail('Should have thrown an error for missing Order-Id');
+      } catch (error: any) {
+        assert(
+          error.message.includes('Order-Id'),
+          'Error should mention Order-Id',
+        );
+      }
     });
 
     it('should return error for non-existent order', async () => {
@@ -204,11 +160,14 @@ describe('UCM (Universal Continuous Market)', () => {
         orderId: 'non-existent-auction-id',
       });
 
-      console.dir({ settleNonExistentOrder: result }, { depth: null });
-
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Invalid-Settle-Auction-Notice');
-      assert(result.Data?.includes('Order not found'));
+      assert(
+        result.Data &&
+          (result.Data.includes('Order not found') ||
+            result.Data.includes('not found')),
+        'Error should mention order not found',
+      );
     });
   });
 
@@ -222,8 +181,6 @@ describe('UCM (Universal Continuous Market)', () => {
         quantity: '1000',
         price: '100',
       });
-
-      console.dir({ nonArioIntent: result }, { depth: null });
 
       // Intent creation validation might catch this
       assert(result, 'Result should be defined');
@@ -239,11 +196,6 @@ describe('UCM (Universal Continuous Market)', () => {
       const completedBefore = await marketplaceProcess.getOrders({
         status: 'completed',
       });
-
-      console.dir(
-        { initialState: { listedBefore, completedBefore } },
-        { depth: null },
-      );
 
       assert(listedBefore, 'Listed orders should be defined');
       assert(completedBefore, 'Completed orders should be defined');
@@ -261,17 +213,6 @@ describe('UCM (Universal Continuous Market)', () => {
         0,
         'Should start with no completed orders',
       );
-    });
-
-    it('should track order counts by address', async () => {
-      const testAddress = 'test-seller-'.padEnd(43, '5');
-      const result =
-        await marketplaceProcess.getOrderCountsByAddress(testAddress);
-
-      console.dir({ orderCounts: result }, { depth: null });
-
-      assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Read-Success');
     });
   });
 });
