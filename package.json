@@ -12,7 +12,8 @@
     "lint:fix": "luacheck src tests/unit && biome check --write --unsafe && eslint --fix packages/*/src",
     "lint:check": "biome check --unsafe && eslint packages/*/src",
     "format:fix": "biome format --write",
-    "format:check": "biome format"
+    "format:check": "biome format",
+		"clean": "./scripts/clean.sh"
   },
   "devDependencies": {
     "@ar.io/sdk": "^3.20.0",
