@@ -21,6 +21,7 @@ describe('Info', () => {
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
+			signer: TEST_SIGNER,
     });
   });
 

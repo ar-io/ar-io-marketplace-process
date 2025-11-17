@@ -6,6 +6,7 @@ import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   PROCESS_OWNER,
+	TEST_SIGNER,
 } from '../utils/constants.js';
 
 describe('UCM (Universal Content Marketplace)', () => {
@@ -14,7 +15,6 @@ describe('UCM (Universal Content Marketplace)', () => {
 
   const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');
   const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
-  const TEST_BUYER = 'test-buyer-'.padEnd(43, '2');
 
   before(async () => {
     const process = await createLocalProcess({
@@ -24,6 +24,7 @@ describe('UCM (Universal Content Marketplace)', () => {
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
+			signer: TEST_SIGNER,
     });
   });
 

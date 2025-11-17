@@ -1,4 +1,4 @@
-import type { AOProcess } from '@ar.io/sdk';
+import type { AOProcess, AoSigner } from '@ar.io/sdk';
 import type {
   CreateIntentParams,
   GetPaginatedIntentsParams,
@@ -9,9 +9,11 @@ import type {
 
 export class MarketplaceProcess {
   process: AOProcess;
+	signer: AoSigner;
 
-  constructor({ process }: { process: AOProcess }) {
+  constructor({ process, signer }: { process: AOProcess, signer: AoSigner }) {
     this.process = process;
+    this.signer = signer;
   }
 
   async info(): Promise<InfoResponse> {
@@ -56,6 +58,7 @@ export class MarketplaceProcess {
       // Use send() to actually create the intent (modifies state)
       const { result } = (await this.process.send({
         tags: filteredTags,
+				signer: this.signer,
       })) as any;
 
       // The handler returns data directly as the result object

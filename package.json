@@ -13,10 +13,11 @@
     "lint:check": "biome check --unsafe && eslint packages/*/src",
     "format:fix": "biome format --write",
     "format:check": "biome format",
-		"clean": "./scripts/clean.sh"
+    "clean": "./scripts/clean.sh",
+    "spawn": "tsx scripts/spawn-marketplace-process.ts"
   },
   "devDependencies": {
-    "@ar.io/sdk": "^3.20.0",
+    "@ar.io/sdk": "^3.21.0",
     "@biomejs/biome": "1.9.4",
     "@changesets/cli": "^2.29.4",
     "@permaweb/ao-loader": "^0.0.49",
@@ -28,6 +29,7 @@
     "chalk": "^5.6.2",
     "changesets": "^1.0.2",
     "cli-table3": "^0.6.5",
+    "dotenv": "^17.2.3",
     "eslint": "^9.25.1",
     "eslint-plugin-header": "^3.1.1",
     "husky": "^9.1.7",

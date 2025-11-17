@@ -3,7 +3,7 @@ import { MarketplaceProcess } from '../utils/marketplace_process.js';
 import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
 import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
-import { BUNDLED_MARKETPLACE_SOURCE_CODE } from '../utils/constants.js';
+import { BUNDLED_MARKETPLACE_SOURCE_CODE, TEST_SIGNER } from '../utils/constants.js';
 
 describe('Activity Tracking', () => {
   let marketplaceProcess: MarketplaceProcess;
@@ -17,6 +17,7 @@ describe('Activity Tracking', () => {
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
+      signer: TEST_SIGNER,
     });
   });
 

@@ -6,17 +6,16 @@ import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   PROCESS_OWNER,
+	TEST_SIGNER,
 } from '../utils/constants.js';
 
 describe('Auction Mechanisms', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
 
-  const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');
+
   const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
-  const TEST_SELLER = 'test-seller-'.padEnd(43, '3');
-  const TEST_BIDDER1 = 'test-bidder1-'.padEnd(43, '4');
-  const TEST_BIDDER2 = 'test-bidder2-'.padEnd(43, '5');
+
 
   before(async () => {
     const process = await createLocalProcess({
@@ -26,6 +25,7 @@ describe('Auction Mechanisms', () => {
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
+			signer: TEST_SIGNER,
     });
   });
 
