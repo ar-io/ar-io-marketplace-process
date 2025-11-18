@@ -214,6 +214,10 @@ async function spawnMarketplaceProcess(params: {
   const info = await marketplaceProcess.info();
   console.log('Marketplace info:', info);
 
+  // Add a small delay to ensure marketplace is fully initialized
+  console.log('Waiting 5s for marketplace to fully initialize...');
+  await new Promise(resolve => setTimeout(resolve, 5000));
+
   return { processId, process: marketplaceProcess };
 }
 

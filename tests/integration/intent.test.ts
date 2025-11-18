@@ -86,6 +86,51 @@ describe('Intent Workflow Tracking', () => {
       assert(result.Tags?.Error, 'Should have Error tag');
     });
 
+    it('should fail to create buy intent without X-Intent-Swap-Token', async () => {
+      const result = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        requestedOrderId: 'test-order-123',
+        quantity: '1000000', // Has quantity but missing swapToken
+      });
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
+      assert(
+        result.Data.includes('X-Intent-Swap-Token required'),
+        'Error should mention X-Intent-Swap-Token is required',
+      );
+    });
+
+    it('should fail to create buy intent without X-Intent-Quantity', async () => {
+      const result = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        requestedOrderId: 'test-order-123',
+        swapToken: TEST_ARIO_PROCESS, // Has swapToken but missing quantity
+      });
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
+      assert(
+        result.Data.includes('X-Intent-Quantity required'),
+        'Error should mention X-Intent-Quantity is required',
+      );
+    });
+
+    it('should successfully create buy intent with all required parameters', async () => {
+      const result = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        requestedOrderId: 'test-order-123',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000000',
+      });
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Create-Intent-Notice');
+      const data = JSON.parse(result.Data);
+      assert(data['Intent-Id'], 'Intent-Id should be returned');
+      assert.strictEqual(data['Intent-Id'], '1', 'First intent should have ID 1');
+    });
+
     it('should create an intent for Cancel-Order action', async () => {
       const result = await marketplaceProcess.createIntent({
         action: 'Cancel-Order',

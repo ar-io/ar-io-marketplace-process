@@ -124,6 +124,8 @@ function notices.creditNoticeHandler(msg)
 
 		-- Order created successfully - complete the intent if no child intents
 		local intent = intents.getIntentById(msg.Tags['X-Intent-Id'])
+		local intentStatus = intent and intent.status or 'not-found'
+		
 		if intent and intent.type == 'parent' then
 			-- Count pending child intents
 			local hasPendingChildren = false
@@ -138,8 +140,21 @@ function notices.creditNoticeHandler(msg)
 			-- If no pending children, complete the intent immediately
 			if not hasPendingChildren then
 				intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed')
+				intentStatus = 'completed'
+			else
+				intentStatus = 'active'
 			end
 		end
+
+		-- Send acknowledgment with intent and order status
+		ao.send({
+			Target = sender,
+			Action = 'Credit-Notice-Processed',
+			['Order-Id'] = msg.Id,
+			['Intent-Id'] = msg.Tags['X-Intent-Id'],
+			['Intent-Status'] = intentStatus,
+			['Order-Status'] = 'listed',
+		})
 	end
 end
 
@@ -169,6 +184,8 @@ function notices.debitNoticeHandler(msg)
 
 		-- Check if parent is now complete
 		local parent = intents.getIntentById(intent.parentIntentId)
+		local parentStatus = parent and parent.status or 'not-found'
+		
 		if parent then
 			local allResolved = true
 			for childId in pairs(parent.childIntentIds) do
@@ -181,8 +198,19 @@ function notices.debitNoticeHandler(msg)
 
 			if allResolved then
 				intents.updateIntentStatus(parent.intentId, constants.INTENT_STATUSES.COMPLETED)
+				parentStatus = 'completed'
 			end
 		end
+
+		-- Send acknowledgment with intent status
+		ao.send({
+			Target = intent.initiator,
+			Action = 'Debit-Notice-Processed',
+			['Intent-Id'] = intentId,
+			['Parent-Intent-Id'] = intent.parentIntentId,
+			['Parent-Intent-Status'] = parentStatus,
+			['Child-Intent-Status'] = 'resolved',
+		})
 	end
 end
 

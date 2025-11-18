@@ -17,7 +17,17 @@
     "format:check": "biome format",
     "clean": "./scripts/clean.sh",
     "spawn": "tsx scripts/spawn-marketplace-process.ts",
-    "intents:list": "tsx scripts/list-intents.ts"
+    "intents:list": "tsx scripts/list-intents.ts",
+    "localnet:configure": "npx ao-localnet configure",
+    "localnet:start": "npx ao-localnet start",
+    "localnet:stop": "npx ao-localnet stop",
+    "localnet:seed": "npx ao-localnet seed",
+    "localnet:reset": "npx ao-localnet reset",
+    "localnet:reseed": "npx ao-localnet reseed",
+    "localnet:bootstrap": "tsx scripts/bootstrap-localnet.ts",
+    "localnet:spawn": "npx ao-localnet spawn",
+    "localnet:aos": "npx ao-localnet aos",
+    "localnet:config": "tsx scripts/get-localnet-config.ts"
   },
   "devDependencies": {
     "@ar.io/sdk": "^3.21.0",
@@ -43,5 +53,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "ao-localnet": "github:atticusofsparta/ao-localnet-archive"
+  }
 }

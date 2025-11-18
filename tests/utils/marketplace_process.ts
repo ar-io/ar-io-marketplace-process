@@ -446,7 +446,7 @@ export class MarketplaceProcess {
   async waitForOrderStatus(
     orderId: string,
     expectedStatus: string,
-    timeout: number = 30_000,
+    timeout: number = 450_000,
   ): Promise<any> {
     const startTime = Date.now();
     const interval = 2000;
@@ -477,7 +477,7 @@ export class MarketplaceProcess {
   async waitForIntentStatus(
     intentId: string,
     expectedStatus: string,
-    timeout: number = 30_000,
+    timeout: number = 450_000,
   ): Promise<Intent> {
     const startTime = Date.now();
     const interval = 2000;
@@ -507,6 +507,8 @@ export class MarketplaceProcess {
    * @param antProcessId - The ANT process ID
    * @param price - The price in swap token units
    * @param swapToken - The swap token process ID (e.g., ARIO)
+   * @param logger - Optional test logger
+   * @param forceCrank - If true, manually push Credit-Notice to marketplace (for testing)
    * @returns Object with intentId, orderId, and txId
    */
   async listAntForFixedPrice(
@@ -514,6 +516,7 @@ export class MarketplaceProcess {
     price: string,
     swapToken: string,
     logger?: any,
+    forceCrank?: boolean,
   ): Promise<{ intentId: string; orderId?: string; txId: string }> {
     // Step 1: Create intent first (required by marketplace)
     const intentResult = await this.createIntent({
@@ -574,6 +577,16 @@ export class MarketplaceProcess {
         process: antProcessId,
         signer: this.signer,
         tags,
+      });
+    }
+
+    // Force crank Credit-Notice if requested (for testing)
+    if (forceCrank) {
+      const { forceCrankMessage } = await import('./force_crank.js');
+      console.log('Force cranking ANT transfer Credit-Notice...');
+      await forceCrankMessage({
+        messageId: txId,
+        processId: antProcessId,
       });
     }
 
@@ -682,6 +695,8 @@ export class MarketplaceProcess {
    * @param arioProcessId - The ARIO token process ID
    * @param orderId - The order ID to buy
    * @param amount - The amount of ARIO to send
+   * @param logger - Optional test logger
+   * @param forceCrank - If true, manually push Credit-Notice to marketplace (for testing)
    * @returns Object with intentId and txId
    */
   async buyFixedPriceListing(
@@ -689,12 +704,28 @@ export class MarketplaceProcess {
     orderId: string,
     amount: string,
     logger?: any,
+    forceCrank?: boolean,
   ): Promise<{ intentId: string; txId: string }> {
+    // Step 0: Get the order to find the ANT process ID (swap token)
+    const orderResult = await this.getOrderById(orderId);
+    if (orderResult.Action === 'Invalid-Get-Order-Notice') {
+      throw new Error(`Failed to get order: ${orderResult.Data}`);
+    }
+    const orderData = JSON.parse(orderResult.Data);
+    const antProcessId = orderData.dominantToken; // The ANT being sold
+
     // Step 1: Create intent first (required by marketplace)
     const intentResult = await this.createIntent({
       action: 'Create-Order',
       requestedOrderId: orderId,
+      swapToken: arioProcessId, // Required for buy intents!
+      quantity: amount, // Required for buy intents!
     });
+
+    // Handle both success and error cases
+    if (intentResult.Action === 'Invalid-Create-Intent-Notice') {
+      throw new Error(`Failed to create buy intent: ${intentResult.Data}`);
+    }
 
     const intentData = JSON.parse(intentResult.Data);
     const intentId = intentData['Intent-Id'];
@@ -711,6 +742,7 @@ export class MarketplaceProcess {
       { name: 'X-Intent-Id', value: intentId }, // Required!
       { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
       { name: 'X-Dominant-Token', value: arioProcessId }, // Required! Must match From
+      { name: 'X-Swap-Token', value: antProcessId }, // Required! The ANT being purchased
       { name: 'X-Requested-Order-Id', value: orderId },
     ];
 
@@ -734,6 +766,16 @@ export class MarketplaceProcess {
         process: arioProcessId,
         signer: this.signer,
         tags,
+      });
+    }
+
+    // Force crank Credit-Notice if requested (for testing)
+    if (forceCrank) {
+      const { forceCrankMessage } = await import('./force_crank.js');
+      console.log('Force cranking ARIO transfer Credit-Notice...');
+      await forceCrankMessage({
+        messageId: txId,
+        processId: arioProcessId,
       });
     }
 
@@ -795,7 +837,7 @@ export class MarketplaceProcess {
    */
   async waitForIntentCompletion(
     intentId: string,
-    timeout: number = 30_000,
+    timeout: number = 450_000,
   ): Promise<Intent> {
     const startTime = Date.now();
     const interval = 2000;
@@ -824,7 +866,7 @@ export class MarketplaceProcess {
    */
   async waitForNewOrders(
     previousCount: number = 0,
-    timeout: number = 30_000,
+    timeout: number = 450_000,
     intentId?: string,
   ): Promise<any> {
     const startTime = Date.now();
@@ -869,7 +911,7 @@ export class MarketplaceProcess {
   async waitForOrderCountChange(
     status: string,
     previousCount: number,
-    timeout: number = 30_000,
+    timeout: number = 450_000,
   ): Promise<any> {
     const startTime = Date.now();
     const interval = 3000;

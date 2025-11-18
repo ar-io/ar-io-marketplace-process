@@ -10,3 +10,9 @@ coverage/
 .env
 e2e-test.json
 test-output.json
+*.log
+
+# AO Localnet
+.ao-localnet/
+.localnet-state.json
+docker-compose.override.yml

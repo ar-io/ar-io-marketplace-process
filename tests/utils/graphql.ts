@@ -6,7 +6,7 @@ config();
  * GraphQL client configuration
  */
 const GRAPHQL_URL = process.env.GRAPHQL_URL || 'https://arweave.net/graphql';
-const DEFAULT_TIMEOUT = 30_000; // 30 seconds
+const DEFAULT_TIMEOUT = 450_000; // 7.5 minutes (for e2e tests with network variability)
 const DEFAULT_POLL_INTERVAL = 2000; // 2 seconds
 
 /**

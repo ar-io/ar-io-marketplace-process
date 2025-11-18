@@ -1,0 +1,13 @@
+# Cursor Rules for ar-io-marketplace-process
+
+## Log File Naming Convention
+
+When creating or outputting log files, always use the `.log` file extension. This extension is already included in `.gitignore` (pattern: `*.log`), ensuring that log files are automatically excluded from version control.
+
+Examples:
+- ✅ `e2e-test-run-1763480021.log`
+- ✅ `test-output.log`
+- ✅ `debug-session.log`
+- ❌ `test-output.txt`
+- ❌ `debug.json` (when used for logging)
+
