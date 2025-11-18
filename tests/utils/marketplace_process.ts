@@ -1,19 +1,81 @@
-import type { AOProcess, AoSigner } from '@ar.io/sdk';
+import { AOProcess, AoSigner, ANT, ARIO } from '@ar.io/sdk';
 import type {
   CreateIntentParams,
   GetPaginatedIntentsParams,
   GetOrdersParams,
   InfoResponse,
   ReadResponse,
+  Intent,
 } from './types.js';
+import { ArioProcess } from './ario_process.js';
 
 export class MarketplaceProcess {
   process: AOProcess;
 	signer: AoSigner;
+  cuUrl: string;
 
   constructor({ process, signer }: { process: AOProcess, signer: AoSigner }) {
     this.process = process;
     this.signer = signer;
+    this.cuUrl = process.ao.CU_URL || 'https://cu.ardrive.io';
+  }
+
+  /**
+   * Poll the CU for a message result to check if it was processed
+   */
+  async pollCuForResult(messageId: string, maxAttempts: number = 5): Promise<any> {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const url = `${this.cuUrl}/result/${messageId}?process-id=${this.process.processId}`;
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (!result.error) {
+          return result;
+        }
+        
+        // Wait before retrying
+        if (i < maxAttempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      } catch (error) {
+        console.log(`[CU Poll] Attempt ${i + 1}/${maxAttempts} failed:`, error);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Check the CU results endpoint for recent messages to this process
+   * to see if any Credit-Notices with the given Intent-Id were received
+   */
+  async checkForCreditNoticeProcessing(intentId: string): Promise<boolean> {
+    try {
+      const url = `${this.cuUrl}/results/${this.process.processId}?limit=20&sort=DESC`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (!data.edges) {
+        return false;
+      }
+      
+      // Look for Credit-Notice messages with this Intent-Id
+      for (const edge of data.edges) {
+        const tags = edge.node?.message?.Tags || [];
+        const hasAction = tags.some((t: any) => t.name === 'Action' && t.value === 'Credit-Notice');
+        const hasIntentId = tags.some((t: any) => t.name === 'X-Intent-Id' && t.value === intentId);
+        
+        if (hasAction && hasIntentId) {
+          console.log(`✓ Found Credit-Notice with Intent-Id ${intentId} at message ${edge.node.message.Id}`);
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.log('[CU Check] Failed to check for Credit-Notice:', error);
+      return false;
+    }
   }
 
   async info(): Promise<InfoResponse> {
@@ -354,5 +416,478 @@ export class MarketplaceProcess {
       tags.push({ name: 'X-Intent-Id', value: params.intentId });
 
     return await this.process.ao.message({ tags });
+  }
+
+  // High-level helper methods for E2E testing
+
+  /**
+   * Get orders filtered by status
+   */
+  async getOrdersByStatus(
+    status: GetOrdersParams['status'],
+  ): Promise<ReadResponse> {
+    return this.getOrders({ status });
+  }
+
+  /**
+   * Get intents filtered by status
+   */
+  async getIntentsByStatus(status: string): Promise<ReadResponse> {
+    const result = await this.getPaginatedIntents({
+      filters: { status },
+    });
+
+    return result;
+  }
+
+  /**
+   * Poll until an order reaches a specific status
+   */
+  async waitForOrderStatus(
+    orderId: string,
+    expectedStatus: string,
+    timeout: number = 30_000,
+  ): Promise<any> {
+    const startTime = Date.now();
+    const interval = 2000;
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const result = await this.getOrder(orderId);
+        const data = JSON.parse(result.Data);
+
+        if (data.status === expectedStatus) {
+          return data;
+        }
+      } catch (error) {
+        // Order might not exist yet
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+
+    throw new Error(
+      `Timeout waiting for order ${orderId} to reach status ${expectedStatus}`,
+    );
+  }
+
+  /**
+   * Poll until an intent reaches a specific status
+   */
+  async waitForIntentStatus(
+    intentId: string,
+    expectedStatus: string,
+    timeout: number = 30_000,
+  ): Promise<Intent> {
+    const startTime = Date.now();
+    const interval = 2000;
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const result = await this.getIntentById(intentId);
+        const data = JSON.parse(result.Data);
+
+        if (data.status === expectedStatus) {
+          return data as Intent;
+        }
+      } catch (error) {
+        // Intent might not exist yet or error occurred
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+
+    throw new Error(
+      `Timeout waiting for intent ${intentId} to reach status ${expectedStatus}`,
+    );
+  }
+
+  /**
+   * List an ANT at a fixed price
+   * @param antProcessId - The ANT process ID
+   * @param price - The price in swap token units
+   * @param swapToken - The swap token process ID (e.g., ARIO)
+   * @returns Object with intentId, orderId, and txId
+   */
+  async listAntForFixedPrice(
+    antProcessId: string,
+    price: string,
+    swapToken: string,
+    logger?: any,
+  ): Promise<{ intentId: string; orderId?: string; txId: string }> {
+    // Step 1: Create intent first (required by marketplace)
+    const intentResult = await this.createIntent({
+      action: 'Create-Order',
+      orderType: 'fixed',
+      swapToken,
+      quantity: '1',
+      price,
+      dominantToken: antProcessId,
+    });
+
+    const intentData = JSON.parse(intentResult.Data);
+    const intentId = intentData['Intent-Id'];
+
+    if (!intentId) {
+      throw new Error('Failed to create intent: No Intent-Id returned');
+    }
+
+    // Log intent creation
+    if (logger) {
+      logger.updateIntent(intentId, {
+        status: 'pending',
+        action: 'Create-Order',
+        relatedMessages: [],
+      });
+    }
+
+    // Step 2: Transfer ANT to marketplace with intent ID
+    const tags = [
+      { name: 'Action', value: 'Transfer' },
+      { name: 'Recipient', value: this.process.processId },
+      { name: 'Quantity', value: '1' },
+      { name: 'X-Intent-Id', value: intentId }, // Required!
+      { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
+      { name: 'X-Order-Type', value: 'fixed' },
+      { name: 'X-Price', value: price },
+      { name: 'X-Swap-Token', value: swapToken },
+    ];
+
+    let txId: string;
+    
+    if (logger) {
+      txId = await logger.logMessage({
+        action: 'Transfer ANT (List Fixed Price)',
+        processId: antProcessId,
+        tags,
+        messageFn: async () => {
+          return await this.process.ao.message({
+            process: antProcessId,
+            signer: this.signer,
+            tags,
+          });
+        },
+      });
+    } else {
+      txId = await this.process.ao.message({
+        process: antProcessId,
+        signer: this.signer,
+        tags,
+      });
+    }
+
+    return {
+      intentId,
+      txId,
+    };
+  }
+
+  /**
+   * List an ANT for a Dutch auction
+   */
+  async listAntForDutchAuction(
+    antProcessId: string,
+    params: {
+      startPrice: string;
+      minimumPrice: string;
+      decreaseInterval: string;
+      expirationTime: string;
+      swapToken: string;
+    },
+  ): Promise<{ intentId: string; orderId?: string; txId: string }> {
+    // Create intent
+    const intentResult = await this.createIntent({
+      action: 'Create-Order',
+      orderType: 'dutch',
+      swapToken: params.swapToken,
+      quantity: '1',
+      price: params.startPrice,
+      minimumPrice: params.minimumPrice,
+      decreaseInterval: params.decreaseInterval,
+      expirationTime: params.expirationTime,
+    });
+
+    const intentData = JSON.parse(intentResult.Data);
+    const intentId = intentData['Intent-Id'];
+
+    // Instantiate ANT process
+    const ant = ANT.init({
+      process: new AOProcess({
+        ao: this.process.ao,
+        processId: antProcessId,
+      }),
+      signer: this.signer,
+    });
+
+    // Transfer ANT to marketplace
+    const transferResult = await ant.transfer({
+      target: this.process.processId,
+      quantity: 1,
+    });
+
+    return {
+      intentId,
+      txId: transferResult.id,
+    };
+  }
+
+  /**
+   * List an ANT for an English auction
+   */
+  async listAntForEnglishAuction(
+    antProcessId: string,
+    params: {
+      startingBid: string;
+      expirationTime: string;
+      swapToken: string;
+    },
+  ): Promise<{ intentId: string; orderId?: string; txId: string }> {
+    // Create intent
+    const intentResult = await this.createIntent({
+      action: 'Create-Order',
+      orderType: 'english',
+      swapToken: params.swapToken,
+      quantity: '1',
+      price: params.startingBid,
+      expirationTime: params.expirationTime,
+    });
+
+    const intentData = JSON.parse(intentResult.Data);
+    const intentId = intentData['Intent-Id'];
+
+    // Instantiate ANT process
+    const ant = ANT.init({
+      process: new AOProcess({
+        ao: this.process.ao,
+        processId: antProcessId,
+      }),
+      signer: this.signer,
+    });
+
+    // Transfer ANT to marketplace
+    const transferResult = await ant.transfer({
+      target: this.process.processId,
+      quantity: 1,
+    });
+
+    return {
+      intentId,
+      txId: transferResult.id,
+    };
+  }
+
+  /**
+   * Buy a fixed price listing
+   * @param arioProcessId - The ARIO token process ID
+   * @param orderId - The order ID to buy
+   * @param amount - The amount of ARIO to send
+   * @returns Object with intentId and txId
+   */
+  async buyFixedPriceListing(
+    arioProcessId: string,
+    orderId: string,
+    amount: string,
+    logger?: any,
+  ): Promise<{ intentId: string; txId: string }> {
+    // Step 1: Create intent first (required by marketplace)
+    const intentResult = await this.createIntent({
+      action: 'Create-Order',
+      requestedOrderId: orderId,
+    });
+
+    const intentData = JSON.parse(intentResult.Data);
+    const intentId = intentData['Intent-Id'];
+
+    if (!intentId) {
+      throw new Error('Failed to create buy intent: No Intent-Id returned');
+    }
+
+    // Step 2: Send ARIO transfer with intent ID
+    const tags = [
+      { name: 'Action', value: 'Transfer' },
+      { name: 'Recipient', value: this.process.processId },
+      { name: 'Quantity', value: amount },
+      { name: 'X-Intent-Id', value: intentId }, // Required!
+      { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
+      { name: 'X-Requested-Order-Id', value: orderId },
+    ];
+
+    let txId: string;
+
+    if (logger) {
+      txId = await logger.logMessage({
+        action: 'Transfer ARIO (Buy Fixed Price)',
+        processId: arioProcessId,
+        tags,
+        messageFn: async () => {
+          return await this.process.ao.message({
+            process: arioProcessId,
+            signer: this.signer,
+            tags,
+          });
+        },
+      });
+    } else {
+      txId = await this.process.ao.message({
+        process: arioProcessId,
+        signer: this.signer,
+        tags,
+      });
+    }
+
+    return {
+      intentId,
+      txId,
+    };
+  }
+
+  /**
+   * Place a bid on an English auction
+   * @param arioProcessId - The ARIO token process ID
+   * @param orderId - The auction order ID
+   * @param bidAmount - The bid amount in ARIO
+   * @returns Object with intentId and txId
+   */
+  async bidOnEnglishAuction(
+    arioProcessId: string,
+    orderId: string,
+    bidAmount: string,
+  ): Promise<{ intentId: string; txId: string }> {
+    // Create intent
+    const intentResult = await this.createIntent({
+      action: 'Create-Order',
+      requestedOrderId: orderId,
+    });
+
+    const intentData = JSON.parse(intentResult.Data);
+    const intentId = intentData['Intent-Id'];
+
+    // Instantiate ARIO process
+    const arioProcess = new ArioProcess({
+      process: new AOProcess({
+        ao: this.process.ao,
+        processId: arioProcessId,
+      }),
+      signer: this.signer,
+    });
+
+    // Transfer ARIO to marketplace as bid
+    const { txId } = await arioProcess.transferToMarketplace(
+      this.process.processId,
+      bidAmount,
+      [
+        { name: 'X-Requested-Order-Id', value: orderId },
+        { name: 'X-Intent-Id', value: intentId },
+        { name: 'X-Action', value: 'Bid' },
+      ],
+    );
+
+    return {
+      intentId,
+      txId,
+    };
+  }
+
+  /**
+   * Wait for an intent to complete (reached completed or failed status)
+   */
+  async waitForIntentCompletion(
+    intentId: string,
+    timeout: number = 30_000,
+  ): Promise<Intent> {
+    const startTime = Date.now();
+    const interval = 2000;
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const result = await this.getIntentById(intentId);
+        const intent = JSON.parse(result.Data) as Intent;
+
+        if (intent.Status === 'completed' || intent.Status === 'failed') {
+          return intent;
+        }
+      } catch (error) {
+        // Intent might not exist yet
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+
+    throw new Error(`Timeout waiting for intent ${intentId} to complete`);
+  }
+
+  /**
+   * Wait for any new orders to appear (polling)
+   * Useful after sending a transfer message
+   */
+  async waitForNewOrders(
+    previousCount: number = 0,
+    timeout: number = 30_000,
+    intentId?: string,
+  ): Promise<any> {
+    const startTime = Date.now();
+    const interval = 5000; // Check every 5 seconds
+    let checkCount = 0;
+
+    if (intentId) {
+      console.log(`Waiting for order from Intent ${intentId} (count to increase from ${previousCount})...`);
+    } else {
+      console.log(`Waiting for order count to increase from ${previousCount}...`);
+    }
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const info = await this.info();
+        const currentCount = info.activity.totalOrders;
+        const currentIntents = info.intents.total;
+        checkCount++;
+
+        console.log(`[Check #${checkCount}] Orders: ${currentCount} (need > ${previousCount}), Intents: ${currentIntents}, ${Math.round((Date.now() - startTime) / 1000)}s elapsed`);
+
+        if (currentCount > previousCount) {
+          // New order appeared, fetch orders
+          const orders = await this.getOrders({ status: 'listed' });
+          console.log('✓ New order detected!');
+          return JSON.parse(orders.Data);
+        }
+      } catch (error) {
+        console.warn('Error checking for new orders:', error);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+
+    console.error(`Timeout: Order count did not increase after ${timeout}ms (${checkCount} checks)`);
+    throw new Error(`Timeout waiting for new orders after ${timeout}ms`);
+  }
+
+  /**
+   * Wait for order count to change (useful for verifying execution/cancellation)
+   */
+  async waitForOrderCountChange(
+    status: string,
+    previousCount: number,
+    timeout: number = 30_000,
+  ): Promise<any> {
+    const startTime = Date.now();
+    const interval = 3000;
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const info = await this.info();
+        const statusField = status + 'Orders' as keyof typeof info.activity;
+        const currentCount = info.activity[statusField];
+
+        if (currentCount !== previousCount) {
+          return info;
+        }
+      } catch (error) {
+        console.warn('Error checking order count:', error);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+
+    throw new Error(`Timeout waiting for ${status} order count to change`);
   }
 }

@@ -8,3 +8,5 @@ logs
 coverage/
 ._*
 .env
+e2e-test.json
+test-output.json
