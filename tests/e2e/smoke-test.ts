@@ -60,8 +60,8 @@ describe('Smoke Test - Logger Demo', () => {
       console.log(`Intent ID: ${result.intentId}`);
       console.log('Waiting for Credit-Notice to be processed...');
 
-          // Wait up to 30 seconds for order creation
-          const maxWait = 30000;
+      // Wait up to 15 seconds for order creation
+      const maxWait = 15000;
       const checkInterval = 3000;
       let elapsed = 0;
       let orderCreated = false;
@@ -93,7 +93,7 @@ describe('Smoke Test - Logger Demo', () => {
       }
       
       if (!orderCreated) {
-        console.log('✗ No order created after 30s');
+        console.log('✗ No order created after 15s');
         
         // Check intent status
         try {
@@ -106,7 +106,7 @@ describe('Smoke Test - Logger Demo', () => {
           console.log('Could not fetch intent:', e);
         }
         
-        logger.completeWorkflow(false, 'Order not created after 30s');
+        logger.completeWorkflow(false, 'Order not created after 15s');
       }
     } catch (error: any) {
       console.log('✗ Test failed:', error.message);

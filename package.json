@@ -16,7 +16,8 @@
     "format:fix": "biome format --write",
     "format:check": "biome format",
     "clean": "./scripts/clean.sh",
-    "spawn": "tsx scripts/spawn-marketplace-process.ts"
+    "spawn": "tsx scripts/spawn-marketplace-process.ts",
+    "intents:list": "tsx scripts/list-intents.ts"
   },
   "devDependencies": {
     "@ar.io/sdk": "^3.21.0",

@@ -121,6 +121,25 @@ function notices.creditNoticeHandler(msg)
 			end
 			return
 		end
+
+		-- Order created successfully - complete the intent if no child intents
+		local intent = intents.getIntentById(msg.Tags['X-Intent-Id'])
+		if intent and intent.type == 'parent' then
+			-- Count pending child intents
+			local hasPendingChildren = false
+			for childId in pairs(intent.childIntentIds) do
+				local child = intents.getIntentById(childId)
+				if child and child.status == 'pending' then
+					hasPendingChildren = true
+					break
+				end
+			end
+
+			-- If no pending children, complete the intent immediately
+			if not hasPendingChildren then
+				intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed')
+			end
+		end
 	end
 end
 

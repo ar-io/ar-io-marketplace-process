@@ -541,17 +541,18 @@ export class MarketplaceProcess {
       });
     }
 
-    // Step 2: Transfer ANT to marketplace with intent ID
-    const tags = [
-      { name: 'Action', value: 'Transfer' },
-      { name: 'Recipient', value: this.process.processId },
-      { name: 'Quantity', value: '1' },
-      { name: 'X-Intent-Id', value: intentId }, // Required!
-      { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
-      { name: 'X-Order-Type', value: 'fixed' },
-      { name: 'X-Price', value: price },
-      { name: 'X-Swap-Token', value: swapToken },
-    ];
+        // Step 2: Transfer ANT to marketplace with intent ID
+        const tags = [
+          { name: 'Action', value: 'Transfer' },
+          { name: 'Recipient', value: this.process.processId },
+          { name: 'Quantity', value: '1' },
+          { name: 'X-Intent-Id', value: intentId }, // Required!
+          { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
+          { name: 'X-Dominant-Token', value: antProcessId }, // Required! Must match From
+          { name: 'X-Order-Type', value: 'fixed' },
+          { name: 'X-Price', value: price },
+          { name: 'X-Swap-Token', value: swapToken },
+        ];
 
     let txId: string;
     
@@ -709,6 +710,7 @@ export class MarketplaceProcess {
       { name: 'Quantity', value: amount },
       { name: 'X-Intent-Id', value: intentId }, // Required!
       { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
+      { name: 'X-Dominant-Token', value: arioProcessId }, // Required! Must match From
       { name: 'X-Requested-Order-Id', value: orderId },
     ];
 

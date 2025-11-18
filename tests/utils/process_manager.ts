@@ -323,16 +323,26 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
   // Spawn new processes
   console.log('Spawning new processes...');
 
-  const { processId: arioProcessId, process: arioProcess } =
-    await spawnArioProcess({
+  // Spawn ARIO and ANT in parallel (they're independent)
+  const [arioResult, antResult] = await Promise.all([
+    spawnArioProcess({
       ao,
       signer,
       wallet,
       moduleId,
       scheduler,
       authority,
-    });
+    }),
+    spawnAntProcess({
+      ao,
+      signer,
+    }),
+  ]);
 
+  const { processId: arioProcessId, process: arioProcess } = arioResult;
+  const { processId: antProcessId, process: antProcess } = antResult;
+
+  // Spawn marketplace after ARIO is ready (needs ARIO process ID)
   const { processId: marketplaceProcessId, process: marketplaceProcess } =
     await spawnMarketplaceProcess({
       ao,
@@ -342,11 +352,6 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
       authority,
       arioProcessId, // Pass the ARIO process ID
     });
-
-  const { processId: antProcessId, process: antProcess } = await spawnAntProcess({
-    ao,
-    signer,
-  });
 
   // Save configuration
   const config: ProcessConfig = {

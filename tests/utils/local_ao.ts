@@ -122,19 +122,31 @@ export class LocalAO implements Partial<AoClient> {
   }
 
   async message(
-    params: Parameters<AoClient['message']>[0],
+    params: Parameters<AoClient['message']>[0] & { From?: string },
     handlerEnvOverrides?: HandlerEnv,
   ): Promise<string> {
     const newNonce = (parseInt(this.nonce) + 1).toString().padStart(43, '0');
 
+    const messageOptions = {
+      ...DEFAULT_HANDLE_OPTIONS,
+      Id: newNonce,
+      Data: params.data || DEFAULT_HANDLE_OPTIONS.Data,
+      Tags: params.tags || DEFAULT_HANDLE_OPTIONS.Tags,
+      // Allow overriding From field for testing
+      // IMPORTANT: Owner must match From for trust check to pass
+      ...(params.From ? { From: params.From, Owner: params.From } : {}),
+    };
+
+    // Debug: log message options for Credit-Notice
+    const actionTag = params.tags?.find((t: any) => t.name === 'Action');
+    if (actionTag?.value === 'Credit-Notice') {
+      console.log('[LocalAO] Sending Credit-Notice with From:', messageOptions.From);
+      console.log('[LocalAO] Tags:', JSON.stringify(params.tags, null, 2));
+    }
+
     const res = await this.handle(
       this.currentMemory,
-      {
-        ...DEFAULT_HANDLE_OPTIONS,
-        Id: newNonce,
-        Data: params.data || DEFAULT_HANDLE_OPTIONS.Data,
-        Tags: params.tags || DEFAULT_HANDLE_OPTIONS.Tags,
-      },
+      messageOptions,
       {
         ...AO_LOADER_HANDLER_ENV,
         ...(handlerEnvOverrides ?? {}),
