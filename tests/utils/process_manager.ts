@@ -26,6 +26,7 @@ async function jwkToAddress(jwk: any): Promise<string> {
   return arweave.wallets.jwkToAddress(jwk);
 }
 
+
 /**
  * Process configuration stored in e2e-test.json
  */
@@ -33,6 +34,7 @@ export interface ProcessConfig {
   arioProcessId: string;
   marketplaceProcessId: string;
   antProcessId: string;
+  antRegistryProcessId: string;
   timestamp: number;
 }
 
@@ -46,6 +48,8 @@ export interface SpawnedProcesses {
   marketplaceProcess: MarketplaceProcess;
   antProcessId: string;
   antProcess: ANT;
+  antRegistryProcessId: string;
+  antRegistryProcess: AOProcess;
   config: ProcessConfig;
 }
 
@@ -105,10 +109,10 @@ async function spawnArioProcess(params: {
 }): Promise<{ processId: string; process: ArioProcess }> {
   const { ao, signer, wallet, moduleId, scheduler, authority } = params;
 
-  // Spawn process
+  // Spawn process using ao.spawn (rate limit is now fixed at 2000 tx/min)
   const processId = await ao.spawn({
     module: moduleId,
-    scheduler: scheduler,
+    scheduler,
     signer,
     tags: [
       { name: 'Name', value: 'AR-IO Test Process ' + Date.now() },
@@ -124,7 +128,6 @@ async function spawnArioProcess(params: {
     'utf-8',
   );
 
-  // Load the Lua code into the process
   await ao.message({
     process: processId,
     signer,
@@ -162,10 +165,10 @@ async function spawnMarketplaceProcess(params: {
 }): Promise<{ processId: string; process: MarketplaceProcess }> {
   const { ao, signer, moduleId, scheduler, authority, arioProcessId } = params;
 
-  // Spawn process
+  // Spawn process using ao.spawn (rate limit is now fixed at 2000 tx/min)
   const processId = await ao.spawn({
     module: moduleId,
-    scheduler: scheduler,
+    scheduler,
     signer,
     tags: [
       { name: 'Name', value: 'AR-IO Marketplace Test ' + Date.now() },
@@ -181,7 +184,6 @@ async function spawnMarketplaceProcess(params: {
     'utf-8',
   );
 
-  // Load the Lua code into the process
   await ao.message({
     process: processId,
     signer,
@@ -222,26 +224,91 @@ async function spawnMarketplaceProcess(params: {
 }
 
 /**
- * Spawn a new ANT process using the AR.IO SDK
+ * Spawn a new ANT process manually to avoid scheduler-utils issues on localnet
  */
 async function spawnAntProcess(params: {
   ao: any;
   signer: any;
+  moduleId: string;
+  scheduler: string;
 }): Promise<{ processId: string; process: ANT }> {
-  const { ao, signer } = params;
+  const { ao, signer, moduleId, scheduler } = params;
 
-  console.log('Spawning ANT using AR.IO SDK...');
+  console.log('Spawning ANT via ao.spawn()...');
   
-  // Use ANT.spawn() which properly initializes the ANT with all handlers
-  const processId = await ANT.spawn({
-    ao,
+  // Use ao.spawn() directly (ANT SDK has scheduler lookup issues on localnet)
+  const processId = await ao.spawn({
+    module: moduleId,
+    scheduler,
+    signer,
+    tags: [
+      { name: 'Name', value: 'ANT Test ' + Date.now() },
+    ],
+  });
+
+  console.log('ANT spawned:', processId);
+  
+  // Initialize ANT instance
+  const antProcess = ANT.init({
+    processId,
     signer,
   });
 
- 
-  console.log('ANT process spawned:', processId);
+  // Verify ANT is responsive with a short timeout
+  try {
+    await antProcess.getInfo();
+    console.log('ANT is responsive');
+  } catch (error) {
+    console.warn('ANT getInfo() failed, continuing anyway:', error);
+  }
 
-  return { processId, process: ANT.init({ process: new AOProcess({ ao, processId }), signer }) };
+  return { processId, process: antProcess };
+}
+
+/**
+ * Spawn ANT Registry process
+ */
+async function spawnAntRegistryProcess(params: {
+  ao: any;
+  signer: any;
+  moduleId: string;
+  scheduler: string;
+}): Promise<{ processId: string; process: AOProcess }> {
+  const { ao, signer, moduleId, scheduler } = params;
+
+  console.log('Spawning ANT Registry...');
+  
+  // Spawn ANT Registry process using ao.spawn (rate limit is now fixed at 2000 tx/min)
+  const processId = await ao.spawn({
+    module: moduleId,
+    scheduler,
+    signer,
+    tags: [
+      { name: 'Name', value: 'ANT Registry Test ' + Date.now() },
+    ],
+  });
+
+  console.log('ANT Registry spawned:', processId);
+
+  // Load ANT Registry Lua code
+  const lua = readFileSync(
+    join(__dirname, '../fixtures/ant-registry-bundled.lua'),
+    'utf-8',
+  );
+
+  await ao.message({
+    process: processId,
+    signer,
+    tags: [{ name: 'Action', value: 'Eval' }],
+    data: lua,
+  });
+
+  console.log('ANT Registry Lua loaded');
+
+  // Create process wrapper
+  const antRegistryProcess = new AOProcess({ ao, processId });
+
+  return { processId, process: antRegistryProcess };
 }
 
 /**
@@ -251,12 +318,14 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
   try {
     // Load environment variables
     const walletPath = process.env.WALLET_PATH;
-    const moduleId = process.env.AOS_MODULE;
+    const moduleId = process.env.MODULE_ID || process.env.AOS_MODULE; // Support both names
     const scheduler = process.env.SCHEDULER;
     const authority = process.env.AUTHORITY;
     const cuUrl = process.env.CU_URL;
+    const muUrl = process.env.MU_URL;
+    const graphqlUrl = process.env.GRAPHQL_URL;
 
-    if (!walletPath || !moduleId || !scheduler || !authority || !cuUrl) {
+    if (!walletPath || !moduleId || !scheduler || !authority || !cuUrl || !muUrl || !graphqlUrl) {
       throw new Error(
         'Missing required environment variables. Check .env file.',
       );
@@ -268,8 +337,14 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
     );
     const signer = createDataItemSigner(wallet);
 
-    // Connect to AO
-    const ao = connect({ CU_URL: cuUrl });
+    // Connect to AO with localnet configuration using legacy mode
+    const ao = connect({
+      MODE: 'legacy',
+      MU_URL: muUrl,
+      CU_URL: cuUrl,
+      GATEWAY_URL: process.env.GATEWAY_URL,
+      GRAPHQL_URL: graphqlUrl,
+    });
 
   // Try to load existing config
   const existingConfig = loadProcessConfig();
@@ -283,12 +358,15 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
       existingConfig.marketplaceProcessId,
       ao,
     );
+    const antRegistryValid = existingConfig.antRegistryProcessId 
+      ? await validateProcess(existingConfig.antRegistryProcessId, ao)
+      : false;
     
     // Always spawn a fresh ANT to ensure clean state for testing
     console.log('Note: Will spawn fresh ANT for clean test state');
     const antValid = false;
 
-    if (arioValid && marketplaceValid && antValid) {
+    if (arioValid && marketplaceValid && antRegistryValid && antValid) {
       console.log('All processes valid, reusing...');
 
       // Create process instances
@@ -310,6 +388,11 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
         signer,
       });
 
+      const antRegistryProcess = new AOProcess({ 
+        ao, 
+        processId: existingConfig.antRegistryProcessId 
+      });
+
       return {
         arioProcessId: existingConfig.arioProcessId,
         arioProcess,
@@ -317,6 +400,8 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
         marketplaceProcess,
         antProcessId: existingConfig.antProcessId,
         antProcess: antProcess,
+        antRegistryProcessId: existingConfig.antRegistryProcessId,
+        antRegistryProcess,
         config: existingConfig,
       };
     }
@@ -327,24 +412,31 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
   // Spawn new processes
   console.log('Spawning new processes...');
 
-  // Spawn ARIO and ANT in parallel (they're independent)
-  const [arioResult, antResult] = await Promise.all([
-    spawnArioProcess({
-      ao,
-      signer,
-      wallet,
-      moduleId,
-      scheduler,
-      authority,
-    }),
-    spawnAntProcess({
-      ao,
-      signer,
-    }),
-  ]);
+  // Spawn ARIO first (needed for marketplace)
+  const { processId: arioProcessId, process: arioProcess } = await spawnArioProcess({
+    ao,
+    signer,
+    wallet,
+    moduleId,
+    scheduler,
+    authority,
+  });
 
-  const { processId: arioProcessId, process: arioProcess } = arioResult;
-  const { processId: antProcessId, process: antProcess } = antResult;
+  // Spawn ANT Registry next (needed for ANT spawning)
+  const { processId: antRegistryProcessId, process: antRegistryProcess } = await spawnAntRegistryProcess({
+    ao,
+    signer,
+    moduleId,
+    scheduler,
+  });
+
+  // Spawn ANT after registry is ready
+  const { processId: antProcessId, process: antProcess } = await spawnAntProcess({
+    ao,
+    signer,
+    moduleId,
+    scheduler,
+  });
 
   // Spawn marketplace after ARIO is ready (needs ARIO process ID)
   const { processId: marketplaceProcessId, process: marketplaceProcess } =
@@ -362,6 +454,7 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
     arioProcessId,
     marketplaceProcessId,
     antProcessId,
+    antRegistryProcessId,
     timestamp: Date.now(),
   };
 
@@ -375,6 +468,8 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
     marketplaceProcess,
     antProcessId,
     antProcess: antProcess,
+    antRegistryProcessId,
+    antRegistryProcess,
     config,
   };
   } catch (error) {

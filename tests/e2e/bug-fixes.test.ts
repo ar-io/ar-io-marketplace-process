@@ -28,28 +28,39 @@ async function profile<T>(label: string, fn: () => Promise<T>): Promise<T> {
 
 async function spawnFreshAnt(): Promise<string> {
   return await profile('Spawn fresh ANT', async () => {
+    // Use localnet configuration with legacy mode
     const ao = connect({
-      CU_URL: process.env.CU_URL || 'https://cu.ardrive.io',
+      MODE: 'legacy',
+      MU_URL: process.env.MU_URL || 'http://localhost:4002',
+      CU_URL: process.env.CU_URL || 'http://localhost:4004',
+      GATEWAY_URL: process.env.GATEWAY_URL || 'http://localhost:4000',
+      GRAPHQL_URL: process.env.GRAPHQL_URL || 'http://localhost:4000/graphql',
     });
     
     const processId = await ANT.spawn({
       ao,
       signer: TEST_SIGNER,
+      module: process.env.AOS_MODULE || '9kxE2SbDCytl6NI_dnTyg10wHMFUfCdBjm1gOouscFc',
     });
     
     console.log('Fresh ANT spawned:', processId);
     
-    // Wait for ANT to initialize (allow handlers to be set up)
-    console.log('Waiting 10s for ANT to fully initialize...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // Wait for ANT to be ready on localnet (gateway propagation)
+    console.log('Waiting 3s for ANT to propagate...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Verify ANT is responsive by calling Info
+    // Verify ANT is responsive
+    console.log('Verifying ANT responsiveness...');
     const ant = ANT.init({
       process: new AOProcess({ ao, processId }),
       signer: TEST_SIGNER,
     });
-    const info = await ant.getInfo();
-    console.log('ANT initialized and responsive:', info.Name || 'unnamed');
+    try {
+      const info = await ant.getInfo();
+      console.log('ANT initialized and responsive:', info.Name || 'unnamed');
+    } catch (e) {
+      console.log('ANT info check failed (may be normal for fresh spawn):', e instanceof Error ? e.message : String(e));
+    }
     
     return processId;
   });

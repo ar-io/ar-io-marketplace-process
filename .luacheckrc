@@ -5,6 +5,11 @@ globals = {
 }
 max_line_length = 185
 
+-- Exclude bundled fixture contracts from linting
+exclude_files = {
+	'tests/fixtures/contracts/**',
+}
+
 -- Enable unused variable checks
 unused = true -- Warn on unused variables
 unused_args = true -- Warn on unused function arguments

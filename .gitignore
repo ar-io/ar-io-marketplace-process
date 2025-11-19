@@ -1,6 +1,5 @@
 node_modules
 dist
-wallets
 logs
 .DS_Store
 .npmrc
@@ -14,5 +13,4 @@ test-output.json
 
 # AO Localnet
 .ao-localnet/
-.localnet-state.json
 docker-compose.override.yml
