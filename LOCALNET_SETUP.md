@@ -57,7 +57,16 @@ This will display the scheduler and module IDs published to your localnet.
 
 ### 4. Configure Your Environment
 
-Copy the output from `localnet:config` to your `.env` file. Example:
+Copy the output from `localnet:config` to your `.env` file:
+
+```bash
+# Run this to see the configuration
+pnpm localnet:config
+
+# Copy the output to your .env file
+```
+
+Example `.env` for localnet:
 
 ```bash
 # AO Localnet URLs
@@ -67,11 +76,14 @@ CU_URL=http://localhost:4004
 MU_URL=http://localhost:4002
 SU_URL=http://localhost:4003
 
-# Scheduler (from your localnet)
+# Scheduler (from your localnet - get from 'pnpm localnet:config')
 SCHEDULER=PtGrbqY8zhURTfKSvhTSDJ95LXMO6oR2Wk-y1u3ogMs
 
-# AOS Module (from your localnet)
+# AOS Module (from your localnet - get from 'pnpm localnet:config')
 MODULE_ID=Xp8_KWaMewjwvWDZLihmlJwkfKtSHyHUXXe54ilRwWE
+
+# Optional: Test wallet (defaults to tests/fixtures/test_wallet.json)
+# WALLET_PATH=tests/fixtures/test_wallet.json
 ```
 
 **Important:** The SCHEDULER and MODULE_ID values are specific to your localnet instance. Always run `pnpm localnet:config` after reseeding to get the correct values.
