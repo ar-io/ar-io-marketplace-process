@@ -508,7 +508,6 @@ export class MarketplaceProcess {
    * @param price - The price in swap token units
    * @param swapToken - The swap token process ID (e.g., ARIO)
    * @param logger - Optional test logger
-   * @param forceCrank - If true, manually push Credit-Notice to marketplace (for testing)
    * @returns Object with intentId, orderId, and txId
    */
   async listAntForFixedPrice(
@@ -516,7 +515,6 @@ export class MarketplaceProcess {
     price: string,
     swapToken: string,
     logger?: any,
-    forceCrank?: boolean,
   ): Promise<{ intentId: string; orderId?: string; txId: string }> {
     // Step 1: Create intent first (required by marketplace)
     const intentResult = await this.createIntent({
@@ -577,16 +575,6 @@ export class MarketplaceProcess {
         process: antProcessId,
         signer: this.signer,
         tags,
-      });
-    }
-
-    // Force crank Credit-Notice if requested (for testing)
-    if (forceCrank) {
-      const { forceCrankMessage } = await import('./force_crank.js');
-      console.log('Force cranking ANT transfer Credit-Notice...');
-      await forceCrankMessage({
-        messageId: txId,
-        processId: antProcessId,
       });
     }
 
@@ -696,7 +684,6 @@ export class MarketplaceProcess {
    * @param orderId - The order ID to buy
    * @param amount - The amount of ARIO to send
    * @param logger - Optional test logger
-   * @param forceCrank - If true, manually push Credit-Notice to marketplace (for testing)
    * @returns Object with intentId and txId
    */
   async buyFixedPriceListing(
@@ -704,7 +691,6 @@ export class MarketplaceProcess {
     orderId: string,
     amount: string,
     logger?: any,
-    forceCrank?: boolean,
   ): Promise<{ intentId: string; txId: string }> {
     // Step 0: Get the order to find the ANT process ID (swap token)
     const orderResult = await this.getOrderById(orderId);
@@ -766,16 +752,6 @@ export class MarketplaceProcess {
         process: arioProcessId,
         signer: this.signer,
         tags,
-      });
-    }
-
-    // Force crank Credit-Notice if requested (for testing)
-    if (forceCrank) {
-      const { forceCrankMessage } = await import('./force_crank.js');
-      console.log('Force cranking ARIO transfer Credit-Notice...');
-      await forceCrankMessage({
-        messageId: txId,
-        processId: arioProcessId,
       });
     }
 

@@ -61,7 +61,7 @@ describe('ANT Listing Debug Test', { timeout: 900_000 }, () => {
     console.log('Initial orders:', initialInfo.activity.totalOrders);
     console.log('Initial intents:', initialInfo.intents.total);
 
-    // List the ANT with force cranking enabled
+    // List the ANT
     const listingPrice = '1000000'; // 1 ARIO
     const listingStartTime = Date.now();
     
@@ -71,13 +71,11 @@ describe('ANT Listing Debug Test', { timeout: 900_000 }, () => {
       listingPrice,
       arioProcessId,
       undefined, // no logger
-      true, // forceCrank = true
     );
     
-    const crankCompletedTime = Date.now();
     console.log('✓ Transfer sent:', result.txId);
     console.log('✓ Intent created:', result.intentId);
-    console.log(`✓ Force crank completed at ${new Date().toISOString()} (${((crankCompletedTime - listingStartTime)/1000).toFixed(1)}s since listing)`);
+    console.log(`✓ Listing initiated at ${new Date().toISOString()} (${((Date.now() - listingStartTime)/1000).toFixed(1)}s since start)`);
 
     // Poll for order creation (should be much faster now!)
     console.log('\n=== Waiting for Order Creation ===');
@@ -97,7 +95,6 @@ describe('ANT Listing Debug Test', { timeout: 900_000 }, () => {
         const orderCreatedTime = Date.now();
         console.log(`✓ Order created at ${new Date().toISOString()}!`);
         console.log(`  Time since listing: ${((orderCreatedTime - listingStartTime)/1000).toFixed(1)}s`);
-        console.log(`  Time since crank completed: ${((orderCreatedTime - crankCompletedTime)/1000).toFixed(1)}s`);
         break;
       }
     }
