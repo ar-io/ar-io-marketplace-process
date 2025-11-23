@@ -27,14 +27,26 @@ end
 
 print('✓ Test mocks created (ao, Handlers)')
 
+-- Mock utils functions that are needed for testing
+_G.utils = _G.utils or {}
+_G.utils.isValidAddress = _G.utils.isValidAddress or function(address, allowUnsafe)
+	-- Simple mock: just check if address is a string and non-empty
+	if allowUnsafe then
+		return type(address) == 'string' and #address > 0
+	end
+	return type(address) == 'string' and #address > 40
+end
+
 return {
 	-- Utility function to reset global state between tests
 	resetState = function()
 		_G.Orderbook = {}
 		_G.OrderIndex = {}
 		_G.Intents = {}
-		_G.Pruning = { nextScheduledOrderbookPruning = nil }
+		_G.Pruning = { nextScheduledOrderbookPruning = nil, nextScheduledIntentsPruning = nil }
 		_G.AccruedFeesAmount = 0
+		_G.ARIOBalances = {}
+		_G.IntentCounter = "0"
 	end,
 
 	-- Utility to reset ARIO token ID (useful if tests need different values)

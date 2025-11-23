@@ -635,77 +635,18 @@ describe('utils', function()
 
 		local testCases = {
 			{
-				description = 'refund occurs then error notice when valid quantity and transfer token provided',
+				description = 'sends error notice (no refund - handleError only sends notices)',
 				args = {
 					target = validTarget,
-					transferToken = validTransferToken,
-					quantity = '1000',
 					action = 'Some-Error',
 					message = 'Something went wrong',
 				},
 				expected = {
 					{
-						Target = validTransferToken,
-						Action = 'Transfer',
-						Tags = { Recipient = validTarget, Quantity = '1000' },
-					},
-					{
 						Target = validTarget,
 						Action = 'Some-Error',
 						Error = 'Something went wrong',
 						Tags = { Status = 'Error', Message = 'Something went wrong', ['X-Group-ID'] = nil },
-					},
-				},
-			},
-			{
-				description = 'no refund when transfer token missing; only error notice sent',
-				args = {
-					target = validTarget,
-					quantity = '1000',
-					action = 'Another-Error',
-					message = 'Missing transfer token',
-				},
-				expected = {
-					{
-						Target = validTarget,
-						Action = 'Another-Error',
-						Error = 'Missing transfer token',
-						Tags = { Status = 'Error', Message = 'Missing transfer token', ['X-Group-ID'] = nil },
-					},
-				},
-			},
-			{
-				description = 'no refund when quantity invalid (zero); only error notice sent',
-				args = {
-					target = validTarget,
-					transferToken = validTransferToken,
-					quantity = '0',
-					action = 'Zero-Qty-Error',
-					message = 'Zero quantity',
-				},
-				expected = {
-					{
-						Target = validTarget,
-						Action = 'Zero-Qty-Error',
-						Error = 'Zero quantity',
-						Tags = { Status = 'Error', Message = 'Zero quantity', ['X-Group-ID'] = nil },
-					},
-				},
-			},
-			{
-				description = 'no refund when quantity missing; only error notice sent',
-				args = {
-					target = validTarget,
-					transferToken = validTransferToken,
-					action = 'No-Qty-Error',
-					message = 'No quantity provided',
-				},
-				expected = {
-					{
-						Target = validTarget,
-						Action = 'No-Qty-Error',
-						Error = 'No quantity provided',
-						Tags = { Status = 'Error', Message = 'No quantity provided', ['X-Group-ID'] = nil },
 					},
 				},
 			},

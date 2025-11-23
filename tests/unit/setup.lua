@@ -37,6 +37,17 @@ for _, module_name in ipairs(modules_to_load) do
 	local load_success, result = pcall(require, module_name)
 	if load_success then
 		print('  ✓ Loaded: ' .. module_name)
+		-- Add mocks to utils module after loading
+		if module_name == 'utils' and type(result) == 'table' then
+			result.isValidAddress = result.isValidAddress or function(address, allowUnsafe)
+				-- Simple mock: just check if address is a string and non-empty
+				if allowUnsafe then
+					return type(address) == 'string' and #address > 0
+				end
+				return type(address) == 'string' and #address > 40
+			end
+			print('  ✓ Added isValidAddress mock to utils')
+		end
 	else
 		print('  ✗ Failed to load: ' .. module_name .. ' - ' .. tostring(result))
 	end

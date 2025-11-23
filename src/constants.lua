@@ -32,6 +32,8 @@ constants.FEE = {
 	FACTOR_DENOMINATOR = 1000,
 	AMOUNT_NUMERATOR = 5, -- Fee amount = amount * 5 / 10000 (0.05%)
 	AMOUNT_DENOMINATOR = 10000,
+	LISTING_FEE_ARIO = '1000000000', -- 1 ARIO = 1000000000 mARIO
+	LISTING_FEE_MULTIPLIER_HOURS = 1, -- 1 day is one listing fee
 }
 
 -- Pagination constants
@@ -73,6 +75,14 @@ constants.INTENT_TYPES = {
 	CHILD = 'child', -- Child intent (system-generated)
 }
 
+-- Intent TTL constant (24 hours in milliseconds)
+constants.INTENT_TTL_MS = 86400000
+
+-- Listing expiration limits
+constants.LISTING = {
+	MAX_EXPIRATION_MS = 2592000000, -- 30 days in milliseconds (30 * 24 * 60 * 60 * 1000)
+}
+
 -- Expected message constants
 constants.EXPECTED_MESSAGES = {
 	DEBIT_NOTICE = 'Debit-Notice', -- Expected debit notice from token process
@@ -89,6 +99,9 @@ constants.ACTIONS = {
 	-- Auction actions
 	BID_SUCCESS = 'Bid-Success',
 	BID_RETURNED = 'Bid-Returned',
+	BID_PLACED = 'Bid-Placed',
+	BID_UPDATED = 'Bid-Updated',
+	BID_ON_ENGLISH_AUCTION = 'Bid-On-English-Auction',
 	AUCTION_WON = 'Auction-Won',
 	SETTLEMENT_SUCCESS = 'Settlement-Success',
 	-- Transfer actions
@@ -97,6 +110,8 @@ constants.ACTIONS = {
 	DEBIT_NOTICE = 'Debit-Notice',
 	TRANSFER_ERROR = 'Transfer-Error',
 	INVALID_TRANSFER_NOTICE = 'Invalid-Transfer-Notice',
+	-- Balance actions
+	WITHDRAW_ARIO = 'Withdraw-Ario',
 	-- Read actions
 	READ_SUCCESS = 'Read-Success',
 	ORDER_NOT_FOUND = 'Order-Not-Found',
@@ -105,6 +120,7 @@ constants.ACTIONS = {
 	MOST_TRADED_TOKENS_RESULT = 'Most-Traded-Tokens-Result',
 	TABLE_LENGTHS_RESULT = 'Table-Lengths-Result',
 	INVALID_NOTICE = 'Invalid-{Action}-Notice', -- Template for invalid action notices
+	DEPOSIT = 'Deposit',
 }
 
 -- Tag name constants

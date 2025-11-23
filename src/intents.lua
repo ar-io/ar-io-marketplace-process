@@ -11,12 +11,80 @@ function intents.incrementIntentCounter()
 	return tostring(IntentCounter)
 end
 
+--- Calculate the listing fee based on duration
+--- @param expirationTime string|number|nil The expiration timestamp (nil for no expiration)
+--- @param currentTimestamp number The current timestamp in milliseconds
+--- @return string|nil listingFee The calculated listing fee in mARIO (nil on error)
+--- @return string|nil error Error message if validation fails (nil on success)
+function intents.calculateListingFee(expirationTime, currentTimestamp)
+	local listingFee = bint(constants.FEE.LISTING_FEE_ARIO)
+	
+	if not expirationTime then
+		-- No expiration time, use base fee
+		return tostring(listingFee), nil
+	end
+	
+	-- Validate expiration time is a number
+	local expTime = tonumber(expirationTime)
+	if not expTime then
+		return nil, 'Expiration time must be a valid number'
+	end
+	
+	-- Calculate listing duration
+	local listingDurationMs = bint(expTime) - bint(currentTimestamp)
+	
+	-- Validate duration is positive
+	if listingDurationMs <= bint(0) then
+		return nil, 'Expiration time must be in the future'
+	end
+	
+	-- Validate duration doesn't exceed maximum (30 days)
+	if listingDurationMs > bint(constants.LISTING.MAX_EXPIRATION_MS) then
+		return nil, 'Expiration time cannot exceed 30 days'
+	end
+	
+	-- Calculate fee based on duration
+	local listingDurationHours = tonumber(tostring(listingDurationMs / bint(3600000))) -- Convert ms to hours
+	local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS * 24 -- 24 hours per day
+	
+	-- Calculate multiplier: ceiling of (hours / hoursPerFee)
+	local feeMultiplier = math.ceil(listingDurationHours / hoursPerFee)
+	if feeMultiplier < 1 then
+		feeMultiplier = 1
+	end
+	
+	listingFee = listingFee * bint(feeMultiplier)
+	
+	return tostring(listingFee), nil
+end
+
 --- Create a parent intent
 --- @param msg Message The incoming message
 --- @param action string The action being performed (Create-Order, Cancel-Order, etc.)
 --- @param forwardedTags table<string, any> Table of tags to forward with the intent
 --- @return ParentIntent intent The created parent intent
 function intents.createParentIntent(msg, action, forwardedTags)
+	local balances = require('balances')
+	
+	-- Calculate TTL (24 hours from creation)
+	local ttl = msg.Timestamp + constants.INTENT_TTL_MS
+	
+	-- For Create-Order actions, calculate and charge listing fee
+	if action == 'Create-Order' then
+		local expirationTime = forwardedTags and forwardedTags['Expiration-Time']
+		
+		-- Calculate listing fee
+		local listingFee, feeError = intents.calculateListingFee(expirationTime, msg.Timestamp)
+		assert(not feeError, feeError)
+		
+		-- Validate and charge fee
+		assert(
+			balances.walletHasSufficientBalance(msg.From, listingFee),
+			'Insufficient ARIO balance for listing fee. Required: ' .. listingFee
+		)
+		balances.transfer(TREASURY_ADDRESS, msg.From, listingFee, true)
+	end
+	
 	local intent = {
 		intentId = intents.incrementIntentCounter(),
 		type = constants.INTENT_TYPES.PARENT,
@@ -26,6 +94,7 @@ function intents.createParentIntent(msg, action, forwardedTags)
 		action = action,
 		status = constants.INTENT_STATUSES.PENDING,
 		createdAt = msg.Timestamp,
+		ttl = ttl,
 		resolvedAt = nil,
 		completedAt = nil,
 		failureReason = nil,
@@ -33,6 +102,10 @@ function intents.createParentIntent(msg, action, forwardedTags)
 	}
 
 	Intents[intent.intentId] = intent
+	
+	-- Schedule pruning for this intent's TTL
+	intents.scheduleNextIntentsPruning(ttl)
+	
 	return intent
 end
 
@@ -124,8 +197,10 @@ end
 --- Fail an intent with a reason
 --- @param intentId string The intent ID to fail
 --- @param reason string The failure reason
+--- @param msg table|nil The message context (optional, for sending notices)
 --- @return boolean success Whether the failure was recorded
-function intents.failIntent(intentId, reason)
+function intents.failIntent(intentId, reason, msg)
+	local utils = require('utils')
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -138,8 +213,8 @@ function intents.failIntent(intentId, reason)
 	local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
 
 	-- Send Intent-Resolved notice AFTER pruning succeeds
-	if success and resolvedIntent then
-		ao.send({
+	if success and resolvedIntent and msg then
+		utils.Send(msg, {
 			Target = resolvedIntent.initiator,
 			Action = 'Intent-Resolved',
 			['Intent-Id'] = tostring(resolvedIntent.intentId),
@@ -155,8 +230,10 @@ end
 --- Update intent status
 --- @param intentId string The intent ID
 --- @param status string The new status
+--- @param msg table|nil The message context (optional, for sending notices)
 --- @return boolean success Whether the update was successful
-function intents.updateIntentStatus(intentId, status)
+function intents.updateIntentStatus(intentId, status, msg)
+	local utils = require('utils')
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -174,8 +251,8 @@ function intents.updateIntentStatus(intentId, status)
 		local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
 
 		-- Send Intent-Resolved notice AFTER pruning succeeds
-		if success and resolvedIntent then
-			ao.send({
+		if success and resolvedIntent and msg then
+			utils.Send(msg, {
 				Target = resolvedIntent.initiator,
 				Action = 'Intent-Resolved',
 				['Intent-Id'] = tostring(resolvedIntent.intentId),
@@ -191,7 +268,7 @@ end
 
 --- Get intent by ID
 --- @param intentId string The intent ID
---- @return Intent|nil intent The intent or nil if not found
+--- @return Intent|ParentIntent|ChildIntent|nil intent The intent or nil if not found
 function intents.getIntentById(intentId)
 	return Intents[intentId]
 end
@@ -225,10 +302,10 @@ function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
 			sendParams.Tags = sendParams.Tags or {}
 			sendParams.Tags['X-Intent-Id'] = childIntent.intentId
 
-			-- Update parent status to "settling" if currently active
-			if parent.status == constants.INTENT_STATUSES.ACTIVE then
-				intents.updateIntentStatus(parentIntentId, constants.INTENT_STATUSES.SETTLING)
-			end
+		-- Update parent status to "settling" if currently active
+		if parent.status == constants.INTENT_STATUSES.ACTIVE then
+			intents.updateIntentStatus(parentIntentId, constants.INTENT_STATUSES.SETTLING, handledMsg)
+		end
 		end
 	end
 
@@ -294,6 +371,56 @@ function intents.areAllChildrenIntentsResolved(parentId)
 	end
 
 	return true
+end
+
+--- Schedule the next intents pruning if the given timestamp is sooner than the current scheduled time
+--- @param timestamp number The timestamp to schedule pruning for
+function intents.scheduleNextIntentsPruning(timestamp)
+	if not timestamp then
+		return
+	end
+
+	-- Initialize if needed
+	if not Pruning then
+		Pruning = { nextScheduledIntentsPruning = nil }
+	end
+
+	-- Schedule if no prune scheduled or if this one is sooner
+	if not Pruning.nextScheduledIntentsPruning or timestamp < Pruning.nextScheduledIntentsPruning then
+		Pruning.nextScheduledIntentsPruning = timestamp
+	end
+end
+
+--- Prune expired intents from the Intents table
+--- Returns early if it's not time to prune yet
+--- @param now number The current timestamp
+function intents.pruneIntents(now)
+	-- Return early if no pruning is scheduled or not time yet
+	if not Pruning or not Pruning.nextScheduledIntentsPruning or now < Pruning.nextScheduledIntentsPruning then
+		return
+	end
+
+	-- Track the next earliest TTL for rescheduling
+	local nextTTL = nil
+
+	-- Iterate through all intents and fail expired ones
+	for intentId, intent in pairs(Intents) do
+		-- Only process parent intents (children are pruned with parents)
+		if intent.type == constants.INTENT_TYPES.PARENT and intent.ttl then
+		if now >= intent.ttl then
+			-- Intent has expired, fail it (no msg context for pruning)
+			intents.failIntent(intentId, 'Intent expired (24h TTL)', nil)
+		else
+				-- Track the next expiration
+				if not nextTTL or intent.ttl < nextTTL then
+					nextTTL = intent.ttl
+				end
+			end
+		end
+	end
+
+	-- Schedule the next prune
+	Pruning.nextScheduledIntentsPruning = nextTTL
 end
 
 -- Handler: Create-Intent

@@ -1,8 +1,14 @@
 import { before, describe, it, after } from 'node:test';
 import assert from 'node:assert';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { MarketplaceProcess } from '../utils/marketplace_process.js';
 import { getOrSpawnProcesses } from '../utils/process_manager.js';
 import { resetTestLogger } from '../utils/test_logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Profiling utility to measure execution time of async operations
@@ -26,6 +32,7 @@ describe('E2E Fixed Price Marketplace Tests', { timeout: 2_700_000 }, () => {
   let marketplaceProcess: MarketplaceProcess;
   let arioProcessId: string;
   let marketplaceProcessId: string;
+  let antRegistryProcessId: string;
   const logger = resetTestLogger();
   
   /**
@@ -35,38 +42,62 @@ describe('E2E Fixed Price Marketplace Tests', { timeout: 2_700_000 }, () => {
    */
   async function spawnFreshAnt(): Promise<string> {
     return await profile('Spawn fresh ANT for test', async () => {
-      const { ANT } = await import('@ar.io/sdk');
-      const { connect } = await import('@permaweb/aoconnect');
-      const { TEST_SIGNER } = await import('../utils/constants.js');
+      const { ANT, AOProcess, ArweaveSigner } = await import('@ar.io/sdk');
+      const { TEST_SIGNER, TEST_WALLET } = await import('../utils/constants.js');
+      const { getAoInstance, getScheduler, getAuthorityAddress, getAntModuleId, createLocalnetSigner } = await import('../utils/constants.js');
       
-      // Use localnet configuration with legacy mode
-      const ao = connect({
-        MODE: 'legacy',
-        MU_URL: process.env.MU_URL || 'http://localhost:4002',
-        CU_URL: process.env.CU_URL || 'http://localhost:4004',
-        GATEWAY_URL: process.env.GATEWAY_URL || 'http://localhost:4000',
-        GRAPHQL_URL: process.env.GRAPHQL_URL || 'http://localhost:4000/graphql',
-      });
+      // Use SDK for configuration
+      const ao = getAoInstance();
+      const scheduler = getScheduler();
+      const authority = await getAuthorityAddress();
+      const antModule = await getAntModuleId(); // ANT-specific WASM module
+      // Use the same wallet for spawning and operations to avoid wallet mismatch
+      const localnetSigner = createLocalnetSigner(new ArweaveSigner(TEST_WALLET));
       
-      const processId = await ANT.spawn({
-        ao,
-        signer: TEST_SIGNER,
-        module: process.env.AOS_MODULE || '9kxE2SbDCytl6NI_dnTyg10wHMFUfCdBjm1gOouscFc',
+      // Manual spawn (SDK's ANT.spawn doesn't pass `ao` to ANTRegistry, causing mainnet hang)
+      const processId = await ao.spawn({
+        module: antModule,
+        scheduler,
+        signer: localnetSigner,
+        tags: [
+          { name: 'Authority', value: authority },
+          { name: 'ANT-Registry-Id', value: antRegistryProcessId },
+        ],
       });
       
       console.log('Fresh ANT spawned:', processId);
       
-      // Wait for ANT to be ready on localnet (gateway propagation)
+      // Wait for ANT to propagate
       console.log('Waiting 3s for ANT to propagate...');
       await new Promise(resolve => setTimeout(resolve, 3000));
       
+      // Load ANT Lua code
+      const antLuaPath = join(__dirname, '../fixtures/contracts/ant-bundled.lua');
+      const antLua = readFileSync(antLuaPath, 'utf-8');
+      
+      const evalMsgId = await ao.message({
+        process: processId,
+        signer: localnetSigner,
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: antLua,
+      });
+      
+      const evalResult = await ao.result({
+        process: processId,
+        message: evalMsgId,
+      });
+      
+      console.log('ANT Lua loaded');
+      
       // Verify ANT is responsive
-      console.log('Verifying ANT responsiveness...');
-      const { AOProcess } = await import('@ar.io/sdk');
-      const antProcess = new AOProcess({ ao, processId });
       try {
-        const info = await antProcess.read({ tags: [{ name: 'Action', value: 'Info' }] });
-        console.log('ANT is responsive:', info ? '✓' : '✗');
+        const ant = ANT.init({ 
+          process: new AOProcess({ ao, processId }),
+          signer: TEST_SIGNER
+        });
+        
+        await ant.getInfo();
+        console.log('ANT is responsive ✓');
       } catch (e) {
         console.log('ANT info check failed (may be normal for fresh spawn):', e instanceof Error ? e.message : String(e));
       }
@@ -88,6 +119,7 @@ describe('E2E Fixed Price Marketplace Tests', { timeout: 2_700_000 }, () => {
     marketplaceProcess = processes.marketplaceProcess;
     marketplaceProcessId = processes.marketplaceProcessId;
     arioProcessId = processes.arioProcessId;
+    antRegistryProcessId = processes.antRegistryProcessId;
 
     // Set process IDs in logger (ANT will be set per-test)
     logger.setProcesses({

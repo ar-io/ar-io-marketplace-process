@@ -118,7 +118,7 @@ function ucm.transfer(recipient, quantity, token, handledMsg)
 			Quantity = quantity,
 		},
 	}
-
+	-- TODO: refactor to 'sendParamsWithIntent'
 	-- Add intent tracking
 	sendParams = intents.createSendWithIntent(sendParams, handledMsg, {
 		Recipient = recipient,
@@ -150,13 +150,27 @@ function ucm.executeTokenTransfers(args)
 	-- Get msg context for intent tracking
 	local msg = args.msg or { Tags = {} }
 
-	-- Transfer tokens to the seller (order creator)
-	-- The buyer is sending dominantToken, so we transfer that to the seller
-	ucm.transfer(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
+	-- Transfer dominant token to the seller (order creator)
+	-- ARIO goes to internal balance, ANT via external transfer
+	if utils.isArioToken(args.dominantToken) then
+		-- ARIO: Add to seller's internal balance
+		local balances = require('balances')
+		balances.increaseBalance(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount))
+	else
+		-- ANT: Transfer via Credit-Notice
+		ucm.transfer(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
+	end
 
-	-- Transfer swap tokens to the buyer (order sender)
-	-- The seller is sending swapToken, so we transfer that to the buyer
-	ucm.transfer(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
+	-- Transfer swap token to the buyer (order sender)
+	-- ARIO goes to internal balance, ANT via external transfer
+	if utils.isArioToken(args.swapToken) then
+		-- ARIO: Add to buyer's internal balance
+		local balances = require('balances')
+		balances.increaseBalance(args.sender, tostring(args.calculatedFillAmount))
+	else
+		-- ANT: Transfer via Credit-Notice
+		ucm.transfer(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
+	end
 end
 
 --- Get a trading pair from the orderbook (directional)
@@ -385,6 +399,67 @@ function ucm.createOrder(args)
 	return
 end
 
+--- Handler: Create-Order (for ARIO orders via direct message using internal balance)
+--- ANT orders must come via Credit-Notice
+--- @param msg Message The message containing order parameters
+--- @return string jsonResponse JSON-encoded response with status and order ID
+function ucm.createOrderHandler(msg)
+	local json = require('json')
+	
+	-- Parse order parameters
+	local swapToken = msg.Tags['Swap-Token']
+	local quantity = msg.Tags.Quantity
+	local orderType = msg.Tags['Order-Type'] or 'fixed'
+	local price = msg.Tags.Price
+	local expirationTime = msg.Tags['Expiration-Time'] and tonumber(msg.Tags['Expiration-Time'])
+	
+	assert(swapToken, 'Swap-Token is required')
+	assert(quantity, 'Quantity is required')
+	assert(utils.checkValidAmount(quantity), 'Quantity must be a positive integer')
+	
+	-- Validate that sender has ARIO token process ID as dominantToken
+	-- For ARIO orders, we're offering ARIO from internal balance to get the swap token
+	local dominantToken = ARIO_TOKEN_PROCESS_ID
+	
+	-- Validate that at least one token is ARIO
+	local isArioValid, arioError = utils.validateArioInTrade(dominantToken, swapToken)
+	assert(isArioValid, arioError or 'At least one token in the trade must be ARIO')
+	
+	local orderArgs = {
+		orderId = msg.Id,
+		orderGroupId = msg.Tags['Group-ID'] or 'None',
+		dominantToken = dominantToken,
+		swapToken = swapToken,
+		sender = msg.From,
+		quantity = quantity,
+		createdAt = msg.Timestamp,
+		blockheight = msg['Block-Height'],
+		orderType = orderType,
+		expirationTime = expirationTime,
+		minimumPrice = msg.Tags['Minimum-Price'],
+		decreaseInterval = msg.Tags['Decrease-Interval'],
+		requestedOrderId = msg.Tags['Requested-Order-Id'],
+		msg = msg,
+	}
+	
+	if price then
+		orderArgs.price = price
+	end
+	if msg.Tags['Transfer-Denomination'] then
+		orderArgs.transferDenomination = msg.Tags['Transfer-Denomination']
+	end
+	
+	-- Create the order (will use internal balance via handleArioOrder)
+	ucm.createOrder(orderArgs)
+	
+	return json.encode({
+		Status = 'Success',
+		Message = 'ARIO order created using internal balance',
+		['Order-Id'] = msg.Id,
+		['Group-ID'] = orderArgs.orderGroupId,
+	})
+end
+
 --- Settle an expired English auction
 --- @param args table Settlement arguments containing orderId, sender, timestamp, orderGroupId, dominantToken, swapToken, msg
 function ucm.settleAuction(args)
@@ -450,7 +525,18 @@ function ucm.cancelOrderHandler(msg)
 	currentOrderEntry.endedAt = msg.Timestamp
 
 	-- Return funds to the creator
-	ucm.transfer(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
+	local balances = require('balances')
+	
+	-- Check if this order has locked balance (internal ARIO balance order)
+	local lockedBalance = balances.getOrderLockedBalance(orderId, currentOrderEntry.creator)
+	
+	if bint(lockedBalance) > 0 then
+		-- Internal balance order: Unlock and return to creator
+		balances.unlockBalanceFromOrder(orderId, currentOrderEntry.creator, currentOrderEntry.creator, lockedBalance)
+	else
+		-- External transfer order (ANT via Credit-Notice): Transfer back
+		ucm.transfer(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
+	end
 
 	-- Remove the order from the orderbook and index
 	if pairData then

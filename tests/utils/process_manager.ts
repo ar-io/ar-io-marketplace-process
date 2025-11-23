@@ -1,11 +1,18 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { config } from 'dotenv';
 import { connect, createDataItemSigner } from '@permaweb/aoconnect';
-import { AOProcess, ANT } from '@ar.io/sdk';
+import { AOProcess, ANT, ArweaveSigner, createAoSigner as createAoSdkSigner } from '@ar.io/sdk';
 import { MarketplaceProcess } from './marketplace_process.js';
 import { ArioProcess } from './ario_process.js';
+import { 
+  getAoInstance,
+  getScheduler as getSchedulerId,
+  getAosModule as getModuleId,
+  getAuthorityAddress,
+  createLocalnetSigner,
+  uploadAntModuleIfNeeded
+} from './constants.js';
 import Arweave from 'arweave'
 
 const arweave = Arweave.init({
@@ -16,8 +23,6 @@ const arweave = Arweave.init({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-config();
 
 /**
  * Convert JWK to Arweave address
@@ -101,15 +106,18 @@ async function validateProcess(
  */
 async function spawnArioProcess(params: {
   ao: any;
-  signer: any;
+  signer: any;  // DataItemSigner for ao.spawn/message
+  aoSigner?: any; // AoSigner for SDK classes
   wallet: any;
   moduleId: string;
   scheduler: string;
   authority: string;
 }): Promise<{ processId: string; process: ArioProcess }> {
-  const { ao, signer, wallet, moduleId, scheduler, authority } = params;
+  const { ao, signer, aoSigner, wallet, moduleId, scheduler } = params;
 
-  // Spawn process using ao.spawn (rate limit is now fixed at 2000 tx/min)
+  // Spawn process using ao.spawn
+  const authority = await getAuthorityAddress();
+  
   const processId = await ao.spawn({
     module: moduleId,
     scheduler,
@@ -122,9 +130,13 @@ async function spawnArioProcess(params: {
 
   console.log('AR.IO process spawned:', processId);
 
+  // Wait for process to propagate to gateway
+  console.log('Waiting 3s for AR.IO process to propagate...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
   // Load AR.IO process Lua code
   const lua = readFileSync(
-    join(__dirname, '../fixtures/ar-io-network-process.lua'),
+    join(__dirname, '../fixtures/contracts/ario-bundled.lua'),
     'utf-8',
   );
 
@@ -141,7 +153,7 @@ async function spawnArioProcess(params: {
   const aoProcess = new AOProcess({ ao, processId });
   const arioProcess = new ArioProcess({
     process: aoProcess,
-    signer,
+    signer: aoSigner || signer, // Use aoSigner for SDK, fallback to signer
   });
 
   // Mint initial balance for testing - derive address from wallet JWK
@@ -157,15 +169,20 @@ async function spawnArioProcess(params: {
  */
 async function spawnMarketplaceProcess(params: {
   ao: any;
-  signer: any;
+  signer: any;  // DataItemSigner for ao.spawn/message
+  aoSigner?: any; // AoSigner for SDK classes
   moduleId: string;
   scheduler: string;
   authority: string;
   arioProcessId?: string; // Optional ARIO process ID to set
 }): Promise<{ processId: string; process: MarketplaceProcess }> {
-  const { ao, signer, moduleId, scheduler, authority, arioProcessId } = params;
+  const { ao, signer, aoSigner, moduleId, scheduler, arioProcessId } = params;
+  const authority = await getAuthorityAddress();
 
+  console.log('Spawning Marketplace process...');
+  
   // Spawn process using ao.spawn (rate limit is now fixed at 2000 tx/min)
+  // Authority = MU wallet so it accepts cranked messages from MU
   const processId = await ao.spawn({
     module: moduleId,
     scheduler,
@@ -177,6 +194,10 @@ async function spawnMarketplaceProcess(params: {
   });
 
   console.log('Marketplace process spawned:', processId);
+
+  // Wait for process to propagate to gateway
+  console.log('Waiting 3s for Marketplace process to propagate...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
 
   // Load marketplace Lua code
   const lua = readFileSync(
@@ -209,16 +230,20 @@ async function spawnMarketplaceProcess(params: {
   const aoProcess = new AOProcess({ ao, processId });
   const marketplaceProcess = new MarketplaceProcess({
     process: aoProcess,
-    signer,
+    signer: aoSigner || signer, // Use aoSigner for SDK, fallback to signer
   });
 
+  // Add a delay to ensure marketplace is fully initialized before querying
+  console.log('Waiting 3s for marketplace to fully initialize...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  
   // Verify it's working
-  const info = await marketplaceProcess.info();
-  console.log('Marketplace info:', info);
-
-  // Add a small delay to ensure marketplace is fully initialized
-  console.log('Waiting 5s for marketplace to fully initialize...');
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  try {
+    const info = await marketplaceProcess.info();
+    console.log('Marketplace info:', info);
+  } catch (error) {
+    console.warn('Marketplace info check failed, continuing anyway:', error);
+  }
 
   return { processId, process: marketplaceProcess };
 }
@@ -237,20 +262,42 @@ async function spawnAntProcess(params: {
   console.log('Spawning ANT via ao.spawn()...');
   
   // Use ao.spawn() directly (ANT SDK has scheduler lookup issues on localnet)
+  // Authority = MU wallet so it can crank messages for this process
+  const authority = await getAuthorityAddress();
   const processId = await ao.spawn({
     module: moduleId,
     scheduler,
     signer,
     tags: [
       { name: 'Name', value: 'ANT Test ' + Date.now() },
+      { name: 'Authority', value: authority },
     ],
   });
 
   console.log('ANT spawned:', processId);
   
-  // Initialize ANT instance
+  // Wait for ANT to propagate to gateway
+  console.log('Waiting 3s for ANT to propagate...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  
+  // Load ANT Lua code
+  const antLua = readFileSync(
+    join(__dirname, '../fixtures/contracts/ant-bundled.lua'),
+    'utf-8',
+  );
+
+  await ao.message({
+    process: processId,
+    signer,
+    tags: [{ name: 'Action', value: 'Eval' }],
+    data: antLua,
+  });
+
+  console.log('ANT Lua loaded');
+  
+  // Initialize ANT instance with AOProcess
   const antProcess = ANT.init({
-    processId,
+    process: new AOProcess({ ao, processId }),
     signer,
   });
 
@@ -279,20 +326,26 @@ async function spawnAntRegistryProcess(params: {
   console.log('Spawning ANT Registry...');
   
   // Spawn ANT Registry process using ao.spawn (rate limit is now fixed at 2000 tx/min)
+  const authority = await getAuthorityAddress();
   const processId = await ao.spawn({
     module: moduleId,
     scheduler,
     signer,
     tags: [
       { name: 'Name', value: 'ANT Registry Test ' + Date.now() },
+      { name: 'Authority', value: authority },
     ],
   });
 
   console.log('ANT Registry spawned:', processId);
 
+  // Wait for process to propagate to gateway
+  console.log('Waiting 3s for ANT Registry to propagate...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
   // Load ANT Registry Lua code
   const lua = readFileSync(
-    join(__dirname, '../fixtures/ant-registry-bundled.lua'),
+    join(__dirname, '../fixtures/contracts/ant-registry-bundled.lua'),
     'utf-8',
   );
 
@@ -316,35 +369,26 @@ async function spawnAntRegistryProcess(params: {
  */
 export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
   try {
-    // Load environment variables
-    const walletPath = process.env.WALLET_PATH;
-    const moduleId = process.env.MODULE_ID || process.env.AOS_MODULE; // Support both names
-    const scheduler = process.env.SCHEDULER;
-    const authority = process.env.AUTHORITY;
-    const cuUrl = process.env.CU_URL;
-    const muUrl = process.env.MU_URL;
-    const graphqlUrl = process.env.GRAPHQL_URL;
-
-    if (!walletPath || !moduleId || !scheduler || !authority || !cuUrl || !muUrl || !graphqlUrl) {
-      throw new Error(
-        'Missing required environment variables. Check .env file.',
-      );
-    }
-
-    // Load wallet and create signer
-    const wallet = JSON.parse(
-      readFileSync(join(__dirname, '../../', walletPath), 'utf-8'),
-    );
-    const signer = createDataItemSigner(wallet);
-
-    // Connect to AO with localnet configuration using legacy mode
-    const ao = connect({
-      MODE: 'legacy',
-      MU_URL: muUrl,
-      CU_URL: cuUrl,
-      GATEWAY_URL: process.env.GATEWAY_URL,
-      GRAPHQL_URL: graphqlUrl,
-    });
+    // Get configuration from ao-localnet SDK (no .env needed!)
+    const moduleId = getModuleId();
+    const scheduler = getSchedulerId();
+    const authority = await getAuthorityAddress();
+    
+    // Upload ANT module if not already done (required for ANT spawning)
+    console.log('🔄 Ensuring ANT module is available...');
+    await uploadAntModuleIfNeeded();
+    
+    // Use the same wallet from ao-localnet for EVERYTHING to avoid wallet mismatch
+    const { getAoWallet } = await import('ao-localnet');
+    const wallet = getAoWallet();
+    
+    // Use ao-localnet's signer (compatible with their ao instance)
+    const dataItemSigner = createLocalnetSigner(new ArweaveSigner(wallet));
+    // For AR.IO SDK we need AoSigner type (using the SAME wallet)
+    const aoSigner = createAoSdkSigner(new ArweaveSigner(wallet));
+    
+    // Use pre-configured ao instance from SDK
+    const ao = getAoInstance();
 
   // Try to load existing config
   const existingConfig = loadProcessConfig();
@@ -415,7 +459,8 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
   // Spawn ARIO first (needed for marketplace)
   const { processId: arioProcessId, process: arioProcess } = await spawnArioProcess({
     ao,
-    signer,
+    signer: dataItemSigner,
+    aoSigner,
     wallet,
     moduleId,
     scheduler,
@@ -425,24 +470,22 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
   // Spawn ANT Registry next (needed for ANT spawning)
   const { processId: antRegistryProcessId, process: antRegistryProcess } = await spawnAntRegistryProcess({
     ao,
-    signer,
+    signer: dataItemSigner,
     moduleId,
     scheduler,
   });
 
-  // Spawn ANT after registry is ready
-  const { processId: antProcessId, process: antProcess } = await spawnAntProcess({
-    ao,
-    signer,
-    moduleId,
-    scheduler,
-  });
+  // Note: We don't spawn an ANT here - each test spawns its own fresh ANT as needed
+  // This avoids rate limits and scheduler lookup issues during initial setup
+  const antProcessId = 'placeholder-ant-not-used';
+  const antProcess = null as any; // Tests spawn their own ANTs
 
   // Spawn marketplace after ARIO is ready (needs ARIO process ID)
   const { processId: marketplaceProcessId, process: marketplaceProcess } =
     await spawnMarketplaceProcess({
       ao,
-      signer,
+      signer: dataItemSigner,
+      aoSigner,
       moduleId,
       scheduler,
       authority,

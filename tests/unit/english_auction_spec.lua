@@ -259,7 +259,7 @@ describe('English Auction', function()
 			assert.are.equal('Validation-Error', sentMessages[1].Action)
 		end)
 
-		it('should reject bid without orderId', function()
+		pending('should reject bid without orderId [OLD CREDIT-NOTICE FLOW - DEPRECATED]', function()
 			local success = pcall(function()
 				ucm.createOrder({
 					orderId = 'bid-1',
@@ -325,19 +325,20 @@ describe('English Auction', function()
 				msg = { Tags = { Quantity = '1100000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
 			})
 
-		-- Bid should be stored on the order
+		-- Bid should update auction highest bid and add to UserOrdersIndex
 		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-		---@diagnostic disable-next-line: undefined-field
-		assert.is_not_nil(auction.bids)
-		---@diagnostic disable-next-line: undefined-field
-		assert.is_not_nil(auction.bids['bidder-1'])
+		-- Note: This test uses OLD Credit-Notice flow, not internal balance flow
+		-- Old flow doesn't use EnglishAuctionBalances (tokens came via Credit-Notice)
 		---@diagnostic disable-next-line: undefined-field
 		assert.are.equal('bidder-1', auction.highestBidder)
 		---@diagnostic disable-next-line: undefined-field
 		assert.are.equal('1100000000000', auction.highestBid)
+		-- Should be added to order.bids
+		assert.is_not_nil(auction.bids)
+		assert.is_true(auction.bids['bidder-1'])
 		end)
 
-		it('should accept second bid and return first bid', function()
+		pending('should accept second bid and return first bid [OLD CREDIT-NOTICE FLOW - DEPRECATED]', function()
 			-- Setup auction with existing bid
 			_G.Orderbook = {
 				[ANT_TOKEN] = {
@@ -414,7 +415,7 @@ describe('English Auction', function()
 			assert.are.equal('1100000000000', returnTransfer.quantity)
 		end)
 
-		it('should reject bid lower than current highest', function()
+		pending('should reject bid lower than current highest [OLD CREDIT-NOTICE FLOW - DEPRECATED]', function()
 			-- Setup auction with existing bid
 			_G.Orderbook = {
 				[ANT_TOKEN] = {
@@ -479,7 +480,7 @@ describe('English Auction', function()
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
-		it('should reject bid below minimum 1 ARIO increment', function()
+		pending('should reject bid below minimum 1 ARIO increment [OLD CREDIT-NOTICE FLOW - DEPRECATED]', function()
 			-- Setup auction with existing bid
 			_G.Orderbook = {
 				[ANT_TOKEN] = {
@@ -689,51 +690,367 @@ describe('English Auction', function()
 			end)
 	end)
 
-	describe('returnPreviousBid', function()
-		local returnBidMessages = {}
+	describe('returnLosingBids', function()
+		local returnBidMessages
 
-	before_each(function()
-		returnBidMessages = {}
-		_G.ao.send = function(msg)
+		before_each(function()
+			-- Track messages sent via utils.Send / ao.send
+			returnBidMessages = {}
+			_G.ao.send = function(msg)
 				table.insert(returnBidMessages, msg)
 			end
+			
+			-- Reset state
+			testGlobals.resetState()
 		end)
 
-		it('should send refund and notification when all parameters provided', function()
-			local msg = { Tags = {} }
-			english_auction.returnPreviousBid('auction-1', 'prev-bidder', '1000', 'TOKEN_ID', msg)
+	it('should return all losing bids to internal balances', function()
+		local orderId = 'auction-123'
+		local winner = 'winner-addr'
+		local loser1 = 'loser1-addr'
+		local loser2 = 'loser2-addr'
+		local msg = { Tags = {} }
+		
+		-- Setup order with bids field
+		local order = {
+			id = orderId,
+			bids = {
+				[winner] = true,
+				[loser1] = true,
+				[loser2] = true,
+			}
+		}
+		
+		-- Setup locked balances for each bidder
+		ARIOBalances[winner] = {balance = '0', orders = {[orderId] = '3000'}}
+		ARIOBalances[loser1] = {balance = '5000', orders = {[orderId] = '1000'}}
+		ARIOBalances[loser2] = {balance = '6000', orders = {[orderId] = '2000'}}
+		
+		-- Return losing bids
+		english_auction.returnLosingBids(order, winner, msg)
+		
+		-- Winner's locked bid should still be there
+		assert.are.equal('3000', ARIOBalances[winner].orders[orderId])
+		
+		-- Losers' bids should be returned to their available balances
+		assert.are.equal('6000', ARIOBalances[loser1].balance) -- 5000 + 1000
+		assert.are.equal('8000', ARIOBalances[loser2].balance) -- 6000 + 2000
+		-- Losers' locked balances should be cleared
+		assert.is_nil(ARIOBalances[loser1].orders[orderId])
+		assert.is_nil(ARIOBalances[loser2].orders[orderId])
+		
+		-- Should have sent 2 notifications (one per loser)
+		assert.are.equal(2, #returnBidMessages)
+	end)
 
-			assert.are.equal(2, #returnBidMessages)
+	it('should handle auction with no bids', function()
+		local msg = { Tags = {} }
+		local order = {id = 'nonexistent-auction'} -- No bids field
+		english_auction.returnLosingBids(order, 'winner', msg)
+		-- Should not error, just return
+		assert.are.equal(0, #returnBidMessages)
+	end)
+	end)
+	end)
 
-			-- Check transfer
-			assert.are.equal('TOKEN_ID', returnBidMessages[1].Target)
-			assert.are.equal('Transfer', returnBidMessages[1].Action)
-			assert.are.equal('prev-bidder', returnBidMessages[1].Tags.Recipient)
-			assert.are.equal('1000', returnBidMessages[1].Tags.Quantity)
+	describe('bidOnEnglishAuctionHandler', function()
+		local english_auction = require('english_auction')
 
-			-- Check notification
-			assert.are.equal('prev-bidder', returnBidMessages[2].Target)
-			assert.are.equal('Bid-Returned', returnBidMessages[2].Action)
-			assert.are.equal('auction-1', returnBidMessages[2].Tags.OrderId)
+		it('should place new bid using internal balance', function()
+			-- Setup: Create an English auction
+			ucm.createOrder({
+				orderId = 'auction-balance-1',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-123',
+				quantity = 1,
+				price = '1000000000', -- 1 ARIO minimum
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '2000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			-- Setup bidder balance
+			ARIOBalances['bidder-1'] = {balance = '10000000000', orders = {}} -- 10 ARIO
+
+			local msg = {
+				From = 'bidder-1',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-balance-1',
+					['Bid-Amount'] = '2000000000', -- 2 ARIO
+				},
+			}
+
+			local result = english_auction.bidOnEnglishAuctionHandler(msg)
+			local resultData = json.decode(result)
+
+			assert.are.equal('Success', resultData.Status)
+			assert.are.equal('2000000000', resultData['Bid-Amount'])
+			assert.is_true(resultData['Is-Highest-Bid'])
+
+		-- Balance should be reduced
+		assert.are.equal('8000000000', ARIOBalances['bidder-1'].balance)
+
+			-- Order should have bid
+			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-balance-1']
+			assert.are.equal('2000000000', order.highestBid)
+			assert.are.equal('bidder-1', order.highestBidder)
 		end)
 
-		it('should not send anything when bidder is nil', function()
-			local msg = { Tags = {} }
-			english_auction.returnPreviousBid('auction-1', nil, '1000', 'TOKEN_ID', msg)
-			assert.are.equal(0, #returnBidMessages)
+		it('should increase existing bid with delta', function()
+			-- Setup: Create auction and place initial bid
+			ucm.createOrder({
+				orderId = 'auction-delta-1',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-123',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			ARIOBalances['bidder-2'] = {balance = '20000000000', orders = {}} -- 20 ARIO
+
+			-- Place initial bid
+			local msg1 = {
+				From = 'bidder-2',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-delta-1',
+					['Bid-Amount'] = '2000000000', -- 2 ARIO
+				},
+			}
+		english_auction.bidOnEnglishAuctionHandler(msg1)
+
+		assert.are.equal('18000000000', ARIOBalances['bidder-2'].balance)
+
+		-- Increase bid to 5 ARIO (delta of 3 ARIO)
+			local msg2 = {
+				From = 'bidder-2',
+				Timestamp = 1600000,
+				Tags = {
+					['Order-Id'] = 'auction-delta-1',
+					['Bid-Amount'] = '5000000000', -- 5 ARIO
+				},
+			}
+			local result = english_auction.bidOnEnglishAuctionHandler(msg2)
+			local resultData = json.decode(result)
+
+			assert.are.equal('Success', resultData.Status)
+			assert.are.equal('5000000000', resultData['Bid-Amount'])
+			assert.are.equal('3000000000', resultData['Delta-Amount'])
+
+		-- Balance should be reduced by delta only
+		assert.are.equal('15000000000', ARIOBalances['bidder-2'].balance)
+
+			-- Order should have updated bid
+			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-delta-1']
+			assert.are.equal('5000000000', order.highestBid)
 		end)
 
-		it('should not send anything when amount is nil', function()
-			local msg = { Tags = {} }
-			english_auction.returnPreviousBid('auction-1', 'prev-bidder', nil, 'TOKEN_ID', msg)
-			assert.are.equal(0, #returnBidMessages)
+		it('should keep all bids until auction ends (no immediate returns)', function()
+			-- Setup auction
+			ucm.createOrder({
+				orderId = 'auction-refund-1',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-123',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			ARIOBalances['bidder-a'] = {balance = '10000000000', orders = {}}
+			ARIOBalances['bidder-b'] = {balance = '10000000000', orders = {}}
+
+			-- Bidder A places bid
+			local msg1 = {
+				From = 'bidder-a',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-refund-1',
+					['Bid-Amount'] = '2000000000',
+				},
+		}
+		english_auction.bidOnEnglishAuctionHandler(msg1)
+		assert.are.equal('8000000000', ARIOBalances['bidder-a'].balance)
+
+		-- Bidder B outbids with higher amount (must be at least 1 ARIO more)
+			local msg2 = {
+				From = 'bidder-b',
+				Timestamp = 1600000,
+				Tags = {
+					['Order-Id'] = 'auction-refund-1',
+					['Bid-Amount'] = '4000000000', -- Exceeds minimum increment
+				},
+			}
+			english_auction.bidOnEnglishAuctionHandler(msg2)
+
+		-- Bidder A's available balance should be reduced (bid kept locked until auction ends)
+		assert.are.equal('8000000000', ARIOBalances['bidder-a'].balance)
+		-- Bidder B should have reduced available balance
+		assert.are.equal('6000000000', ARIOBalances['bidder-b'].balance)
+		
+		-- Both bids should be in locked balances
+		assert.are.equal('2000000000', ARIOBalances['bidder-a'].orders['auction-refund-1'])
+		assert.are.equal('4000000000', ARIOBalances['bidder-b'].orders['auction-refund-1'])
+
+			-- Order should have bidder B as highest
+			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-refund-1']
+			assert.are.equal('4000000000', order.highestBid)
+			assert.are.equal('bidder-b', order.highestBidder)
 		end)
 
-		it('should not send anything when token is nil', function()
-			local msg = { Tags = {} }
-			english_auction.returnPreviousBid('auction-1', 'prev-bidder', '1000', nil, msg)
-			assert.are.equal(0, #returnBidMessages)
+		it('should fail with insufficient balance', function()
+			ucm.createOrder({
+				orderId = 'auction-poor-1',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-123',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			ARIOBalances['poor-bidder'] = {balance = '500000000', orders = {}} -- Only 0.5 ARIO
+
+			local msg = {
+				From = 'poor-bidder',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-poor-1',
+					['Bid-Amount'] = '2000000000', -- Need 2 ARIO
+				},
+			}
+
+			local success, err = pcall(function()
+				english_auction.bidOnEnglishAuctionHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_not_nil(err:match('Insufficient ARIO balance'))
 		end)
+
+		it('should fail if order does not exist', function()
+			ARIOBalances['bidder-x'] = {balance = '10000000000', orders = {}}
+
+			local msg = {
+				From = 'bidder-x',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'nonexistent-order',
+					['Bid-Amount'] = '2000000000',
+				},
+			}
+
+			local success, err = pcall(function()
+				english_auction.bidOnEnglishAuctionHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_not_nil(err:match('Order not found'))
+		end)
+
+		it('should fail if auction has expired', function()
+			ucm.createOrder({
+				orderId = 'auction-expired',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-123',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '2000000', -- Expires at 2000000
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			ARIOBalances['late-bidder'] = {balance = '10000000000', orders = {}}
+
+			local msg = {
+				From = 'late-bidder',
+				Timestamp = 2500000, -- After expiration
+				Tags = {
+					['Order-Id'] = 'auction-expired',
+					['Bid-Amount'] = '2000000000',
+				},
+			}
+
+			local success, err = pcall(function()
+				english_auction.bidOnEnglishAuctionHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_not_nil(err:match('expired'))
+		end)
+
+		it('should fail if bid does not meet minimum increment', function()
+			ucm.createOrder({
+				orderId = 'auction-increment',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-123',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			ARIOBalances['bidder-1'] = {balance = '10000000000', orders = {}}
+			ARIOBalances['bidder-2'] = {balance = '10000000000', orders = {}}
+
+			-- First bid
+			local msg1 = {
+				From = 'bidder-1',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-increment',
+					['Bid-Amount'] = '2000000000', -- 2 ARIO
+				},
+			}
+			english_auction.bidOnEnglishAuctionHandler(msg1)
+
+			-- Try to bid only 0.5 ARIO more (need at least 1 ARIO increment)
+			local msg2 = {
+				From = 'bidder-2',
+				Timestamp = 1600000,
+				Tags = {
+					['Order-Id'] = 'auction-increment',
+					['Bid-Amount'] = '2500000000', -- Only 0.5 ARIO more
+				},
+			}
+
+			local success, err = pcall(function()
+				english_auction.bidOnEnglishAuctionHandler(msg2)
+			end)
+
+			assert.is_false(success)
+			assert.is_not_nil(err:match('at least 1 ARIO higher'))
 		end)
 	end)
 end)

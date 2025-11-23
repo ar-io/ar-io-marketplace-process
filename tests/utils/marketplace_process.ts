@@ -546,6 +546,7 @@ export class MarketplaceProcess {
         const tags = [
           { name: 'Action', value: 'Transfer' },
           { name: 'Recipient', value: this.process.processId },
+          { name: 'Target', value: this.process.processId }, // Explicit Target for Credit-Notice
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId }, // Required!
           { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
@@ -693,7 +694,7 @@ export class MarketplaceProcess {
     logger?: any,
   ): Promise<{ intentId: string; txId: string }> {
     // Step 0: Get the order to find the ANT process ID (swap token)
-    const orderResult = await this.getOrderById(orderId);
+    const orderResult = await this.getOrder(orderId);
     if (orderResult.Action === 'Invalid-Get-Order-Notice') {
       throw new Error(`Failed to get order: ${orderResult.Data}`);
     }

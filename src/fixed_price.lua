@@ -53,6 +53,9 @@ end
 --- @param validPair string[] The validated pair [ARIO, ANT]
 --- @param pair Pair The pair object from orderbook
 function fixed_price.handleArioOrder(args, validPair, pair)
+	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
+	-- This creates a fixed-price order selling ANT for ARIO
+	
 	-- Add the new order to the orderbook (buy now functionality)
 	-- Use dictionary-style (lookup table) for efficient order management
 	pair.orders[args.orderId] = {
@@ -169,11 +172,13 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 				calculatedFillAmount = calculatedFillAmount,
 			})
 
-			-- Refund any excess ARIO sent over the required amount
-			if sentAmount > requiredAmount then
-				local refundAmount = sentAmount - requiredAmount
-				ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
-			end
+		-- Refund any excess sent over the required amount
+		-- Note: For internal balance orders, refund comes from OrderLockedBalances
+		-- For Credit-Notice orders, refund goes via external transfer
+		if sentAmount > requiredAmount then
+			local refundAmount = sentAmount - requiredAmount
+			ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+		end
 
 			-- Mark order as executed and update fields
 			currentOrderEntry.status = ORDER_STATUSES.EXECUTED
@@ -205,6 +210,11 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 
 	-- Remove the matched order from the orderbook
 	if matchedOrderId then
+		local matchedOrder = pair.orders[matchedOrderId]
+		if matchedOrder then
+		-- Order matched, no additional cleanup needed
+		end
+		
 		pair.orders[matchedOrderId] = nil
 		-- Remove from index
 		OrderIndex[matchedOrderId] = nil

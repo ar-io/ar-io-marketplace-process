@@ -168,6 +168,7 @@ function utils.validateMessage(msg)
 		end
 	end
 
+	-- TODO: assert tags is a table
 	if msg.Tags then
 		for k, v in pairs(msg.Tags) do
 			assert(type(k) == 'string', string.format('Key %s must be a string', k))
@@ -354,15 +355,10 @@ function utils.isExpired(expirationTime, currentTimestamp)
 	return tonumber(expirationTime) <= tonumber(currentTimestamp)
 end
 
---- Handles errors by refunding tokens and sending error notice
---- @param args {target: string, action: string, message: string, transferToken: string?, quantity: string?, orderGroupId: string?, msg: table?} Error handling parameters
-function utils.handleError(args) -- target, transferToken, quantity, msg
-	-- If there is a valid quantity then return the funds
+--- Sends an error notice to the target
+--- @param args {target: string, action: string, message: string, orderGroupId: string?, msg: table?} Error handling parameters
+function utils.handleError(args)
 	local msg = args.msg or { Tags = {} }
-	if args.transferToken and args.quantity and utils.checkValidAmount(args.quantity) then
-		local ucm = require('ucm')
-		ucm.transfer(args.target, tostring(args.quantity), args.transferToken, msg)
-	end
 	utils.Send(msg, {
 		Target = args.target,
 		Action = args.action,
@@ -371,22 +367,31 @@ function utils.handleError(args) -- target, transferToken, quantity, msg
 	})
 end
 
---- Helper function to refund deposits on validation failures
---- Sends refund and error message, then throws error to stop execution
+--- Refunds tokens on validation failures, sends error notice, and throws error to stop execution
+--- NOTE: We always transfer on errors because the marketplace received these tokens
+--- via Credit-Notice. Balance increases should ONLY happen for:
+--- 1. Deposits (X-Action: Deposit in balances.handleDeposit)
+--- 2. Returning bids from internal balance (in english_auction.returnPreviousBid)
 --- @param msg table The original message
 --- @param sender string The sender address to refund to
 --- @param message string The error message
 --- @param action string|nil The action type (defaults to 'Validation-Error')
 function utils.refundAndError(msg, sender, message, action)
+	-- Refund the tokens if there's a valid quantity
+	if msg.Tags.Quantity and msg.From and utils.checkValidAmount(msg.Tags.Quantity) then
+		local ucm = require('ucm')
+		ucm.transfer(sender, tostring(msg.Tags.Quantity), msg.From, msg)
+	end
+	
+	-- Send error notice
 	utils.handleError({
 		target = sender,
 		action = action or 'Validation-Error',
 		message = message,
-		quantity = msg.Tags.Quantity,
-		transferToken = msg.From,
 		orderGroupId = msg.Tags['X-Group-ID'] or 'None',
 		msg = msg,
 	})
+	
 	-- Throw error to stop execution (will be caught by pcall wrapper)
 	error(message)
 end
@@ -842,6 +847,10 @@ function utils.onBeforeHandler(msg)
 	-- The pruning function handles its own scheduling checks
 	local ucm = require('ucm')
 	ucm.pruneOrderbook(msg.Timestamp, msg)
+	
+	-- Prune expired intents (TTL-based cleanup)
+	local intents = require('intents')
+	intents.pruneIntents(msg.Timestamp)
 end
 
 --- Post-process handler execution - sends notices
@@ -871,6 +880,7 @@ end
 --- @return any handlerRes The handler result (passed through for potential chaining)
 function utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
 	local resultNotice = nil
+	-- TODO: extract action tag value from msg.Tags['Action'] instead of passing it as a parameter
 
 	if not handlerStatus then
 		-- Handler threw an error - handlerRes contains the error message with stack trace
@@ -963,6 +973,7 @@ function utils.createHandler(tagName, tagValue, handler, position)
 			-- CRITICAL: Dynamically require at execution time to allow hot-reloading
 			-- This pulls the LATEST version of onBeforeHandler/onAfterHandler each time
 			-- Use _utils to avoid shadowing the outer 'utils' variable
+			-- TODO: what is the resource cost of this?
 			local _utils = require('utils')
 
 			-- Pre-process: format addresses, normalize input

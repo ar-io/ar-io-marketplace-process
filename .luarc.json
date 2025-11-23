@@ -45,7 +45,6 @@
       ],
       "disable": [
         "lowercase-global",
-        "duplicate-set-field",
         "redundant-parameter"
       ],
       "neededFileStatus": {
@@ -56,7 +55,8 @@
       "severity": {
         "missing-fields": "Error!",
         "need-check-nil": "Error!",
-        "undefined-field": "Error!"
+        "undefined-field": "Error!",
+        "duplicate-set-field": "Error!"
       }
     },
     "type": {

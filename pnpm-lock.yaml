@@ -10,7 +10,7 @@ importers:
     dependencies:
       ao-localnet:
         specifier: github:atticusofsparta/ao-localnet-archive
-        version: https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/15e318eb2f67745aa80a3d8cfb27b397e4096862
+        version: https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/4375353915d3a3849bc16708a90e5892b8e72f2f
     devDependencies:
       '@ar.io/sdk':
         specifier: ^3.21.0
@@ -734,8 +734,8 @@ packages:
     resolution: {integrity: sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg==}
     engines: {node: '>=12'}
 
-  ao-localnet@https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/15e318eb2f67745aa80a3d8cfb27b397e4096862:
-    resolution: {tarball: https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/15e318eb2f67745aa80a3d8cfb27b397e4096862}
+  ao-localnet@https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/4375353915d3a3849bc16708a90e5892b8e72f2f:
+    resolution: {tarball: https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/4375353915d3a3849bc16708a90e5892b8e72f2f}
     version: 0.0.0
     hasBin: true
 
@@ -2974,7 +2974,7 @@ snapshots:
 
   ansi-styles@6.2.3: {}
 
-  ao-localnet@https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/15e318eb2f67745aa80a3d8cfb27b397e4096862:
+  ao-localnet@https://codeload.github.com/atticusofsparta/ao-localnet-archive/tar.gz/4375353915d3a3849bc16708a90e5892b8e72f2f:
     dependencies:
       '@permaweb/aos': https://get_ao.g8way.io
       arweave: 1.15.7

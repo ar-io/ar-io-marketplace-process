@@ -33,19 +33,30 @@ describe('ANT Listing Debug Test', { timeout: 900_000 }, () => {
   it('should create an ANT listing with proper initialization', async () => {
     // Spawn ANT with initialization wait
     console.log('\n=== Spawning ANT ===');
-    // Use localnet configuration with legacy mode
-    const ao = connect({
-      MODE: 'legacy',
-      MU_URL: process.env.MU_URL || 'http://localhost:4002',
-      CU_URL: process.env.CU_URL || 'http://localhost:4004',
-      GATEWAY_URL: process.env.GATEWAY_URL || 'http://localhost:4000',
-      GRAPHQL_URL: process.env.GRAPHQL_URL || 'http://localhost:4000/graphql',
-    });
     
+    // Use SDK for configuration
+    const { getAoInstance, getScheduler, getAuthorityAddress, getAntModuleId } = await import('../utils/constants.js');
+    const { loadProcessConfig } = await import('../utils/process_manager.js');
+    
+    const ao = getAoInstance();
+    const scheduler = getScheduler();
+    const authority = await getAuthorityAddress();
+    const antModule = await getAntModuleId(); // ANT-specific WASM module
+    
+    // Get ANT Registry ID from the spawned processes
+    const config = loadProcessConfig();
+    if (!config) {
+      throw new Error('No process config found! Run getOrSpawnProcesses first.');
+    }
+    
+    // Use ANT.spawn from the SDK - returns processId directly
     const antProcessId = await ANT.spawn({
       ao,
       signer: TEST_SIGNER,
-      module: process.env.AOS_MODULE || '9kxE2SbDCytl6NI_dnTyg10wHMFUfCdBjm1gOouscFc',
+      scheduler,
+      authority,
+      module: antModule,
+      antRegistryId: config.antRegistryProcessId,
     });
     console.log('✓ ANT spawned:', antProcessId);
     
@@ -53,7 +64,7 @@ describe('ANT Listing Debug Test', { timeout: 900_000 }, () => {
     console.log('Waiting 3s for ANT to propagate...');
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Verify ANT is responsive
+    // Initialize ANT with AOProcess (passing ao instance)
     const ant = ANT.init({
       process: new AOProcess({ ao, processId: antProcessId }),
       signer: TEST_SIGNER,

@@ -41,45 +41,38 @@ describe('Smoke Test - Logger Demo', { timeout: 600_000 }, () => {
   async function spawnFreshAnt(): Promise<string> {
     return await profile('Spawn fresh ANT for smoke test', async () => {
       const { ANT } = await import('@ar.io/sdk');
-      const { connect } = await import('@permaweb/aoconnect');
       const { TEST_SIGNER } = await import('../utils/constants.js');
+      const { getAoInstance, getScheduler, getAuthorityAddress, getAntModuleId } = await import('../utils/constants.js');
       
-      // Use localnet configuration with legacy mode
-      const ao = connect({
-        MODE: 'legacy',
-        MU_URL: process.env.MU_URL || 'http://localhost:4002',
-        CU_URL: process.env.CU_URL || 'http://localhost:4004',
-        GATEWAY_URL: process.env.GATEWAY_URL || 'http://localhost:4000',
-        GRAPHQL_URL: process.env.GRAPHQL_URL || 'http://localhost:4000/graphql',
-      });
+      // Use SDK for configuration
+      const ao = getAoInstance();
+      const scheduler = getScheduler();
+      const authority = await getAuthorityAddress();
+      const antModule = await getAntModuleId(); // ANT-specific WASM module
       
-      // Use ao.spawn() directly to avoid ANT SDK scheduler lookup issues on localnet
-      const moduleId = process.env.MODULE_ID || process.env.AOS_MODULE;
-      const scheduler = process.env.SCHEDULER;
+      // Get ANT Registry ID from the spawned processes
+      const { antRegistryProcessId } = await import('../utils/process_manager.js').then(m => m.loadProcessConfig()!);
       
-      if (!moduleId || !scheduler) {
-        throw new Error(`Missing environment variables: MODULE_ID=${moduleId}, SCHEDULER=${scheduler}`);
-      }
-      
-      const processId = await ao.spawn({
-        module: moduleId,
-        scheduler,
+      // Use ANT.spawn from the SDK - returns processId directly
+      const processId = await ANT.spawn({
+        ao,
         signer: TEST_SIGNER,
-        tags: [
-          { name: 'Name', value: 'Smoke Test ANT ' + Date.now() },
-        ],
+        scheduler,
+        authority,
+        module: antModule,
+        antRegistryId: antRegistryProcessId,
       });
       
       console.log('Fresh ANT spawned:', processId);
       
-      // Initialize and verify ANT is responsive
-      const antProcess = ANT.init({
-        processId,
-        signer: TEST_SIGNER,
-      });
-      
+      // Verify ANT is responsive
       try {
-        await antProcess.getInfo();
+        const { AOProcess } = await import('@ar.io/sdk');
+        const ant = ANT.init({ 
+          process: new AOProcess({ ao, processId }),
+          signer: TEST_SIGNER 
+        });
+        await ant.getInfo();
         console.log('ANT is responsive ✓');
       } catch (e) {
         console.log('ANT info check failed (may be normal for fresh spawn):', e instanceof Error ? e.message : String(e));

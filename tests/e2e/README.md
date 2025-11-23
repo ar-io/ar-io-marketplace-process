@@ -2,9 +2,67 @@
 
 ## Overview
 
-This directory contains end-to-end tests for the AR.IO marketplace process. The tests spawn real AO processes and verify the full marketplace workflow.
+This directory contains end-to-end tests for the AR.IO marketplace process. The tests spawn real AO processes on a local AO network and verify the full marketplace workflow.
 
-## Test Status
+## Quick Start
+
+```bash
+# 1. Ensure ao-localnet is running
+pnpm localnet:start
+
+# 2. Bootstrap the localnet (first time only)
+pnpm localnet:bootstrap
+
+# 3. Setup and validate e2e environment
+npx tsx scripts/setup-e2e.ts
+
+# 4. Run e2e tests
+pnpm test:e2e
+
+# 5. Clean slate (spawns new processes)
+pnpm test:e2e:clean
+```
+
+## Prerequisites
+
+### 1. AO Localnet Running
+
+The e2e tests require a running AO localnet with all services healthy:
+
+```bash
+# Start localnet
+pnpm localnet:start
+
+# Check status
+docker ps --filter "name=ao-localnet"
+
+# View logs if needed
+docker compose logs -f
+```
+
+### 2. Environment Configuration
+
+Ensure your `.env` file has all required variables:
+
+```bash
+# Check configuration
+npx tsx scripts/setup-e2e.ts --validate-only
+
+# Or get config from localnet
+pnpm localnet:config
+```
+
+Required variables:
+- `GRAPHQL_URL` - GraphQL endpoint (default: http://localhost:4000/graphql)
+- `GATEWAY_URL` - Arweave gateway (default: http://localhost:4000)
+- `CU_URL` - Compute unit URL (default: http://localhost:4004)
+- `MU_URL` - Messenger unit URL (default: http://localhost:4002)
+- `SCHEDULER` - Scheduler process ID
+- `MODULE_ID` - AOS module ID
+- `WALLET_PATH` - Path to test wallet (default: tests/fixtures/localnet_wallet.json)
+- `AUTHORITY` - Authority address (must match wallet)
+
+## Test Infrastructure
 
 ### Current Implementation
 
@@ -14,18 +72,29 @@ The test infrastructure is fully implemented with the following components:
    - Spawns and manages AR.IO, Marketplace, and ANT processes
    - Persists process IDs to `e2e-test.json` for reuse across test runs
    - Validates process health before reusing
+   - Automatically spawns fresh ANTs for each test to ensure clean state
 
-2. **GraphQL Utilities** (`tests/utils/graphql.ts`)
+2. **Health Checks** (`tests/utils/localnet_health.ts`)
+   - Validates all localnet services are running
+   - Checks response times and connectivity
+   - Provides detailed health status
+
+3. **Configuration Validation** (`tests/utils/config_validator.ts`)
+   - Validates all required environment variables
+   - Checks file paths and URLs
+   - Provides helpful error messages
+
+4. **GraphQL Utilities** (`tests/utils/graphql.ts`)
    - Query messages by tags
    - Poll for Credit-Notice and Debit-Notice messages
    - Wait for intent resolution
 
-3. **Process Wrappers**
+5. **Process Wrappers**
    - `ArioProcess` - Wraps ARIO token interactions
    - `MarketplaceProcess` - Extended with E2E helper methods
    - High-level methods for listing and buying
 
-4. **Test Cases** (`tests/e2e/fixed-price.test.ts`)
+6. **Test Cases** (`tests/e2e/fixed-price.test.ts`)
    - List ANT at fixed price
    - Buy fixed price listing
    - Handle overpayment with refund
@@ -52,14 +121,29 @@ The test infrastructure is fully implemented with the following components:
 ## Running Tests
 
 ```bash
-# Run e2e tests (uses existing processes if e2e-test.json exists)
+# Recommended: Use setup script first
+npx tsx scripts/setup-e2e.ts
+
+# Run all e2e tests (uses existing processes if e2e-test.json exists)
 pnpm test:e2e
 
 # Clean up and spawn new processes
 pnpm test:e2e:clean
 
-# Run quick smoke test to generate test-output.json
+# Run quick smoke test to generate test output
 npx tsx --test tests/e2e/smoke-test.ts
+
+# Run specific test file
+npx tsx --test tests/e2e/fixed-price.test.ts
+
+# Validate configuration only
+npx tsx scripts/setup-e2e.ts --validate-only
+
+# Skip health checks (use with caution)
+npx tsx scripts/setup-e2e.ts --skip-health
+
+# Clean start (removes e2e-test.json)
+npx tsx scripts/setup-e2e.ts --clean
 ```
 
 ## Test Output Logging
@@ -128,15 +212,104 @@ All e2e tests now generate a detailed `test-output.json` file that includes:
 
 This output is invaluable for debugging transaction flows and understanding why operations succeed or fail.
 
-## Configuration
+## Troubleshooting
 
-Required environment variables (see `.env.example`):
-- `WALLET_PATH` - Path to test wallet JSON file
-- `AOS_MODULE` - AOS module ID
-- `SCHEDULER` - Scheduler ID
-- `AUTHORITY` - Authority address
-- `CU_URL` - Compute unit URL
-- `GRAPHQL_URL` - Arweave GraphQL endpoint
+### Localnet Not Running
+
+**Symptom**: Health checks fail, tests can't connect to services
+
+**Solution**:
+```bash
+# Check if containers are running
+docker ps --filter "name=ao-localnet"
+
+# Start localnet
+pnpm localnet:start
+
+# Wait for services to be healthy
+npx tsx scripts/setup-e2e.ts
+```
+
+### Invalid Configuration
+
+**Symptom**: Missing environment variables, invalid paths
+
+**Solution**:
+```bash
+# Validate configuration
+npx tsx scripts/setup-e2e.ts --validate-only
+
+# Get config from localnet
+pnpm localnet:config
+
+# Update your .env file with the output
+```
+
+### Process Spawn Failures
+
+**Symptom**: Tests fail to spawn processes, timeout errors
+
+**Solution**:
+```bash
+# Clean and restart
+rm -f e2e-test.json
+pnpm test:e2e:clean
+
+# Check localnet has been seeded
+pnpm localnet:seed
+
+# Check wallet has AR balance
+# (bootstrap script should have minted AR)
+```
+
+### Tests Timeout Waiting for Orders
+
+**Symptom**: Tests timeout waiting for orders to be created or executed
+
+**Possible Causes**:
+1. Credit-Notice not being sent by ANT process
+2. Marketplace not processing Credit-Notice
+3. Intent workflow not completing
+
+**Solution**:
+```bash
+# Check test output log for detailed message flow
+cat test-output.log
+
+# Verify ANT and marketplace processes are responsive
+# Tests will show detailed error messages
+```
+
+### Stale Process Configuration
+
+**Symptom**: Tests fail with "Process not found" or validation errors
+
+**Solution**:
+```bash
+# Force clean start
+rm -f e2e-test.json
+pnpm test:e2e
+```
+
+## Advanced Configuration
+
+### Custom Timeouts
+
+Tests use generous timeouts (450s) for order creation/execution on localnet. To adjust:
+
+Edit test files and modify timeout parameters in `waitForNewOrders()`, `waitForOrderStatus()`, etc.
+
+### Process Reuse
+
+By default, tests reuse processes from `e2e-test.json` to speed up test runs. To force new processes:
+
+```bash
+pnpm test:e2e:clean
+```
+
+### Fresh ANTs
+
+Each test that lists an ANT spawns a fresh ANT to ensure clean state. This is because after transferring an ANT to the marketplace, the test wallet no longer owns it.
 
 ## Test Architecture
 

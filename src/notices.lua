@@ -6,6 +6,14 @@ function notices.creditNoticeHandler(msg)
 	local utils = require('utils')
 	local intents = require('intents')
 	local ucm = require('ucm')
+	local balances = require('balances')
+
+	if msg.Tags['X-Action'] == constants.ACTIONS.DEPOSIT then
+		local isArioNotice = utils.isArioToken(msg.From)
+		assert(isArioNotice, "Deposit must be from ARIO")
+		balances.handleDeposit(msg)
+		return
+	end
 
 	if not msg.Tags['X-Dominant-Token'] or msg.From ~= msg.Tags['X-Dominant-Token'] then
 		return
@@ -41,6 +49,7 @@ function notices.creditNoticeHandler(msg)
 	end
 
 	-- Validate intent exists
+	---@type Intent|nil
 	local intent = intents.getIntentById(msg.Tags['X-Intent-Id'])
 	if not intent then
 		handleInvalidTransfer('Intent already resolved or does not exist')
@@ -50,6 +59,12 @@ function notices.creditNoticeHandler(msg)
 	-- Validate sender matches intent initiator
 	if sender ~= intent.initiator then
 		handleInvalidTransfer('Sender does not match intent initiator')
+		return
+	end
+	
+	-- Validate intent hasn't expired (parent intents have TTL)
+	if intent.ttl and msg.Timestamp >= intent.ttl then
+		handleInvalidTransfer('Intent has expired')
 		return
 	end
 
@@ -137,17 +152,17 @@ function notices.creditNoticeHandler(msg)
 				end
 			end
 
-			-- If no pending children, complete the intent immediately
-			if not hasPendingChildren then
-				intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed')
-				intentStatus = 'completed'
+		-- If no pending children, complete the intent immediately
+		if not hasPendingChildren then
+			intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed', msg)
+			intentStatus = 'completed'
 			else
 				intentStatus = 'active'
 			end
 		end
 
 		-- Send acknowledgment with intent and order status
-		ao.send({
+		utils.Send(msg, {
 			Target = sender,
 			Action = 'Credit-Notice-Processed',
 			['Order-Id'] = msg.Id,
@@ -196,14 +211,14 @@ function notices.debitNoticeHandler(msg)
 				end
 			end
 
-			if allResolved then
-				intents.updateIntentStatus(parent.intentId, constants.INTENT_STATUSES.COMPLETED)
-				parentStatus = 'completed'
-			end
+		if allResolved then
+			intents.updateIntentStatus(parent.intentId, constants.INTENT_STATUSES.COMPLETED, msg)
+			parentStatus = 'completed'
+		end
 		end
 
 		-- Send acknowledgment with intent status
-		ao.send({
+		utils.Send(msg, {
 			Target = intent.initiator,
 			Action = 'Debit-Notice-Processed',
 			['Intent-Id'] = intentId,
@@ -239,13 +254,13 @@ function notices.transferErrorHandler(msg)
 	local reason = msg.Tags.Message or msg.Tags.Error or msg.Data or 'Transfer failed'
 
 	-- Fail child intent with reason
-	intents.failIntent(intentId, reason)
+	intents.failIntent(intentId, reason, msg)
 
 	-- Cascade failure to parent
 	if intent.parentIntentId then
 		local parent = intents.getIntentById(intent.parentIntentId)
 		if parent then
-			intents.failIntent(intent.parentIntentId, 'Child transfer failed: ' .. reason)
+			intents.failIntent(intent.parentIntentId, 'Child transfer failed: ' .. reason, msg)
 		end
 	end
 end

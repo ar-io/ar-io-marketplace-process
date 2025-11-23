@@ -13,4 +13,6 @@ test-output.json
 
 # AO Localnet
 .ao-localnet/
+.ao-localnet.config.json
 docker-compose.override.yml
+ant-module-config.json

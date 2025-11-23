@@ -20,6 +20,7 @@
 --- @field action string Action being performed (Create-Order, Cancel-Order, Settle-Auction, Transfer)
 --- @field status "pending"|"active"|"settling"|"completed"|"resolved"|"failed" Intent status
 --- @field createdAt number Creation timestamp
+--- @field ttl number|nil Time-to-live timestamp (24 hours from creation)
 --- @field resolvedAt number|nil Resolution timestamp
 --- @field completedAt number|nil Completion timestamp
 --- @field failureReason string|nil Failure reason if status is failed
@@ -92,6 +93,7 @@
 --- @field sender string|nil Order sender (set after execution)
 --- @field receiver string|nil Order receiver (set after execution)
 --- @field endedAt number|nil Timestamp when order ended
+--- @field bids table<string, boolean>|nil Bidders for English auctions (bidder address -> true)
 
 --- @class Pair
 --- @field pair string[] Token pair [dominantToken, swapToken] - directional
