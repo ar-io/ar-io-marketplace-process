@@ -953,13 +953,14 @@ end
 --- @param tagValue string The tag value to match (e.g., "Create-Order")
 --- @param handler function The handler function to execute
 --- @param position "add" | "prepend" | "append" | nil Where to add the handler in Handlers.list
+--- @param critical boolean|nil Whether the handler is critical (will error and discard memory on failure)
 --- @example
 --- ```lua
 --- utils.createHandler("Action", "Info", function(msg)
 ---   return { Name = "Marketplace" }
 --- end)
 --- ```
-function utils.createHandler(tagName, tagValue, handler, position)
+function utils.createHandler(tagName, tagValue, handler, position, critical)
 	assert(type(position) == 'string' or type(position) == 'nil', 'Position must be a string or nil')
 	assert(
 		position == nil or position == 'add' or position == 'prepend' or position == 'append',
@@ -985,6 +986,12 @@ function utils.createHandler(tagName, tagValue, handler, position)
 			local handlerStatus, handlerRes = xpcall(function()
 				return handler(msg)
 			end, _utils.errorHandler)
+
+			-- default to critical if not specified
+			local isCritical = critical == true or critical == nil
+			if not handlerStatus and isCritical then
+				error(handlerRes)
+			end
 
 			-- Post-process: send success/error notices
 			-- Like onBeforeHandler, this uses the dynamically-loaded version
