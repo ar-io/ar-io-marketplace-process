@@ -16,7 +16,7 @@ require('types')
 ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID or 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
 
 ---@type Address Treasury address for fee collection
-TREASURY_ADDRESS = TREASURY_ADDRESS or 'cqnFNTEDGuWOOpnrrdoQZ262Be8e_kGT2na-BlGFyks'
+TREASURY_ADDRESS = TREASURY_ADDRESS or ao.id
 
 
 
@@ -70,10 +70,3 @@ AccruedFeesAmount = AccruedFeesAmount or 0
 ---]]
 ---@type table<string, {balance: string, orders: table<string, string>}> Dictionary mapping address to account data
 ARIOBalances = ARIOBalances or {}
-
-return {
-	-- Constants
-	ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID,
-	TREASURY_ADDRESS = TREASURY_ADDRESS,
-	Name = Name,
-}

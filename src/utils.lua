@@ -968,7 +968,7 @@ function utils.createHandler(tagName, tagValue, handler, position)
 
 	return Handlers[position or 'add'](
 		utils.camelCase(tagValue),
-		Handlers.utils.continue(Handlers.utils.hasMatchingTag(tagName, tagValue)),
+		Handlers.utils.hasMatchingTag(tagName, tagValue),
 		function(msg)
 			-- CRITICAL: Dynamically require at execution time to allow hot-reloading
 			-- This pulls the LATEST version of onBeforeHandler/onAfterHandler each time
