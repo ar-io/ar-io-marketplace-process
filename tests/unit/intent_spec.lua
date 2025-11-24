@@ -500,8 +500,8 @@ describe('Intent Management', function()
 				intents.createParentIntent(msg, 'Create-Order', {})
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('Insufficient ARIO balance'))
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Insufficient ARIO balance'))
 		end)
 
 		it('should not charge fee for non-Create-Order intents', function()
@@ -539,8 +539,8 @@ describe('Intent Management', function()
 				intents.createParentIntent(msg, 'Create-Order', forwardedTags)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('cannot exceed 30 days'))
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('cannot exceed 30 days'))
 		end)
 
 		it('should reject expiration time in the past', function()
@@ -561,8 +561,8 @@ describe('Intent Management', function()
 				intents.createParentIntent(msg, 'Create-Order', forwardedTags)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('must be in the future'))
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('must be in the future'))
 		end)
 	end)
 
@@ -610,25 +610,22 @@ describe('Intent Management', function()
 			local expirationTime = 1000000 + (31 * 24 * 3600000) -- 31 days later
 			local fee, err = intents.calculateListingFee(expirationTime, 1000000)
 
-			assert.is_nil(fee)
-			assert.is_not_nil(err)
-			assert.is_not_nil(err:match('cannot exceed 30 days'))
+		assert.is_nil(fee)
+		assert.is_not_nil(err and err:match('cannot exceed 30 days'))
 		end)
 
 		it('should reject expiration time in the past', function()
 			local fee, err = intents.calculateListingFee(500000, 1000000) -- Past timestamp
 
-			assert.is_nil(fee)
-			assert.is_not_nil(err)
-			assert.is_not_nil(err:match('must be in the future'))
+		assert.is_nil(fee)
+		assert.is_not_nil(err and err:match('must be in the future'))
 		end)
 
 		it('should reject invalid expiration time format', function()
 			local fee, err = intents.calculateListingFee('invalid', 1000000)
 
-			assert.is_nil(fee)
-			assert.is_not_nil(err)
-			assert.is_not_nil(err:match('must be a valid number'))
+		assert.is_nil(fee)
+		assert.is_not_nil(err and err:match('must be a valid number'))
 		end)
 
 		it('should handle very short durations (1 hour = 1 fee)', function()
@@ -737,12 +734,395 @@ describe('Intent Management', function()
 			local childIntent = intents.createChildIntent(parentIntent.intentId, childMsg, 'token-123', {})
 
 			-- Child intents don't have TTL, so they're not pruned by this function
-			-- They're pruned when their parent is pruned
-			intents.pruneIntents(parentIntent.ttl + 1)
+		-- They're pruned when their parent is pruned
+		intents.pruneIntents(parentIntent.ttl + 1)
 
-			-- Both parent and child should be pruned (failIntent cascades)
-			assert.is_nil(Intents[parentIntent.intentId])
-			assert.is_nil(Intents[childIntent.intentId])
+		-- Both parent and child should be pruned (failIntent cascades)
+		assert.is_nil(Intents[parentIntent.intentId])
+		assert.is_nil(Intents[childIntent.intentId])
+	end)
+end)
+
+describe('ANT Intent Resolution', function()
+	local json = require('json')
+	local constants = require('constants')
+	local sentMessages = {}
+	
+	before_each(function()
+		sentMessages = {}
+	end)
+	
+	describe('pushANTIntentResolutionHandler', function()
+		it('should send State action to ANT process', function()
+			ARIOBalances['user-ant-owner'] = {balance = '10000000000', orders = {}}
+			
+			-- Create parent intent
+			local parentMsg = {
+				From = 'user-ant-owner',
+				Timestamp = 1000000,
+			}
+			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+			
+			-- Create child intent expecting from ANT
+			local childMsg = {
+				Timestamp = 1000100,
+			}
+			local antProcessId = 'ant-process-'..(string.rep('x', 33))
+			local childIntent = intents.createChildIntent(
+				parentIntent.intentId,
+				childMsg,
+				antProcessId,
+				{}
+			)
+			
+			-- Call handler
+			local msg = {
+				From = 'user-ant-owner',
+				Tags = {
+					['X-Intent-Id'] = childIntent.intentId,
+				},
+			}
+			
+			intents.pushANTIntentResolutionHandler(msg)
+			
+			-- Check that State message was sent to ANT
+			assert.are.equal(1, #sentMessages)
+			assert.are.equal(antProcessId, sentMessages[1].Target)
+			assert.are.equal('State', sentMessages[1].Action)
+			assert.are.equal(childIntent.intentId, sentMessages[1].Tags['X-Intent-Id'])
+		end)
+		
+		it('should require X-Intent-Id', function()
+			local msg = {
+				Id = 'msg-123',
+				From = 'user-123',
+				Timestamp = 1000000,
+				Tags = {},
+			}
+			
+			local success, err = pcall(function()
+				intents.pushANTIntentResolutionHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('X%-Intent%-Id required'))
+		end)
+		
+		it('should require intent to exist', function()
+			local msg = {
+				Id = 'msg-456',
+				From = 'user-123',
+				Timestamp = 1000000,
+				Tags = {
+					['X-Intent-Id'] = '999999',
+				},
+			}
+			
+			local success, err = pcall(function()
+				intents.pushANTIntentResolutionHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Intent not found'))
+		end)
+		
+		it('should require sender to match intent initiator', function()
+			ARIOBalances['user-owner'] = {balance = '10000000000', orders = {}}
+			
+			-- Create parent intent for user-owner
+			local parentMsg = {
+				Id = 'parent-msg-789',
+				From = 'user-owner',
+				Timestamp = 1000000,
+			}
+			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+			
+			-- Try to call from different user
+			local msg = {
+				Id = 'msg-789',
+				From = 'different-user',
+				Timestamp = 1000100,
+				Tags = {
+					['X-Intent-Id'] = parentIntent.intentId,
+				},
+			}
+			
+			local success, err = pcall(function()
+				intents.pushANTIntentResolutionHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Sender does not match intent initiator'))
 		end)
 	end)
+	
+	describe('stateNoticeHandler', function()
+		local utils = require('utils')
+		
+		it('should resolve intent when ANT owner matches marketplace', function()
+			ARIOBalances['user-ant-owner'] = {balance = '10000000000', orders = {}}
+			
+			-- Create parent intent
+			local parentMsg = {
+				From = 'user-ant-owner',
+				Timestamp = 1000000,
+			}
+			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+			
+			-- Create child intent expecting from ANT
+			local childMsg = {
+				Timestamp = 1000100,
+			}
+			local antProcessId = 'ant-process-'..(string.rep('x', 33))
+			local childIntent = intents.createChildIntent(
+				parentIntent.intentId,
+				childMsg,
+				antProcessId,
+				{}
+			)
+			
+			-- Simulate State-Notice from ANT with marketplace as owner
+			local stateNotice = {
+				From = antProcessId,
+				Timestamp = 1000200,
+				Data = json.encode({
+					Owner = ao.id, -- Marketplace owns the ANT
+				}),
+				Tags = {
+					['X-Intent-Id'] = childIntent.intentId,
+				},
+			}
+			
+			intents.stateNoticeHandler(stateNotice)
+			
+		-- Child intent should be resolved
+		local resolvedChild = intents.getIntentById(childIntent.intentId)
+		assert.is_not_nil(resolvedChild)
+		assert.are.equal('resolved', resolvedChild and resolvedChild.status)
+		
+		-- Parent should be completed (only one child)
+		local resolvedParent = intents.getIntentById(parentIntent.intentId)
+		assert.is_not_nil(resolvedParent)
+		assert.are.equal('completed', resolvedParent and resolvedParent.status)
+			
+			-- Acknowledgment should be sent
+			assert.are.equal(1, #sentMessages)
+			assert.are.equal('user-ant-owner', sentMessages[1].Target)
+			assert.are.equal('State-Notice-Processed', sentMessages[1].Action)
+			assert.are.equal(childIntent.intentId, sentMessages[1]['Intent-Id'])
+			assert.are.equal('resolved', sentMessages[1]['Intent-Status'])
+		end)
+		
+		it('should fail intent when ANT owner is not marketplace', function()
+			ARIOBalances['user-ant-owner'] = {balance = '10000000000', orders = {}}
+			
+			-- Create parent intent
+			local parentMsg = {
+				From = 'user-ant-owner',
+				Timestamp = 1000000,
+			}
+			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+			
+			-- Create child intent
+			local childMsg = {
+				Timestamp = 1000100,
+			}
+			local antProcessId = 'ant-process-'..(string.rep('y', 33))
+			local childIntent = intents.createChildIntent(
+				parentIntent.intentId,
+				childMsg,
+				antProcessId,
+				{}
+			)
+			
+			-- Simulate State-Notice with different owner
+			local stateNotice = {
+				From = antProcessId,
+				Timestamp = 1000200,
+				Data = json.encode({
+					Owner = 'different-owner-address',
+				}),
+				Tags = {
+					['X-Intent-Id'] = childIntent.intentId,
+				},
+			}
+			
+			local success, err = pcall(function()
+				intents.stateNoticeHandler(stateNotice)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Marketplace does not own this ANT'))
+		end)
+		
+		it('should require X-Intent-Id', function()
+			local msg = {
+				Id = 'state-msg-1',
+				From = 'ant-process-123',
+				Timestamp = 1000000,
+				Data = json.encode({Owner = ao.id}),
+				Tags = {},
+			}
+			
+			local success, err = pcall(function()
+				intents.stateNoticeHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('X%-Intent%-Id required'))
+		end)
+		
+		it('should require valid intent ID format', function()
+			local msg = {
+				From = 'ant-process-123',
+				Data = json.encode({Owner = ao.id}),
+				Tags = {
+					['X-Intent-Id'] = 'invalid-format',
+				},
+			}
+			
+			local success, err = pcall(function()
+				intents.stateNoticeHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Invalid X%-Intent%-Id format'))
+		end)
+		
+		it('should require intent to exist', function()
+			local msg = {
+				From = 'ant-process-123',
+				Data = json.encode({Owner = ao.id}),
+				Tags = {
+					['X-Intent-Id'] = '999999',
+				},
+			}
+			
+			local success, err = pcall(function()
+				intents.stateNoticeHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Intent not found'))
+		end)
+		
+		it('should require State-Notice from expected ANT', function()
+			ARIOBalances['user-owner'] = {balance = '10000000000', orders = {}}
+			
+			-- Create intents
+			local parentMsg = {Id = 'parent-msg-1', From = 'user-owner', Timestamp = 1000000}
+			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+			
+			local antProcessId = 'ant-expected-'..(string.rep('a', 32))
+			local childIntent = intents.createChildIntent(
+				parentIntent.intentId,
+				{Id = 'child-msg-1', From = 'user-owner', Owner = '', Timestamp = 1000100, Tags = {}, Data = ''},
+				antProcessId,
+				{}
+			)
+			
+			-- State-Notice from different ANT
+			local msg = {
+				From = 'different-ant-'..(string.rep('b', 32)),
+				Data = json.encode({Owner = ao.id}),
+				Timestamp = 1000200,
+				Tags = {
+					['X-Intent-Id'] = childIntent.intentId,
+				},
+			}
+			
+			local success, err = pcall(function()
+				intents.stateNoticeHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Sender does not match intent expected from'))
+		end)
+		
+		it('should require valid State-Notice data', function()
+			ARIOBalances['user-owner'] = {balance = '10000000000', orders = {}}
+			
+			local parentMsg = {Id = 'parent-msg-2', From = 'user-owner', Timestamp = 1000000}
+			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+			
+			local antProcessId = 'ant-process-'..(string.rep('c', 33))
+			local childIntent = intents.createChildIntent(
+				parentIntent.intentId,
+				{Id = 'child-msg-2', From = 'user-owner', Owner = '', Timestamp = 1000100, Tags = {}, Data = ''},
+				antProcessId,
+				{}
+			)
+			
+			-- Invalid JSON data
+			local msg = {
+				From = antProcessId,
+				Data = 'invalid json',
+				Timestamp = 1000200,
+				Tags = {
+					['X-Intent-Id'] = childIntent.intentId,
+				},
+			}
+			
+			local success, err = pcall(function()
+				intents.stateNoticeHandler(msg)
+			end)
+			
+		assert.is_false(success)
+		assert.is_not_nil(err and err:match('Invalid State%-Notice data'))
+		end)
+		
+		it('should handle multiple child intents completing parent', function()
+			ARIOBalances['user-owner'] = {balance = '10000000000', orders = {}}
+			
+			-- Create parent intent
+			local parentMsg = {Id = 'parent-msg-3', From = 'user-owner', Timestamp = 1000000}
+			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+			
+			-- Create two child intents for different ANTs
+			local ant1 = 'ant-process-1'..(string.rep('x', 32))
+			local ant2 = 'ant-process-2'..(string.rep('y', 32))
+			
+			local child1 = intents.createChildIntent(
+				parentIntent.intentId,
+				{Id = 'child-msg-3a', From = 'user-owner', Owner = '', Timestamp = 1000100, Tags = {}, Data = ''},
+				ant1,
+				{}
+			)
+			local child2 = intents.createChildIntent(
+				parentIntent.intentId,
+				{Id = 'child-msg-3b', From = 'user-owner', Owner = '', Timestamp = 1000100, Tags = {}, Data = ''},
+				ant2,
+				{}
+			)
+			
+			-- Resolve first child
+			local msg1 = {
+				From = ant1,
+				Data = json.encode({Owner = ao.id}),
+				Timestamp = 1000200,
+				Tags = {['X-Intent-Id'] = child1.intentId},
+			}
+			intents.stateNoticeHandler(msg1)
+			
+		-- Parent should still be active (not all children resolved)
+		local parentAfterFirst = intents.getIntentById(parentIntent.intentId)
+		assert.is_not_nil(parentAfterFirst)
+		assert.are.equal('settling', parentAfterFirst and parentAfterFirst.status)
+			
+			-- Resolve second child
+			local msg2 = {
+				From = ant2,
+				Data = json.encode({Owner = ao.id}),
+				Timestamp = 1000300,
+				Tags = {['X-Intent-Id'] = child2.intentId},
+			}
+			intents.stateNoticeHandler(msg2)
+			
+		-- Now parent should be completed
+		local parentAfterSecond = intents.getIntentById(parentIntent.intentId)
+		assert.is_not_nil(parentAfterSecond)
+		assert.are.equal('completed', parentAfterSecond and parentAfterSecond.status)
+		end)
+	end)
+end)
 end)

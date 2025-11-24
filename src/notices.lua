@@ -69,7 +69,7 @@ function notices.creditNoticeHandler(msg)
 	end
 
 	-- Resolve parent intent (pending → active)
-	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp)
+	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp, msg)
 
 	-- Check if sender is a valid address
 	if not utils.checkValidAddress(sender) then
@@ -195,27 +195,12 @@ function notices.debitNoticeHandler(msg)
 
 	-- Validate this is expected Debit-Notice
 	if intent.type == constants.INTENT_TYPES.CHILD and intent.expectedFrom == msg.From then
-		intents.resolveIntent(intentId, msg.Timestamp)
+		-- Resolve child intent (will auto-complete parent if all children resolved)
+		intents.resolveIntent(intentId, msg.Timestamp, msg)
 
-		-- Check if parent is now complete
+		-- Get parent status for acknowledgment
 		local parent = intents.getIntentById(intent.parentIntentId)
 		local parentStatus = parent and parent.status or 'not-found'
-		
-		if parent then
-			local allResolved = true
-			for childId in pairs(parent.childIntentIds) do
-				local child = intents.getIntentById(childId)
-				if child and child.status ~= constants.INTENT_STATUSES.RESOLVED then
-					allResolved = false
-					break
-				end
-			end
-
-		if allResolved then
-			intents.updateIntentStatus(parent.intentId, constants.INTENT_STATUSES.COMPLETED, msg)
-			parentStatus = 'completed'
-		end
-		end
 
 		-- Send acknowledgment with intent status
 		utils.Send(msg, {

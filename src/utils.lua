@@ -987,9 +987,8 @@ function utils.createHandler(tagName, tagValue, handler, position, critical)
 				return handler(msg)
 			end, _utils.errorHandler)
 
-			-- default to critical if not specified
-			local isCritical = critical == true or critical == nil
-			if not handlerStatus and isCritical then
+
+			if not handlerStatus and critical then
 				error(handlerRes)
 			end
 

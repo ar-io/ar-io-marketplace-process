@@ -149,9 +149,10 @@ end
 --- Handles status transitions and pruning of parent intents in terminal states
 --- @param intentId string The intent ID to resolve
 --- @param timestamp number The timestamp of resolution
+--- @param msg table|nil Optional message context for parent completion notices
 --- @return boolean success Whether the resolution was successful
 --- @return table|nil resolvedIntent The resolved intent data if pruned, nil otherwise
-function intents.resolveIntent(intentId, timestamp)
+function intents.resolveIntent(intentId, timestamp, msg)
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -189,6 +190,14 @@ function intents.resolveIntent(intentId, timestamp)
 		-- Child intent resolution
 		intent.status = constants.INTENT_STATUSES.RESOLVED
 		intent.resolvedAt = timestamp
+		
+		-- Check if parent intent should be completed
+		if intent.parentIntentId then
+			local parent = Intents[intent.parentIntentId]
+			if parent and intents.areAllChildrenIntentsResolved(intent.parentIntentId) then
+				intents.updateIntentStatus(intent.parentIntentId, constants.INTENT_STATUSES.COMPLETED, msg)
+			end
+		end
 	end
 
 	return true, resolvedIntent
@@ -210,7 +219,7 @@ function intents.failIntent(intentId, reason, msg)
 	intent.failureReason = reason
 
 	-- Use resolveIntent to handle pruning logic centrally
-	local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
+	local success, resolvedIntent = intents.resolveIntent(intentId, os.time(), msg)
 
 	-- Send Intent-Resolved notice AFTER pruning succeeds
 	if success and resolvedIntent and msg then
@@ -248,7 +257,7 @@ function intents.updateIntentStatus(intentId, status, msg)
 
 	-- Use resolveIntent to handle pruning logic centrally for terminal states
 	if status == constants.INTENT_STATUSES.COMPLETED or status == constants.INTENT_STATUSES.FAILED then
-		local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
+		local success, resolvedIntent = intents.resolveIntent(intentId, os.time(), msg)
 
 		-- Send Intent-Resolved notice AFTER pruning succeeds
 		if success and resolvedIntent and msg then
@@ -509,6 +518,54 @@ function intents.getIntentByIdHandler(msg)
 	end
 
 	return json.encode(response)
+end
+
+function intents.pushANTIntentResolutionHandler(msg)
+	local intentId = msg.Tags['X-Intent-Id']
+	assert(intentId, 'X-Intent-Id required')
+
+	local intent = intents.getIntentById(intentId)
+	assert(intent, 'Intent not found')
+
+	assert(msg.From == intent.initiator, 'Sender does not match intent initiator')
+
+	local antId = intent.expectedFrom
+
+	utils.Send(msg, {
+		Target = antId,
+		Action = "State",
+		Tags = {
+			['X-Intent-Id'] = intentId,
+		}
+	})
+end
+
+-- Handler: State-Notice - Resolves intents based on ANT state
+function intents.stateNoticeHandler(msg)
+	local intentId = msg.Tags['X-Intent-Id']
+	assert(intentId, 'X-Intent-Id required')
+	assert(utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format')
+	local intent = intents.getIntentById(intentId)
+	assert(intent, 'Intent not found')
+	assert(msg.From == intent.expectedFrom, 'Sender does not match intent expected from')
+
+	local antState = utils.safeParseJson(msg.Data)
+	assert(antState, 'Invalid State-Notice data')
+	local owner = antState.Owner
+	assert(owner == ao.id, 'Marketplace does not own this ANT')
+
+	-- Owner matches, resolve the intent (will auto-complete parent if all children resolved)
+	intents.resolveIntent(intentId, msg.Timestamp, msg)
+
+	-- Send acknowledgment
+	utils.Send(msg, {
+		Target = intent.initiator,
+		Action = 'State-Notice-Processed',
+		['Intent-Id'] = intentId,
+		['ANT-Id'] = msg.From,
+		['Owner'] = owner,
+		['Intent-Status'] = 'resolved',
+	})
 end
 
 return intents

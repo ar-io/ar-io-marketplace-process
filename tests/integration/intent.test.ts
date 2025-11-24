@@ -724,3 +724,164 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
       });
     });
   });
+
+  describe('ANT Intent Resolution', () => {
+    describe('Push-ANT-Intent-Resolution', () => {
+      it('should trigger ANT state query for valid intent', async () => {
+        const intentResult = await marketplaceProcess.createIntent({
+          action: 'Create-Order',
+          orderType: 'fixed',
+          swapToken: TEST_ARIO_PROCESS,
+          quantity: '1000',
+          price: '500',
+        });
+
+        const intentData = JSON.parse(intentResult.Data);
+        const intentId = intentData['Intent-Id'];
+
+        const result = await marketplaceProcess.process.send({
+          tags: [
+            { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+            { name: 'X-Intent-Id', value: intentId },
+          ],
+          signer: TEST_SIGNER,
+        });
+
+        assert(result, 'Result should be defined');
+      });
+
+      it('should fail without X-Intent-Id', async () => {
+        try {
+          await marketplaceProcess.process.send({
+            tags: [{ name: 'Action', value: 'Push-ANT-Intent-Resolution' }],
+            signer: TEST_SIGNER,
+          });
+          assert.fail('Should have thrown an error for missing X-Intent-Id');
+        } catch (error: any) {
+          assert(error.message.includes('X-Intent-Id'), 'Error should mention X-Intent-Id');
+        }
+      });
+
+      it('should fail for non-existent intent', async () => {
+        try {
+          await marketplaceProcess.process.send({
+            tags: [
+              { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+              { name: 'X-Intent-Id', value: '999999' },
+            ],
+            signer: TEST_SIGNER,
+          });
+          assert.fail('Should have thrown an error for non-existent intent');
+        } catch (error: any) {
+          assert(error.message.includes('Intent not found'), 'Error should mention Intent not found');
+        }
+      });
+    });
+
+    describe('State-Notice Handler', () => {
+      it('should resolve intent when marketplace owns ANT', async () => {
+        const setupResult = await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Eval' }],
+          data: `
+            local intents = require('intents')
+            ARIOBalances['${TEST_SENDER}'] = {balance = '10000000000', orders = {}}
+            local parentIntent = intents.createParentIntent({From = '${TEST_SENDER}', Timestamp = 1000000}, 'Create-Order', {})
+            local antId = 'test-ant-process-111111111111111111111111111'
+            local childIntent = intents.createChildIntent(parentIntent.intentId, {Timestamp = 1000100}, antId, {})
+            return childIntent.intentId
+          `,
+          signer: TEST_SIGNER,
+        });
+
+        const childIntentId = (setupResult as any).result;
+
+        const stateNoticeResult = await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Eval' }],
+          data: `
+            local intents = require('intents')
+            local json = require('json')
+            local msg = {From = 'test-ant-process-111111111111111111111111111', Timestamp = 1000200, Data = json.encode({Owner = ao.id}), Tags = {['X-Intent-Id'] = '${childIntentId}'}}
+            intents.stateNoticeHandler(msg)
+            local child = intents.getIntentById('${childIntentId}')
+            return child and child.status or 'not-found'
+          `,
+          signer: TEST_SIGNER,
+        });
+
+        const childStatus = (stateNoticeResult as any).result;
+        assert.strictEqual(childStatus, 'resolved', 'Child intent should be resolved');
+      });
+
+      it('should fail when marketplace does not own ANT', async () => {
+        const setupResult = await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Eval' }],
+          data: `
+            local intents = require('intents')
+            ARIOBalances['${TEST_SENDER}'] = {balance = '10000000000', orders = {}}
+            local parentIntent = intents.createParentIntent({From = '${TEST_SENDER}', Timestamp = 1000000}, 'Create-Order', {})
+            local antId = 'test-ant-process-222222222222222222222222222'
+            local childIntent = intents.createChildIntent(parentIntent.intentId, {Timestamp = 1000100}, antId, {})
+            return childIntent.intentId
+          `,
+          signer: TEST_SIGNER,
+        });
+
+        const childIntentId = (setupResult as any).result;
+
+        try {
+          await marketplaceProcess.process.send({
+            tags: [{ name: 'Action', value: 'Eval' }],
+            data: `
+              local intents = require('intents')
+              local json = require('json')
+              local msg = {From = 'test-ant-process-222222222222222222222222222', Timestamp = 1000200, Data = json.encode({Owner = 'different-owner-address'}), Tags = {['X-Intent-Id'] = '${childIntentId}'}}
+              intents.stateNoticeHandler(msg)
+            `,
+            signer: TEST_SIGNER,
+          });
+          assert.fail('Should have thrown error for non-marketplace owner');
+        } catch (error: any) {
+          assert(error.message.includes('Marketplace does not own this ANT'), 'Error should mention ownership mismatch');
+        }
+      });
+
+      it('should complete parent when all children resolved', async () => {
+        const setupResult = await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Eval' }],
+          data: `
+            local intents = require('intents')
+            ARIOBalances['${TEST_SENDER}'] = {balance = '10000000000', orders = {}}
+            local parentIntent = intents.createParentIntent({From = '${TEST_SENDER}', Timestamp = 1000000}, 'Create-Order', {})
+            local ant1 = 'test-ant-1-444444444444444444444444444444'
+            local ant2 = 'test-ant-2-555555555555555555555555555555'
+            local child1 = intents.createChildIntent(parentIntent.intentId, {Timestamp = 1000100}, ant1, {})
+            local child2 = intents.createChildIntent(parentIntent.intentId, {Timestamp = 1000100}, ant2, {})
+            return {parentId = parentIntent.intentId, child1Id = child1.intentId, child2Id = child2.intentId}
+          `,
+          signer: TEST_SIGNER,
+        });
+
+        const ids = (setupResult as any).result;
+
+        await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Eval' }],
+          data: `local intents = require('intents'); local json = require('json'); local msg = {From = 'test-ant-1-444444444444444444444444444444', Timestamp = 1000200, Data = json.encode({Owner = ao.id}), Tags = {['X-Intent-Id'] = '${ids.child1Id}'}}; intents.stateNoticeHandler(msg)`,
+          signer: TEST_SIGNER,
+        });
+
+        await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Eval' }],
+          data: `local intents = require('intents'); local json = require('json'); local msg = {From = 'test-ant-2-555555555555555555555555555555', Timestamp = 1000300, Data = json.encode({Owner = ao.id}), Tags = {['X-Intent-Id'] = '${ids.child2Id}'}}; intents.stateNoticeHandler(msg)`,
+          signer: TEST_SIGNER,
+        });
+
+        const parentStatus = await marketplaceProcess.process.send({
+          tags: [{ name: 'Action', value: 'Eval' }],
+          data: `local intents = require('intents'); local parent = intents.getIntentById('${ids.parentId}'); return parent and parent.status or 'not-found'`,
+          signer: TEST_SIGNER,
+        });
+
+        assert.strictEqual((parentStatus as any).result, 'completed', 'Parent should be completed');
+      });
+    });
+  });
