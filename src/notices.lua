@@ -8,6 +8,7 @@ function notices.creditNoticeHandler(msg)
 	local ucm = require('ucm')
 	local balances = require('balances')
 
+	-- NOTE: this could be expanded in the future for more tokens
 	if msg.Tags['X-Action'] == constants.ACTIONS.DEPOSIT then
 		local isArioNotice = utils.isArioToken(msg.From)
 		assert(isArioNotice, "Deposit must be from ARIO")
@@ -15,12 +16,10 @@ function notices.creditNoticeHandler(msg)
 		return
 	end
 
-	if not msg.Tags['X-Dominant-Token'] or msg.From ~= msg.Tags['X-Dominant-Token'] then
-		return
-	end
-
 	local sender = msg.Tags.Sender
 	local quantity = msg.Tags.Quantity
+	assert(sender, "Sender is required")
+	assert(quantity, "Quantity is required")
 
 	-- Helper function to handle invalid transfers
 	-- Only accept ARIO as fees, refund anything else (like ANT tokens)

@@ -216,6 +216,10 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 		pair.orders[matchedOrderId] = nil
 		-- Remove from index
 		OrderIndex[matchedOrderId] = nil
+		
+		-- Prune the pair if it's now empty
+		local ucm = require('ucm')
+		ucm.pruneEmptyPair(matchedOrder.dominantToken, matchedOrder.swapToken)
 	end
 
 	-- Send success response if any matches occurred

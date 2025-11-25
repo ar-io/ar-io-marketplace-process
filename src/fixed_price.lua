@@ -223,6 +223,10 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 		pair.orders[matchedOrderId] = nil
 		-- Remove from index
 		OrderIndex[matchedOrderId] = nil
+		
+		-- Prune the pair if it's now empty
+		local ucm = require('ucm')
+		ucm.pruneEmptyPair(matchedOrder.dominantToken, matchedOrder.swapToken)
 	end
 
 	-- Update VWAP and get total volume

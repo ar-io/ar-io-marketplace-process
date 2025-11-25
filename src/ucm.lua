@@ -321,6 +321,41 @@ function ucm.ensurePairExists(validPair)
 	return Orderbook[dominantToken][swapToken]
 end
 
+--- Check if a pair is empty and remove it from the orderbook if so
+--- This prevents memory bloat from accumulating dead pairs
+--- @param dominantToken string The dominant token ID
+--- @param swapToken string The swap token ID
+function ucm.pruneEmptyPair(dominantToken, swapToken)
+	if not Orderbook[dominantToken] or not Orderbook[dominantToken][swapToken] then
+		return
+	end
+
+	local pair = Orderbook[dominantToken][swapToken]
+	
+	-- Count remaining orders in the pair
+	local hasOrders = false
+	for _ in pairs(pair.orders) do
+		hasOrders = true
+		break
+	end
+
+	-- If no orders remain, remove the pair
+	if not hasOrders then
+		Orderbook[dominantToken][swapToken] = nil
+		
+		-- If the dominant token level is now empty, remove it too
+		local hasSwapTokens = false
+		for _ in pairs(Orderbook[dominantToken]) do
+			hasSwapTokens = true
+			break
+		end
+		
+		if not hasSwapTokens then
+			Orderbook[dominantToken] = nil
+		end
+	end
+end
+
 --- Handle ANT-dominant orders (selling ANT for ARIO) for different auction types
 --- @param args table Order arguments
 --- @param validPair string[] The validated pair [ANT, ARIO]
@@ -403,7 +438,6 @@ function ucm.createOrder(args)
 
 	-- Placeholder for future order type handling
 	utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
-	return
 end
 
 --- Handler: Create-Order (for ARIO orders via direct message using internal balance)
@@ -548,6 +582,10 @@ function ucm.cancelOrderHandler(msg)
 	-- Remove the order from the orderbook and index
 	if pairData then
 		pairData.orders[orderId] = nil
+		-- Prune the pair if it's now empty
+		local dominantToken = currentOrderEntry.dominantToken
+		local swapToken = currentOrderEntry.swapToken
+		ucm.pruneEmptyPair(dominantToken, swapToken)
 	end
 	OrderIndex[orderId] = nil
 

@@ -258,6 +258,10 @@ function english_auction.settleAuction(args)
 	pair.orders[orderId] = nil
 	-- Remove from index
 	OrderIndex[orderId] = nil
+	
+	-- Prune the pair if it's now empty
+	local ucm = require('ucm')
+	ucm.pruneEmptyPair(args.dominantToken, args.swapToken)
 
 	-- Notify winner
 	utils.Send(args.msg, {
