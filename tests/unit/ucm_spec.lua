@@ -544,4 +544,440 @@ describe('ucm helpers', function()
 			assert.are.equal('0', _G.IntentCounter, 'Intent counter should remain at 0')
 		end)
 	end)
+
+	describe('scheduleNextOrderbookPruning', function()
+		before_each(function()
+			_G.Pruning = nil
+		end)
+
+		it('should initialize Pruning if not exists', function()
+			ucm.scheduleNextOrderbookPruning(5000)
+			
+			assert.is_not_nil(_G.Pruning)
+			assert.are.equal(5000, _G.Pruning.nextScheduledOrderbookPruning)
+		end)
+
+		it('should update if new timestamp is sooner', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 10000 }
+			
+			ucm.scheduleNextOrderbookPruning(5000)
+			
+			assert.are.equal(5000, _G.Pruning.nextScheduledOrderbookPruning)
+		end)
+
+		it('should not update if new timestamp is later', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 5000 }
+			
+			ucm.scheduleNextOrderbookPruning(10000)
+			
+			assert.are.equal(5000, _G.Pruning.nextScheduledOrderbookPruning)
+		end)
+
+		it('should handle nil timestamp gracefully', function()
+			ucm.scheduleNextOrderbookPruning(nil)
+			-- Should not crash
+		end)
+	end)
+
+	describe('pruneOrderbook', function()
+		local testGlobals = require('test_globals')
+
+		before_each(function()
+			testGlobals.resetState()
+		end)
+
+		it('should return early if no pruning scheduled', function()
+			_G.Pruning = nil
+			
+			ucm.pruneOrderbook(5000, {})
+			
+			-- Should not crash
+		end)
+
+		it('should return early if not time yet', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 10000 }
+			
+			ucm.pruneOrderbook(5000, {})
+			
+			-- nextScheduledOrderbookPruning should not change
+			assert.are.equal(10000, _G.Pruning.nextScheduledOrderbookPruning)
+		end)
+
+		it('should prune expired fixed price orders', function()
+			local fixedPrice = require('fixed_price')
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['expired-order'] = {
+								id = 'expired-order',
+								status = 'active',
+								expirationTime = 1000,
+								orderType = 'fixed',
+							},
+						},
+					},
+				},
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Order should be marked as expired
+			assert.are.equal('expired', _G.Orderbook['ant-token']['ario-token'].orders['expired-order'].status)
+		end)
+
+		it('should reschedule next pruning for future expirations', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 1000 }
+			
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['future-order'] = {
+								id = 'future-order',
+								status = 'active',
+								expirationTime = 5000,
+								orderType = 'fixed',
+							},
+						},
+					},
+				},
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Should reschedule for 5000
+			assert.are.equal(5000, _G.Pruning.nextScheduledOrderbookPruning)
+		end)
+	end)
+
+	describe('getPair', function()
+		it('should return pair if exists', function()
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						pair = {'ant-token', 'ario-token'},
+						orders = {},
+					},
+				},
+			}
+
+			local pair = ucm.getPair('ant-token', 'ario-token')
+			assert.is_not_nil(pair)
+			assert.are.same({'ant-token', 'ario-token'}, pair.pair)
+		end)
+
+		it('should return nil if pair does not exist', function()
+			_G.Orderbook = {}
+
+			local pair = ucm.getPair('non-existent', 'non-existent')
+			assert.is_nil(pair)
+		end)
+	end)
+
+	describe('pruneEmptyPair', function()
+		it('should remove empty pair', function()
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {}, -- Empty
+					},
+				},
+			}
+
+			ucm.pruneEmptyPair('ant-token', 'ario-token')
+
+			-- Pair should be removed (and since it's the only pair, the dominant token level too)
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should remove dominant token level if empty', function()
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {},
+					},
+				},
+			}
+
+			ucm.pruneEmptyPair('ant-token', 'ario-token')
+
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should not remove pair with orders', function()
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['order-123'] = { id = 'order-123' },
+						},
+					},
+				},
+			}
+
+			ucm.pruneEmptyPair('ant-token', 'ario-token')
+
+			assert.is_not_nil(_G.Orderbook['ant-token']['ario-token'])
+		end)
+
+		it('should not remove dominant token if other pairs exist', function()
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {},
+					},
+					['other-token'] = {
+						orders = {
+							['order-456'] = { id = 'order-456' },
+						},
+					},
+				},
+			}
+
+			ucm.pruneEmptyPair('ant-token', 'ario-token')
+
+			assert.is_nil(_G.Orderbook['ant-token']['ario-token'])
+			assert.is_not_nil(_G.Orderbook['ant-token']['other-token'])
+		end)
+	end)
+
+	describe('cancelOrderHandler', function()
+		local testGlobals = require('test_globals')
+		local balances = require('balances')
+
+		before_each(function()
+			testGlobals.resetState()
+			testGlobals.setArioTokenId('ario-token-123')
+		end)
+
+		it('should cancel order and return balance', function()
+			-- Create order in orderbook
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token-123'] = {
+						orders = {
+							['order-123'] = {
+								id = 'order-123',
+								creator = 'user-123',
+								quantity = '1',
+								token = 'ant-token',
+								status = 'active',
+								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token-123',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['order-123'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token-123',
+			}
+
+			local msg = testGlobals.mockMsg({
+				From = 'user-123',
+				Tags = {
+					['Order-Id'] = 'order-123',
+				},
+			})
+
+			local result = ucm.cancelOrderHandler(msg)
+
+			-- Order should be removed
+			assert.is_nil(_G.OrderIndex['order-123'])
+
+			-- Pair should be pruned (empty) - dominant token level should be removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should fail if order not found', function()
+			local msg = testGlobals.mockMsg({
+				From = 'user-123',
+				Tags = {
+					['Order-Id'] = 'non-existent',
+				},
+			})
+
+			local success = pcall(function()
+				ucm.cancelOrderHandler(msg)
+			end)
+
+			assert.is_false(success)
+		end)
+
+		it('should fail if unauthorized', function()
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token-123'] = {
+						orders = {
+							['order-123'] = {
+								id = 'order-123',
+								creator = 'user-123',
+								status = 'active',
+								orderType = 'fixed',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['order-123'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token-123',
+			}
+
+			local msg = testGlobals.mockMsg({
+				From = 'user-456', -- Different user
+				Tags = {
+					['Order-Id'] = 'order-123',
+				},
+			})
+
+			local success = pcall(function()
+				ucm.cancelOrderHandler(msg)
+			end)
+
+			assert.is_false(success)
+		end)
+	end)
+
+	describe('infoHandler', function()
+		local testGlobals = require('test_globals')
+		local json = require('json')
+
+		before_each(function()
+			testGlobals.resetState()
+			testGlobals.setArioTokenId('ario-token-123')
+		end)
+
+		it('should return marketplace info', function()
+			-- Add some orders
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token-123'] = {
+						orders = {
+							['order-1'] = { status = 'active' },
+							['order-2'] = { status = 'executed' },
+							['order-3'] = { status = 'cancelled' },
+						},
+					},
+				},
+			}
+
+			local msg = testGlobals.mockMsg({})
+			local result = ucm.infoHandler(msg)
+			local info = json.decode(result)
+
+			assert.is_not_nil(info)
+			assert.are.equal(3, info.activity.totalOrders)
+			assert.are.equal(1, info.activity.activeOrders)
+			assert.are.equal(1, info.activity.executedOrders)
+			assert.are.equal(1, info.activity.cancelledOrders)
+			assert.are.equal(1, info.ucm.totalPairs)
+		end)
+
+		it('should handle empty orderbook', function()
+			_G.Orderbook = {}
+
+			local msg = testGlobals.mockMsg({})
+			local result = ucm.infoHandler(msg)
+			local info = json.decode(result)
+
+			assert.are.equal(0, info.activity.totalOrders)
+			assert.are.equal(0, info.ucm.totalPairs)
+		end)
+	end)
+
+	describe('matchesStatusFilter', function()
+		it('should match ALL filter', function()
+			local order = { status = 'active' }
+			assert.is_true(ucm.matchesStatusFilter(order, 'all'))
+		end)
+
+		it('should match LISTED filter for active', function()
+			local order = { status = 'active' }
+			assert.is_true(ucm.matchesStatusFilter(order, 'listed'))
+		end)
+
+		it('should match LISTED filter for ready-for-settlement', function()
+			local order = { status = 'ready-for-settlement' }
+			assert.is_true(ucm.matchesStatusFilter(order, 'listed'))
+		end)
+
+		it('should match COMPLETED filter for executed', function()
+			local order = { status = 'executed' }
+			assert.is_true(ucm.matchesStatusFilter(order, 'completed'))
+		end)
+
+		it('should match COMPLETED filter for cancelled', function()
+			local order = { status = 'cancelled' }
+			assert.is_true(ucm.matchesStatusFilter(order, 'completed'))
+		end)
+
+		it('should not match wrong status', function()
+			local order = { status = 'active' }
+			assert.is_false(ucm.matchesStatusFilter(order, 'completed'))
+		end)
+	end)
+
+	describe('getOrderHandler', function()
+		local testGlobals = require('test_globals')
+		local json = require('json')
+
+		before_each(function()
+			testGlobals.resetState()
+		end)
+
+		it('should return order by ID', function()
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['order-123'] = {
+								id = 'order-123',
+								quantity = '1',
+								status = 'active',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['order-123'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			local msg = testGlobals.mockMsg({
+				Tags = {
+					['Order-Id'] = 'order-123',
+				},
+			})
+
+			local result = ucm.getOrderHandler(msg)
+			local order = json.decode(result)
+
+			assert.are.equal('order-123', order.id)
+			assert.are.equal('1', order.quantity)
+		end)
+
+		it('should fail if order not found', function()
+			local msg = testGlobals.mockMsg({
+				Tags = {
+					['Order-Id'] = 'non-existent',
+				},
+			})
+
+			local success = pcall(function()
+				ucm.getOrderHandler(msg)
+			end)
+
+			assert.is_false(success)
+		end)
+	end)
 end)

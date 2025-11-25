@@ -270,7 +270,7 @@ function ucm.validateOrderParams(args)
 	-- 4. Check order type is supported
 	if
 		not args.orderType
-		or (args.orderType ~= 'fixed' and args.orderType ~= 'dutch' and args.orderType ~= 'english')
+		or (args.orderType ~= constants.ORDER_TYPES.FIXED and args.orderType ~= constants.ORDER_TYPES.DUTCH and args.orderType ~= constants.ORDER_TYPES.ENGLISH)
 	then
 		utils.refundAndError(args.msg, args.sender, 'Order type must be "fixed" or "dutch" or "english"')
 		return
