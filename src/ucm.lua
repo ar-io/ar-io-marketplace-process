@@ -101,12 +101,15 @@ function ucm.pruneOrderbook(now, msg)
 	Pruning.nextScheduledOrderbookPruning = nextExpiration
 end
 
---- Transfer wrapper that handles intent tracking for marketplace transfers
+--- Transfer wrapper that handles intent tracking for ANT and non-ARIO token transfers
+--- Creates child intents for tracking transfer completion
+--- NOTE: This function creates child intents. Use ONLY for ANT and other non-ARIO tokens.
+--- For ARIO withdrawals, use ucm.transfer() (without intent tracking).
 --- @param recipient string The recipient address
 --- @param quantity string The amount to transfer
 --- @param token string The token process ID
 --- @param handledMsg Message The original message context
-function ucm.transfer(recipient, quantity, token, handledMsg)
+function ucm.transferWithIntent(recipient, quantity, token, handledMsg)
 	local intents = require('intents')
 
 	-- Construct send parameters for transfer
@@ -118,7 +121,6 @@ function ucm.transfer(recipient, quantity, token, handledMsg)
 			Quantity = quantity,
 		},
 	}
-	-- TODO: refactor to 'sendParamsWithIntent'
 	-- Add intent tracking
 	sendParams = intents.createSendWithIntent(sendParams, handledMsg, {
 		Recipient = recipient,
@@ -130,46 +132,51 @@ function ucm.transfer(recipient, quantity, token, handledMsg)
 	utils.Send(handledMsg, sendParams)
 end
 
+--- Direct transfer without intent tracking (for ARIO withdrawals)
+--- @param recipient string The recipient address
+--- @param quantity string The amount to transfer
+--- @param token string The token process ID
+--- @param handledMsg Message The original message context
+function ucm.transfer(recipient, quantity, token, handledMsg)
+	utils.Send(handledMsg, {
+		Target = token,
+		Action = 'Transfer',
+		Tags = {
+			Recipient = recipient,
+			Quantity = quantity,
+		},
+	})
+end
+
 --- Execute token transfers for order matching
+--- Handles both internal ARIO balance and external ANT transfers
+--- NOTE: ARIO Credit-Notices for orders are blocked - ARIO here means internal balance only
 --- @param args ExecuteTokenTransfersArgs Token transfer arguments
 function ucm.executeTokenTransfers(args)
-	-- Optionally record fee (difference between original send amount and calculated amount)
-	if args.originalSendAmount then
-		local ok1, orig = pcall(function()
-			return bint(args.originalSendAmount)
-		end)
-		local ok2, calc = pcall(function()
-			return bint(args.calculatedSendAmount)
-		end)
-		if ok1 and ok2 and orig > calc then
-			local fee = orig - calc
-			AccruedFeesAmount = AccruedFeesAmount + tonumber(tostring(fee))
-		end
-	end
-
-	-- Get msg context for intent tracking
+	local balances = require('balances')
 	local msg = args.msg or { Tags = {} }
 
-	-- Transfer dominant token to the seller (order creator)
-	-- ARIO goes to internal balance, ANT via external transfer
+	-- Transfer dominant token (what buyer is sending) to the seller (order creator)
 	if utils.isArioToken(args.dominantToken) then
-		-- ARIO: Add to seller's internal balance
-		local balances = require('balances')
+		-- ARIO: Internal balance transfer
+		-- Deduct FULL amount from buyer (including fee), add calculated amount to seller
+		local fullAmount = args.originalSendAmount or args.calculatedSendAmount
+		balances.reduceBalance(args.sender, tostring(fullAmount))
 		balances.increaseBalance(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount))
 	else
-		-- ANT: Transfer via Credit-Notice
-		ucm.transfer(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
+		-- ANT: External transfer via Credit-Notice with intent tracking
+		-- (ANT came via Credit-Notice, now goes to seller)
+		ucm.transferWithIntent(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
 	end
 
-	-- Transfer swap token to the buyer (order sender)
-	-- ARIO goes to internal balance, ANT via external transfer
+	-- Transfer swap token (what buyer is receiving) from seller to buyer
 	if utils.isArioToken(args.swapToken) then
-		-- ARIO: Add to buyer's internal balance
-		local balances = require('balances')
-		balances.increaseBalance(args.sender, tostring(args.calculatedFillAmount))
+		-- ARIO: seller's internal balance → buyer's internal balance
+		balances.transfer(args.sender, args.currentOrderEntry.creator, tostring(args.calculatedFillAmount), true)
 	else
-		-- ANT: Transfer via Credit-Notice
-		ucm.transfer(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
+		-- ANT: External transfer via Credit-Notice with intent tracking
+		-- (ANT from seller's Credit-Notice, now goes to buyer)
+		ucm.transferWithIntent(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
 	end
 end
 
@@ -534,8 +541,8 @@ function ucm.cancelOrderHandler(msg)
 		-- Internal balance order: Unlock and return to creator
 		balances.unlockBalanceFromOrder(orderId, currentOrderEntry.creator, currentOrderEntry.creator, lockedBalance)
 	else
-		-- External transfer order (ANT via Credit-Notice): Transfer back
-		ucm.transfer(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
+		-- External transfer order (ANT via Credit-Notice): Transfer back with intent tracking
+		ucm.transferWithIntent(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
 	end
 
 	-- Remove the order from the orderbook and index
@@ -616,7 +623,7 @@ function ucm.infoHandler(_msg)
 		intents = intentStats,
 		ucm = {
 			totalPairs = totalPairs,
-			accruedFees = tostring(AccruedFeesAmount),
+			accruedFees = tostring(utils.getAccruedFees()),
 			arioTokenProcess = ARIO_TOKEN_PROCESS_ID,
 		},
 	})
@@ -656,7 +663,7 @@ function ucm.withdrawFeesHandler(msg)
 	-- Only the process owner can withdraw fees
 	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can withdraw fees')
 
-	local amount = AccruedFeesAmount
+	local amount = utils.getAccruedFees()
 	assert(amount and amount > 0, 'No fees available to withdraw')
 
 	-- transfer fees to requester
@@ -671,7 +678,7 @@ function ucm.withdrawFeesHandler(msg)
 		},
 	})
 
-	AccruedFeesAmount = 0
+	utils.resetAccruedFees()
 
 	return json.encode({
 		Status = 'Success',

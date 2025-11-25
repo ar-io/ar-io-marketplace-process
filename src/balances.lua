@@ -135,7 +135,7 @@ end
 function balances.withdrawArioHandler(msg)
 	local account = msg.From
 	local quantity = msg.Tags.Quantity
-	assert(quantity and quantity > 0 and utils.checkValidAmount(quantity), "Invalid quantity. Must be integer greater than 0")
+	assert(quantity and utils.checkValidAmount(quantity), "Invalid quantity. Must be integer greater than 0")
 	assert(balances.walletHasSufficientBalance(account, quantity), "Insufficient balance")
 	balances.reduceBalance(account, quantity)
 	ucm.transfer(account, quantity, ARIO_TOKEN_PROCESS_ID, msg)

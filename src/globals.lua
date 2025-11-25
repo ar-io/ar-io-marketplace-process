@@ -50,8 +50,8 @@ Name = Name or 'ANT Marketplace'
 Owner = Owner or nil
 
 -- Accrued fees tracking
----@type number Total accrued fees in mARIO
-AccruedFeesAmount = AccruedFeesAmount or 0
+---@type string Total accrued fees in mARIO (stored as string for bint compatibility)
+AccruedFeesAmount = AccruedFeesAmount or '0'
 
 ---[[
 --- ARIO Balances tracks both available and locked ARIO balances for users.

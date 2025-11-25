@@ -24,6 +24,12 @@ describe('Dutch Auction', function()
 		-- Disable treasury fees for these tests
 		_G.TREASURY_ADDRESS = nil
 
+		-- Setup ARIO balances for buyers/sellers
+		_G.ARIOBalances = _G.ARIOBalances or {}
+		_G.ARIOBalances['ario-buyer'] = {balance = '1000000000000', orders = {}} -- 1000 ARIO
+		_G.ARIOBalances['ario-buyer-2'] = {balance = '1000000000000', orders = {}} -- 1000 ARIO
+		_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}}
+
 		-- Override ao.send to track messages and transfers
 		_G.ao.send = function(msg)
 			table.insert(sentMessages, msg)

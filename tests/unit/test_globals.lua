@@ -44,7 +44,7 @@ return {
 		_G.OrderIndex = {}
 		_G.Intents = {}
 		_G.Pruning = { nextScheduledOrderbookPruning = nil, nextScheduledIntentsPruning = nil }
-		_G.AccruedFeesAmount = 0
+		_G.AccruedFeesAmount = '0'
 		_G.ARIOBalances = {}
 		_G.IntentCounter = "0"
 	end,

@@ -191,11 +191,20 @@ function intents.resolveIntent(intentId, timestamp, msg)
 		intent.status = constants.INTENT_STATUSES.RESOLVED
 		intent.resolvedAt = timestamp
 		
-		-- Check if parent intent should be completed
+		-- Update parent status based on child resolution
 		if intent.parentIntentId then
 			local parent = Intents[intent.parentIntentId]
-			if parent and intents.areAllChildrenIntentsResolved(intent.parentIntentId) then
-				intents.updateIntentStatus(intent.parentIntentId, constants.INTENT_STATUSES.COMPLETED, msg)
+			if parent then
+				-- Transition parent to settling when first child is resolved
+				if parent.status == constants.INTENT_STATUSES.PENDING or parent.status == constants.INTENT_STATUSES.ACTIVE then
+					parent.status = constants.INTENT_STATUSES.SETTLING
+					parent.resolvedAt = timestamp
+				end
+				
+				-- Check if parent intent should be completed
+				if intents.areAllChildrenIntentsResolved(intent.parentIntentId) then
+					intents.updateIntentStatus(intent.parentIntentId, constants.INTENT_STATUSES.COMPLETED, msg)
+				end
 			end
 		end
 	end
@@ -527,7 +536,17 @@ function intents.pushANTIntentResolutionHandler(msg)
 	local intent = intents.getIntentById(intentId)
 	assert(intent, 'Intent not found')
 
-	assert(msg.From == intent.initiator, 'Sender does not match intent initiator')
+	-- For child intents, check against parent's initiator (the original user)
+	-- For parent intents, check against the intent's own initiator
+	local expectedInitiator = intent.initiator
+	if intent.type == constants.INTENT_TYPES.CHILD and intent.parentIntentId then
+		local parent = Intents[intent.parentIntentId]
+		if parent then
+			expectedInitiator = parent.initiator
+		end
+	end
+	
+	assert(msg.From == expectedInitiator, 'Sender does not match intent initiator')
 
 	local antId = intent.expectedFrom
 
@@ -549,7 +568,7 @@ function intents.stateNoticeHandler(msg)
 	assert(intent, 'Intent not found')
 	assert(msg.From == intent.expectedFrom, 'Sender does not match intent expected from')
 
-	local antState = utils.safeParseJson(msg.Data)
+	local antState = utils.safeDecodeJson(msg.Data)
 	assert(antState, 'Invalid State-Notice data')
 	local owner = antState.Owner
 	assert(owner == ao.id, 'Marketplace does not own this ANT')
@@ -557,9 +576,19 @@ function intents.stateNoticeHandler(msg)
 	-- Owner matches, resolve the intent (will auto-complete parent if all children resolved)
 	intents.resolveIntent(intentId, msg.Timestamp, msg)
 
+	-- For child intents, send acknowledgment to the parent's initiator (the user)
+	-- For parent intents, send to the intent's own initiator
+	local targetUser = intent.initiator
+	if intent.type == constants.INTENT_TYPES.CHILD and intent.parentIntentId then
+		local parent = Intents[intent.parentIntentId]
+		if parent then
+			targetUser = parent.initiator
+		end
+	end
+
 	-- Send acknowledgment
 	utils.Send(msg, {
-		Target = intent.initiator,
+		Target = targetUser,
 		Action = 'State-Notice-Processed',
 		['Intent-Id'] = intentId,
 		['ANT-Id'] = msg.From,

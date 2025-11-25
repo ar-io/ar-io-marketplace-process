@@ -28,7 +28,7 @@ function notices.creditNoticeHandler(msg)
 		if utils.isArioToken(msg.From) then
 			-- Accept ARIO tokens as fees
 			if quantity and utils.checkValidAmount(quantity) then
-				AccruedFeesAmount = AccruedFeesAmount + tonumber(quantity)
+				utils.accrueFee(quantity)
 			end
 		else
 			-- Refund non-ARIO tokens (like ANT)
@@ -36,7 +36,13 @@ function notices.creditNoticeHandler(msg)
 		end
 	end
 
-	-- REQUIRE X-Intent-Id
+	-- BLOCK ARIO Credit-Notices with X-Order-Action (ARIO orders must use internal balance)
+	if msg.Tags['X-Order-Action'] == 'Create-Order' and utils.isArioToken(msg.From) then
+		handleInvalidTransfer('ARIO orders must use internal balance - deposit ARIO first, then call Create-Order')
+		return
+	end
+
+	-- REQUIRE X-Intent-Id for ANT orders
 	if not msg.Tags['X-Intent-Id'] then
 		handleInvalidTransfer('X-Intent-Id required - create intent first')
 		return

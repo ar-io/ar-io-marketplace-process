@@ -297,7 +297,7 @@ end
 --- Send wrapper for ao.send/msg.reply
 --- @param msg Message The original message context
 --- @param sendParams SendParams The parameters to pass to ao.send
---- Note: For transfers with intent tracking, use ucm.transfer instead
+--- Note: For ANT transfers with intent tracking, use ucm.transferWithIntent instead
 function utils.Send(msg, sendParams)
 	-- Validate message structure
 	utils.validateMessage(sendParams)
@@ -377,10 +377,10 @@ end
 --- @param message string The error message
 --- @param action string|nil The action type (defaults to 'Validation-Error')
 function utils.refundAndError(msg, sender, message, action)
-	-- Refund the tokens if there's a valid quantity
+	-- Refund the tokens if there's a valid quantity (ANT tokens via Credit-Notice with intent tracking)
 	if msg.Tags.Quantity and msg.From and utils.checkValidAmount(msg.Tags.Quantity) then
 		local ucm = require('ucm')
-		ucm.transfer(sender, tostring(msg.Tags.Quantity), msg.From, msg)
+		ucm.transferWithIntent(sender, tostring(msg.Tags.Quantity), msg.From, msg)
 	end
 	
 	-- Send error notice
@@ -786,6 +786,35 @@ function utils.filterArray(array, filterFn)
 end
 
 --- Sends fee amount to treasury address
+--- Accrue a fee amount to the global AccruedFeesAmount
+--- This is the centralized way to record fees collected by the marketplace
+--- @param amount string|number The fee amount to accrue (in mARIO or equivalent)
+function utils.accrueFee(amount)
+	if not amount then
+		return
+	end
+	
+	local feeAmount = bint(amount)
+	if feeAmount > bint(0) then
+		AccruedFeesAmount = tostring(bint(AccruedFeesAmount) + feeAmount)
+	end
+end
+
+--- Reset accrued fees to zero
+--- Should only be called when fees are withdrawn
+--- @return string The amount that was accrued before reset
+function utils.resetAccruedFees()
+	local amount = AccruedFeesAmount
+	AccruedFeesAmount = '0'
+	return amount
+end
+
+--- Get current accrued fees amount
+--- @return string The current accrued fees as a string
+function utils.getAccruedFees()
+	return AccruedFeesAmount
+end
+
 --- @param originalAmount string|number The original amount before fees
 --- @param calculatedAmount string|number The calculated amount after fees
 --- @param feeToken string The token process ID for the fee
@@ -799,9 +828,19 @@ function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg
 	local feeAmount = bint(originalAmount) - bint(calculatedAmount)
 
 	if feeAmount > bint(0) then
-		local msgContext = msg or { Tags = {} }
-		local ucm = require('ucm')
-		ucm.transfer(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
+		-- For ARIO tokens, use internal balance ledger
+		if utils.isArioToken(feeToken) then
+			local balances = require('balances')
+			balances.increaseBalance(TREASURY_ADDRESS, tostring(feeAmount))
+		else
+			-- For non-ARIO tokens (ANTs), use external transfer with intent tracking
+			local msgContext = msg or { Tags = {} }
+			local ucm = require('ucm')
+			ucm.transferWithIntent(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
+		end
+		
+		-- Track the accrued fee
+		utils.accrueFee(tostring(feeAmount))
 	end
 end
 

@@ -440,63 +440,8 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
         assert.strictEqual(info.intents.total, 0, 'Completed intents should be pruned');
       });
 
-      it('should transition intent from pending → active when no matching order for buy', async () => {
-        // This tests the case where a buy intent doesn't immediately complete
-        // because there's no matching order (so it would create child intents or fail)
-        
-        // Step 1: Create buy intent
-        const intentResult = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
-          requestedOrderId: 'non-existent-order',
-        });
-
-        // Check if intent creation failed
-        if (intentResult.Action === 'Invalid-Create-Intent-Notice') {
-          // Intent creation failed - this is acceptable for this test
-          console.log('Intent creation failed (expected for non-existent order):', intentResult.Data);
-          return; // Test passes - error handling worked
-        }
-
-        const intentData = JSON.parse(intentResult.Data);
-        const intentId = intentData['Intent-Id'];
-
-        // Step 2: Send ARIO trying to buy a non-existent order (should fail)
-        await marketplaceProcess.process.ao.message({
-          process: marketplaceProcess.process.processId,
-          tags: [
-            { name: 'Action', value: 'Credit-Notice' },
-            { name: 'Sender', value: TEST_SENDER },
-            { name: 'Quantity', value: '1000000' },
-            { name: 'X-Intent-Id', value: intentId },
-            { name: 'X-Order-Action', value: 'Create-Order' },
-            { name: 'X-Dominant-Token', value: TEST_ARIO_PROCESS },
-            { name: 'X-Requested-Order-Id', value: 'non-existent-order' },
-          ],
-          data: '',
-          signer: TEST_SIGNER,
-          From: TEST_ARIO_PROCESS,
-        } as any);
-
-        // Intent should be resolved to active (no longer pending)
-        // but won't complete because the order wasn't found
-        const intent = await marketplaceProcess.getIntentById(intentId);
-        
-        if (intent.Action === 'Invalid-Get-Intent-By-Id-Notice') {
-          // Intent was pruned (failed and deleted)
-          assert(
-            intent.Data.includes('Intent not found') || intent.Data.includes('not found'),
-            'If intent is pruned, should get "Intent not found" error'
-          );
-        } else {
-          // Intent still exists, check it's active
-          const intentInfo = JSON.parse(intent.Data);
-          assert.strictEqual(
-            intentInfo.status,
-            'active',
-            'Intent should be active after Credit-Notice is processed'
-          );
-        }
-      });
+      // REMOVED: ARIO Credit-Notice orders are no longer supported
+      // ARIO must be deposited first, then use internal balance via Create-Order handler
     });
 
     describe('Negative Cases - Error Handling', () => {

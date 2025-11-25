@@ -213,43 +213,22 @@ function english_auction.settleAuction(args)
 	local calculatedSendAmount = utils.calculateSendAmount(winningBidAmount)
 	local calculatedFillAmount = utils.calculateFillAmount(quantity)
 
-	-- Check if this is an internal balance bid or Credit-Notice bid
+	-- All bids now use internal balance (ARIO Credit-Notices for orders are blocked)
 	local balances = require('balances')
-	local bidBalance = balances.getOrderLockedBalance(orderId, order.highestBidder)
-	local isInternalBalanceBid = bidBalance ~= '0'
-
-	if isInternalBalanceBid then
-		-- Internal balance flow: Transfer bid ARIO to seller's available balance
-		local feeAmount = winningBidAmount - calculatedSendAmount
-		
-		-- Transfer fee from winner's locked bid to treasury balance
-		balances.unlockBalanceFromOrder(orderId, order.highestBidder, TREASURY_ADDRESS, tostring(feeAmount))
-		
-		-- Transfer remaining bid ARIO to seller's balance
-		balances.unlockBalanceFromOrder(orderId, order.highestBidder, order.creator, tostring(calculatedSendAmount))
-		
-		-- Record the fee
-		AccruedFeesAmount = AccruedFeesAmount + tonumber(tostring(feeAmount))
-		
-		-- Transfer ANT to winner via Credit-Notice (ANT came via Credit-Notice)
-		local ucm = require('ucm')
-		ucm.transfer(order.highestBidder, tostring(calculatedFillAmount), order.token, args.msg)
-	else
-		-- Credit-Notice flow: Use traditional token transfers
-		utils.sendFeeToTreasury(winningBidAmount, calculatedSendAmount, validPair[1], args.msg)
-		
-		local ucm = require('ucm')
-		ucm.executeTokenTransfers({
-			sender = order.highestBidder,
-			dominantToken = validPair[1],
-			swapToken = order.token, -- ANT token process
-			originalSendAmount = winningBidAmount,
-			msg = args.msg,
-			currentOrderEntry = order,
-			calculatedSendAmount = calculatedSendAmount,
-			calculatedFillAmount = calculatedFillAmount,
-		})
-	end
+	local feeAmount = winningBidAmount - calculatedSendAmount
+	
+	-- Transfer fee from winner's locked bid to treasury balance
+	balances.unlockBalanceFromOrder(orderId, order.highestBidder, TREASURY_ADDRESS, tostring(feeAmount))
+	
+	-- Transfer remaining bid ARIO to seller's balance
+	balances.unlockBalanceFromOrder(orderId, order.highestBidder, order.creator, tostring(calculatedSendAmount))
+	
+	-- Record the fee
+	utils.accrueFee(tostring(feeAmount))
+	
+	-- Transfer ANT to winner via Credit-Notice with intent tracking (ANT came via Credit-Notice)
+	local ucm = require('ucm')
+	ucm.transferWithIntent(order.highestBidder, tostring(calculatedFillAmount), order.token, args.msg)
 
 	-- Record the settlement directly on the order
 	order.settlement = {

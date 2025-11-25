@@ -13,6 +13,7 @@ describe('utils', function()
 	local sentMessages
 	local function resetMocks()
 		sentMessages = {}
+		---@diagnostic disable-next-line: duplicate-set-field
 		_G.ao.send = function(msg)
 			table.insert(sentMessages, msg)
 		end
@@ -355,6 +356,7 @@ describe('utils', function()
 
 	describe('createLookupTable', function()
 		it('nil input returns empty table', function()
+			---@diagnostic disable-next-line: param-type-mismatch
 			assert.are.same({}, utils.createLookupTable(nil))
 		end)
 
@@ -406,13 +408,15 @@ describe('utils', function()
 			assert.is_nil(utils.deepCopy(nil))
 		end)
 
-		it('number primitive returns as-is', function()
-			assert.are.equal(42, utils.deepCopy(42))
-		end)
+	it('number primitive returns as-is', function()
+		---@diagnostic disable-next-line: param-type-mismatch
+		assert.are.equal(42, utils.deepCopy(42))
+	end)
 
-		it('string primitive returns as-is', function()
-			assert.are.equal('hello', utils.deepCopy('hello'))
-		end)
+	it('string primitive returns as-is', function()
+		---@diagnostic disable-next-line: param-type-mismatch
+		assert.are.equal('hello', utils.deepCopy('hello'))
+	end)
 
 		it('copies nested tables', function()
 			local src = { a = 1, b = { c = 2, d = { e = 3 } } }
@@ -483,28 +487,8 @@ describe('utils', function()
 				},
 				expectedFeeDelta = 0,
 			},
-			{
-				description = 'records fee when originalSendAmount greater than calculatedSendAmount',
-				args = {
-					sender = 'buyer-addr',
-					dominantToken = SELL_TOKEN,
-					swapToken = BUY_TOKEN,
-					originalSendAmount = '1000',
-					currentOrderEntry = makeOrderEntry({}),
-					calculatedSendAmount = '995',
-					calculatedFillAmount = '1',
-					msg = { Tags = {} },
-				},
-				expectedMessages = {
-					{
-						Target = SELL_TOKEN,
-						Action = 'Transfer',
-						Tags = { Recipient = 'seller-addr', Quantity = '995' },
-					},
-					{ Target = BUY_TOKEN, Action = 'Transfer', Tags = { Recipient = 'buyer-addr', Quantity = '1' } },
-				},
-				expectedFeeDelta = 5,
-			},
+			-- NOTE: Fee recording has been moved to sendFeeToTreasury (called before executeTokenTransfers)
+			-- executeTokenTransfers no longer handles fee calculation/recording
 			{
 				description = 'does not record fee when original equals calculated',
 				args = {
@@ -555,9 +539,9 @@ describe('utils', function()
 			it(tc.description, function()
 				resetMocks()
 				local ucm = require('ucm')
-				local beforeFees = _G.AccruedFeesAmount or 0
+				local beforeFees = _G.AccruedFeesAmount or '0'
 				ucm.executeTokenTransfers(tc.args)
-				local afterFees = _G.AccruedFeesAmount or 0
+				local afterFees = _G.AccruedFeesAmount or '0'
 				-- Need to check if Tags contain X-Intent-Id (should be nil when no parent intent)
 				for _, msg in ipairs(sentMessages) do
 					if msg.Tags then
@@ -565,7 +549,8 @@ describe('utils', function()
 					end
 				end
 				assert.are.same(tc.expectedMessages, sentMessages)
-				assert.are.equal(tc.expectedFeeDelta, afterFees - beforeFees)
+				local feeDelta = tostring(bint(afterFees) - bint(beforeFees))
+				assert.are.equal(tostring(tc.expectedFeeDelta), feeDelta)
 			end)
 		end
 	end)
@@ -912,44 +897,143 @@ describe('utils', function()
 		end
 	end)
 
+	describe('accrueFee', function()
+		it('accrues fee amount', function()
+			_G.AccruedFeesAmount = '100'
+			utils.accrueFee('50')
+			assert.are.equal('150', _G.AccruedFeesAmount)
+		end)
+
+		it('handles numeric input', function()
+			_G.AccruedFeesAmount = '100'
+			utils.accrueFee(75)
+			assert.are.equal('175', _G.AccruedFeesAmount)
+		end)
+
+		it('ignores zero amounts', function()
+			_G.AccruedFeesAmount = '100'
+			utils.accrueFee('0')
+			assert.are.equal('100', _G.AccruedFeesAmount)
+		end)
+
+		it('ignores negative amounts', function()
+			_G.AccruedFeesAmount = '100'
+			utils.accrueFee('-50')
+			assert.are.equal('100', _G.AccruedFeesAmount)
+		end)
+		
+	it('handles nil input', function()
+		_G.AccruedFeesAmount = '100'
+		---@diagnostic disable-next-line: param-type-mismatch
+		utils.accrueFee(nil)
+		assert.are.equal('100', _G.AccruedFeesAmount)
+	end)
+	end)
+
+	describe('resetAccruedFees', function()
+		it('resets fees to zero and returns old amount', function()
+			_G.AccruedFeesAmount = '500'
+			local amount = utils.resetAccruedFees()
+			assert.are.equal('500', amount)
+			assert.are.equal('0', _G.AccruedFeesAmount)
+		end)
+
+		it('works when fees are already zero', function()
+			_G.AccruedFeesAmount = '0'
+			local amount = utils.resetAccruedFees()
+			assert.are.equal('0', amount)
+			assert.are.equal('0', _G.AccruedFeesAmount)
+		end)
+	end)
+
+	describe('getAccruedFees', function()
+		it('returns current accrued fees', function()
+			_G.AccruedFeesAmount = '250'
+			assert.are.equal('250', utils.getAccruedFees())
+		end)
+
+		it('returns zero when no fees accrued', function()
+			_G.AccruedFeesAmount = '0'
+			assert.are.equal('0', utils.getAccruedFees())
+		end)
+	end)
+
 	describe('sendFeeToTreasury', function()
 		local TEST_TREASURY = 'TEST_TREASURY_ADDRESS_ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+		local balances = require('balances')
 
-		it('sends fee when original > calculated', function()
+		it('uses internal balance for ARIO and accrues fee', function()
 			_G.TREASURY_ADDRESS = TEST_TREASURY
+			_G.AccruedFeesAmount = '0'
+			_G.ARIOBalances[TEST_TREASURY] = {balance = '0', orders = {}}
 			resetMocks()
-			utils.sendFeeToTreasury('1000', '995', 'ARIO_TOKEN')
-			assert.are.same({
-				{ Target = 'ARIO_TOKEN', Action = 'Transfer', Tags = { Recipient = TEST_TREASURY, Quantity = '5' } },
-			}, sentMessages)
-		end)
-
-		it('no send when fee equals zero', function()
-			_G.TREASURY_ADDRESS = TEST_TREASURY
-			resetMocks()
-			utils.sendFeeToTreasury('1000', '1000', 'ARIO_TOKEN')
+			utils.sendFeeToTreasury('1000', '995', _G.ARIO_TOKEN_PROCESS_ID)
+			-- No external transfer for ARIO
 			assert.are.same({}, sentMessages)
+			-- Treasury balance increased
+			assert.are.equal('5', balances.getBalance(TEST_TREASURY))
+			-- Fee accrued
+			assert.are.equal('5', _G.AccruedFeesAmount)
 		end)
 
-		it('no send when fee negative', function()
+		it('sends external transfer for non-ARIO tokens', function()
 			_G.TREASURY_ADDRESS = TEST_TREASURY
+			_G.AccruedFeesAmount = '0'
 			resetMocks()
-			utils.sendFeeToTreasury('900', '995', 'ARIO_TOKEN')
-			assert.are.same({}, sentMessages)
+			local antToken = 'ant-token-'..(string.rep('x', 33))
+			utils.sendFeeToTreasury('1000', '995', antToken)
+			-- External transfer for ANT
+			assert.are.equal(1, #sentMessages)
+			assert.are.equal(antToken, sentMessages[1].Target)
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal(TEST_TREASURY, sentMessages[1].Tags.Recipient)
+			assert.are.equal('5', sentMessages[1].Tags.Quantity)
+			-- Fee accrued
+			assert.are.equal('5', _G.AccruedFeesAmount)
 		end)
 
-		it('no send when TREASURY_ADDRESS is nil', function()
+		it('no action and no accrue when fee equals zero', function()
+			_G.TREASURY_ADDRESS = TEST_TREASURY
+			_G.AccruedFeesAmount = '0'
+			_G.ARIOBalances[TEST_TREASURY] = {balance = '0', orders = {}}
+			resetMocks()
+			utils.sendFeeToTreasury('1000', '1000', _G.ARIO_TOKEN_PROCESS_ID)
+			assert.are.same({}, sentMessages)
+			assert.are.equal('0', balances.getBalance(TEST_TREASURY))
+			assert.are.equal('0', _G.AccruedFeesAmount)
+		end)
+
+		it('no action and no accrue when fee negative', function()
+			_G.TREASURY_ADDRESS = TEST_TREASURY
+			_G.AccruedFeesAmount = '0'
+			_G.ARIOBalances[TEST_TREASURY] = {balance = '0', orders = {}}
+			resetMocks()
+			utils.sendFeeToTreasury('900', '995', _G.ARIO_TOKEN_PROCESS_ID)
+			assert.are.same({}, sentMessages)
+			assert.are.equal('0', balances.getBalance(TEST_TREASURY))
+			assert.are.equal('0', _G.AccruedFeesAmount)
+		end)
+
+		it('no action when TREASURY_ADDRESS is nil', function()
 			_G.TREASURY_ADDRESS = nil
+			_G.AccruedFeesAmount = '0'
 			resetMocks()
-			utils.sendFeeToTreasury('1000', '995', 'ARIO_TOKEN')
+			utils.sendFeeToTreasury('1000', '995', _G.ARIO_TOKEN_PROCESS_ID)
 			assert.are.same({}, sentMessages)
+			assert.are.equal('0', _G.AccruedFeesAmount)
 		end)
 
-		it('no send when TREASURY_ADDRESS is nil', function()
-			_G.TREASURY_ADDRESS = nil
+		it('accrues fees additively across multiple calls', function()
+			_G.TREASURY_ADDRESS = TEST_TREASURY
+			_G.AccruedFeesAmount = '10'
+			_G.ARIOBalances[TEST_TREASURY] = {balance = '0', orders = {}}
 			resetMocks()
-			utils.sendFeeToTreasury('1000', '995', 'ARIO_TOKEN')
-			assert.are.same({}, sentMessages)
+			utils.sendFeeToTreasury('1000', '995', _G.ARIO_TOKEN_PROCESS_ID)
+			assert.are.equal('5', balances.getBalance(TEST_TREASURY))
+			assert.are.equal('15', _G.AccruedFeesAmount)
+			utils.sendFeeToTreasury('2000', '1990', _G.ARIO_TOKEN_PROCESS_ID)
+			assert.are.equal('15', balances.getBalance(TEST_TREASURY))
+			assert.are.equal('25', _G.AccruedFeesAmount)
 		end)
 	end)
 
@@ -1182,9 +1266,10 @@ describe('utils', function()
 			assert.is_false(utils.isValidEthAddress('0xFCAd0B19bB29D4674531d6f115237E16AfCE37'))
 		end)
 
-		it('should return false on passing in non-string value', function()
-			assert.is_false(utils.isValidEthAddress(3))
-		end)
+	it('should return false on passing in non-string value', function()
+		---@diagnostic disable-next-line: param-type-mismatch
+		assert.is_false(utils.isValidEthAddress(3))
+	end)
 	end)
 
 	describe('isValidArweaveAddress', function()
@@ -1206,9 +1291,10 @@ describe('utils', function()
 			assert.is_false(utils.isValidArweaveAddress('ThisAddressIsWayTooLongToBeAValidArweaveAddress123'))
 		end)
 
-		it('should return false for nil', function()
-			assert.is_false(utils.isValidArweaveAddress(nil))
-		end)
+	it('should return false for nil', function()
+		---@diagnostic disable-next-line: param-type-mismatch
+		assert.is_false(utils.isValidArweaveAddress(nil))
+	end)
 	end)
 
 	describe('isValidAOAddress', function()
@@ -1295,15 +1381,17 @@ describe('utils', function()
 			assert.are.same({ 'a', 'b', 'c' }, result)
 		end)
 
-		it('should handle empty string', function()
-			local result = utils.splitString('')
-			assert.are.same({}, result)
-		end)
+	it('should handle empty string', function()
+		---@diagnostic disable-next-line: param-type-mismatch
+		local result = utils.splitString('')
+		assert.are.same({}, result)
+	end)
 
-		it('should handle nil string', function()
-			local result = utils.splitString(nil)
-			assert.are.same({}, result)
-		end)
+	it('should handle nil string', function()
+		---@diagnostic disable-next-line: param-type-mismatch
+		local result = utils.splitString(nil)
+		assert.are.same({}, result)
+	end)
 
 		it('should handle string with no delimiters', function()
 			local result = utils.splitString('single')
@@ -1330,17 +1418,19 @@ describe('utils', function()
 			assert.are.same({}, keys)
 		end)
 
-		it('should handle array-like tables', function()
-			local t = { 'a', 'b', 'c' }
-			local keys = utils.keys(t)
-			table.sort(keys)
-			assert.are.same({ 1, 2, 3 }, keys)
-		end)
+	it('should handle array-like tables', function()
+		local t = { 'a', 'b', 'c' }
+		local keys = utils.keys(t)
+		---@diagnostic disable-next-line: param-type-mismatch
+		table.sort(keys)
+		assert.are.same({ 1, 2, 3 }, keys)
+	end)
 
-		it('should throw error for non-table argument', function()
-			assert.has_error(function()
-				utils.keys('not a table')
-			end, 'argument needs to be a table')
-		end)
+	it('should throw error for non-table argument', function()
+		assert.has_error(function()
+			---@diagnostic disable-next-line: param-type-mismatch
+			utils.keys('not a table')
+		end, 'argument needs to be a table')
+	end)
 	end)
 end)

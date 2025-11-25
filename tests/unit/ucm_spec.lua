@@ -105,6 +105,7 @@ describe('ucm helpers', function()
 
 		before_each(function()
 			sentMessages = {}
+			---@diagnostic disable-next-line: duplicate-set-field
 			_G.ao.send = function(msg)
 				table.insert(sentMessages, msg)
 			end
@@ -186,6 +187,7 @@ describe('ucm helpers', function()
 
 		before_each(function()
 			sentMessages = {}
+			---@diagnostic disable-next-line: duplicate-set-field
 			_G.ao.send = function(msg)
 				table.insert(sentMessages, msg)
 			end
@@ -227,6 +229,7 @@ describe('ucm helpers', function()
 
 		before_each(function()
 			sentMessages = {}
+			---@diagnostic disable-next-line: duplicate-set-field
 			_G.ao.send = function(msg)
 				table.insert(sentMessages, msg)
 			end
@@ -357,6 +360,188 @@ describe('ucm helpers', function()
 			local pair = ucm.ensurePairExists(validPair)
 			assert.is_not_nil(pair)
 			assert.is_not_nil(pair.orders['order-1'])
+		end)
+	end)
+
+	describe('createOrderHandler - Internal ARIO Balance', function()
+		local sentMessages
+		local balances
+
+		before_each(function()
+			resetGlobals()
+			balances = require('balances')
+			
+			-- Mock ao.send to track messages
+			sentMessages = {}
+			---@diagnostic disable-next-line: duplicate-set-field
+			_G.ao.send = function(msg)
+				table.insert(sentMessages, msg)
+				return true
+			end
+			
+			-- Give user and seller some ARIO balance
+			_G.ARIOBalances['test-user'] = {balance = '10000000000', orders = {}} -- 10 ARIO
+			_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}} -- ANT seller
+		end)
+
+		it('should use internal ARIO balance for buying ANT (no Credit-Notice needed)', function()
+			-- Setup: Create an ANT listing first
+			local antToken = string.rep('1', 43) -- 43 character ANT process ID
+			_G.Orderbook[antToken] = {
+				[_G.ARIO_TOKEN_PROCESS_ID] = {
+					pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					Pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					orders = {
+						['ant-sell-order'] = {
+							id = 'ant-sell-order',
+							quantity = '1',
+							originalQuantity = '1',
+							creator = 'ant-seller',
+							token = antToken,
+							dateCreated = 1000,
+							price = '1000000000', -- 1 ARIO
+							orderType = 'fixed',
+							status = 'active',
+							dominantToken = antToken,
+							swapToken = _G.ARIO_TOKEN_PROCESS_ID,
+						},
+					},
+				},
+			}
+			_G.OrderIndex['ant-sell-order'] = {
+				dominantToken = antToken,
+				swapToken = _G.ARIO_TOKEN_PROCESS_ID,
+			}
+
+			local msg = {
+				Id = 'buy-order-123',
+				From = 'test-user',
+				Timestamp = 2000,
+				['Block-Height'] = 100,
+				Tags = {
+					['Swap-Token'] = antToken,
+					Quantity = '1000000000', -- 1 ARIO
+					['Order-Type'] = 'fixed',
+					['Requested-Order-Id'] = 'ant-sell-order',
+				},
+			}
+
+			-- Act: User buys ANT using internal ARIO balance
+			local result = ucm.createOrderHandler(msg)
+			local resultData = require('json').decode(result)
+
+			-- Assert: Balance should be deducted
+			assert.are.equal('9000000000', _G.ARIOBalances['test-user'].balance) -- 10 - 1 = 9 ARIO
+
+			-- Assert: Seller should receive ARIO to their internal balance (minus fee)
+			local sellerBalance = balances.getBalance('ant-seller')
+			assert.is_true(tonumber(sellerBalance) > 0, 'Seller should receive ARIO')
+
+			-- Assert: No Credit-Notice needed, order executed immediately
+			assert.are.equal('Success', resultData.Status)
+		end)
+
+		it('should fail when user has insufficient internal ARIO balance', function()
+			-- User has 10 ARIO, tries to spend 20 ARIO
+			local antToken = string.rep('2', 43) -- 43 character ANT process ID
+			_G.Orderbook[antToken] = {
+				[_G.ARIO_TOKEN_PROCESS_ID] = {
+					pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					Pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					orders = {
+						['expensive-ant'] = {
+							id = 'expensive-ant',
+							quantity = '1',
+							originalQuantity = '1',
+							creator = 'ant-seller',
+							token = antToken,
+							dateCreated = 1000,
+							price = '20000000000', -- 20 ARIO
+							orderType = 'fixed',
+							status = 'active',
+							dominantToken = antToken,
+							swapToken = _G.ARIO_TOKEN_PROCESS_ID,
+						},
+					},
+				},
+			}
+
+			local msg = {
+				Id = 'buy-order-fail',
+				From = 'test-user',
+				Timestamp = 2000,
+				['Block-Height'] = 100,
+				Tags = {
+					['Swap-Token'] = antToken,
+					Quantity = '20000000000', -- 20 ARIO (more than user has)
+					['Order-Type'] = 'fixed',
+					['Requested-Order-Id'] = 'expensive-ant',
+				},
+			}
+
+			local success, err = pcall(function()
+				ucm.createOrderHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_not_nil(err)
+			assert.is_true(string.find(tostring(err), 'Insufficient balance') ~= nil)
+			
+			-- User balance should remain unchanged
+			assert.are.equal('10000000000', _G.ARIOBalances['test-user'].balance)
+		end)
+
+		it('should not create intents for internal ARIO balance orders', function()
+			-- Setup simple ANT listing
+			local antToken = string.rep('3', 43) -- 43 character ANT process ID
+			_G.Orderbook[antToken] = {
+				[_G.ARIO_TOKEN_PROCESS_ID] = {
+					pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					Pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					orders = {
+						['simple-ant'] = {
+							id = 'simple-ant',
+							quantity = '1',
+							originalQuantity = '1',
+							creator = 'ant-seller',
+							token = antToken,
+							dateCreated = 1000,
+							price = '500000000', -- 0.5 ARIO
+							orderType = 'fixed',
+							status = 'active',
+							dominantToken = antToken,
+							swapToken = _G.ARIO_TOKEN_PROCESS_ID,
+						},
+					},
+				},
+			}
+
+			local msg = {
+				Id = 'buy-order-no-intent',
+				From = 'test-user',
+				Timestamp = 2000,
+				['Block-Height'] = 100,
+				Tags = {
+					['Swap-Token'] = antToken,
+					Quantity = '500000000', -- 0.5 ARIO
+					['Order-Type'] = 'fixed',
+					['Requested-Order-Id'] = 'simple-ant',
+				},
+			}
+
+			-- Initialize empty Intents table
+			_G.Intents = {}
+			_G.IntentCounter = '0'
+
+			ucm.createOrderHandler(msg)
+
+			-- Assert: No intents should be created for ARIO internal balance orders
+			local intentCount = 0
+			for _ in pairs(_G.Intents) do
+				intentCount = intentCount + 1
+			end
+			assert.are.equal(0, intentCount, 'No intents should be created for internal ARIO balance orders')
+			assert.are.equal('0', _G.IntentCounter, 'Intent counter should remain at 0')
 		end)
 	end)
 end)

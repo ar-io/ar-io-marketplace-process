@@ -1,6 +1,8 @@
 print('\n=== Loading intents module for testing ===')
 local testGlobals = require('test_globals')
 local intents = require('intents')
+local constants = require('constants')
+local bint = require('.bint')(256)
 print('✓ intents module loaded')
 
 describe('Intent Management', function()
@@ -134,30 +136,38 @@ describe('Intent Management', function()
 			assert.are.equal(1234567900, Intents[intent.intentId].resolvedAt)
 		end)
 
-		it('should update child status to resolved', function()
-			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
-			
-			-- Create parent
-			local parentMsg = {
-				Id = 'parent-999',
-				From = 'user-abc',
-				Timestamp = 1234567890,
-			}
-			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+	it('should update child status to resolved', function()
+		ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
+		
+		-- Create parent
+		local parentMsg = {
+			Id = 'parent-999',
+			From = 'user-abc',
+			Timestamp = 1234567890,
+		}
+		local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
 
-			-- Create child
-			local childMsg = {
-				Id = 'msg-222',
-				Timestamp = 1234567900,
-			}
-			local childIntent = intents.createChildIntent(parentIntent.intentId, childMsg, 'token-123', {})
+		-- Create TWO children so resolving one doesn't complete the parent
+		local childMsg1 = {
+			Id = 'msg-222',
+			Timestamp = 1234567900,
+		}
+		local childIntent1 = intents.createChildIntent(parentIntent.intentId, childMsg1, 'token-123', {})
+		
+		local childMsg2 = {
+			Id = 'msg-333',
+			Timestamp = 1234567900,
+		}
+		local childIntent2 = intents.createChildIntent(parentIntent.intentId, childMsg2, 'token-456', {})
 
-			local result = intents.resolveIntent(childIntent.intentId, 1234567950)
+		local result = intents.resolveIntent(childIntent1.intentId, 1234567950)
 
-			assert.is_true(result)
-			assert.are.equal('resolved', Intents[childIntent.intentId].status)
-			assert.are.equal(1234567950, Intents[childIntent.intentId].resolvedAt)
-		end)
+		assert.is_true(result)
+		assert.are.equal('resolved', Intents[childIntent1.intentId].status)
+		assert.are.equal(1234567950, Intents[childIntent1.intentId].resolvedAt)
+		-- Second child should still be pending
+		assert.are.equal('pending', Intents[childIntent2.intentId].status)
+	end)
 
 		it('should return false for non-existent intent', function()
 			local result = intents.resolveIntent('non-existent-id', 1234567890)
@@ -353,36 +363,37 @@ describe('Intent Management', function()
 	end)
 
 	describe('areAllChildrenResolved', function()
-		it('should return true when all children are resolved', function()
-			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
-			
-			-- Create parent
-			local parentMsg = {
-				Id = 'parent-check',
-				From = 'user-abc',
-				Timestamp = 1234567890,
-			}
-			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
+	it('should return true when all children are resolved', function()
+		ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
+		
+		-- Create parent
+		local parentMsg = {
+			Id = 'parent-check',
+			From = 'user-abc',
+			Timestamp = 1234567890,
+		}
+		local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
 
-			-- Create children
-			local childMsg1 = {
-				Id = 'child-1',
-				Timestamp = 1234567900,
-			}
-			local child1 = intents.createChildIntent(parentIntent.intentId, childMsg1, 'token-1', {})
+		-- Create children
+		local childMsg1 = {
+			Id = 'child-1',
+			Timestamp = 1234567900,
+		}
+		local child1 = intents.createChildIntent(parentIntent.intentId, childMsg1, 'token-1', {})
 
-			local childMsg2 = {
-				Id = 'child-2',
-				Timestamp = 1234567900,
-			}
-			local child2 = intents.createChildIntent(parentIntent.intentId, childMsg2, 'token-2', {})
+		local childMsg2 = {
+			Id = 'child-2',
+			Timestamp = 1234567900,
+		}
+		local child2 = intents.createChildIntent(parentIntent.intentId, childMsg2, 'token-2', {})
 
-			-- Resolve both children
-			intents.resolveIntent(child1.intentId, 1234567950)
-			intents.resolveIntent(child2.intentId, 1234567960)
+		-- Manually set both children to resolved status (without triggering completion)
+		Intents[child1.intentId].status = constants.INTENT_STATUSES.RESOLVED
+		Intents[child2.intentId].status = constants.INTENT_STATUSES.RESOLVED
 
-			assert.is_true(intents.areAllChildrenIntentsResolved(parentIntent.intentId))
-		end)
+		-- Now check if all children are resolved
+		assert.is_true(intents.areAllChildrenIntentsResolved(parentIntent.intentId))
+	end)
 
 		it('should return false when not all children are resolved', function()
 			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
@@ -455,9 +466,8 @@ describe('Intent Management', function()
 
 			local intent = intents.createParentIntent(msg, 'Create-Order', {})
 
-			-- 1 ARIO should be charged (LISTING_FEE_ARIO)
-			local bint = require('bint')(256)
-			assert.are.equal(tostring(bint('9000000000')), ARIOBalances['user-abc'].balance)
+		-- 1 ARIO should be charged (LISTING_FEE_ARIO)
+		assert.are.equal(tostring(bint('9000000000')), ARIOBalances['user-abc'].balance)
 			-- Treasury should receive fee
 			assert.are.equal('1000000000', ARIOBalances[TREASURY_ADDRESS].balance)
 		end)
@@ -480,9 +490,8 @@ describe('Intent Management', function()
 
 			local intent = intents.createParentIntent(msg, 'Create-Order', forwardedTags)
 
-			-- Fee should be 2 ARIO (48 hours / 24 hours = 2)
-			local bint = require('bint')(256)
-			assert.are.equal(tostring(bint('18000000000')), ARIOBalances['user-abc'].balance)
+		-- Fee should be 2 ARIO (48 hours / 24 hours = 2)
+		assert.are.equal(tostring(bint('18000000000')), ARIOBalances['user-abc'].balance)
 			assert.are.equal('2000000000', ARIOBalances[TREASURY_ADDRESS].balance)
 		end)
 
@@ -750,6 +759,11 @@ describe('ANT Intent Resolution', function()
 	
 	before_each(function()
 		sentMessages = {}
+		testGlobals.resetState()
+		---@diagnostic disable-next-line: duplicate-set-field
+		_G.ao.send = function(msg)
+			table.insert(sentMessages, msg)
+		end
 	end)
 	
 	describe('pushANTIntentResolutionHandler', function()
@@ -869,15 +883,25 @@ describe('ANT Intent Resolution', function()
 			}
 			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
 			
-			-- Create child intent expecting from ANT
-			local childMsg = {
+			-- Create TWO child intents so resolving one doesn't complete the parent
+			local childMsg1 = {
 				Timestamp = 1000100,
 			}
 			local antProcessId = 'ant-process-'..(string.rep('x', 33))
-			local childIntent = intents.createChildIntent(
+			local childIntent1 = intents.createChildIntent(
 				parentIntent.intentId,
-				childMsg,
+				childMsg1,
 				antProcessId,
+				{}
+			)
+			
+			local childMsg2 = {
+				Timestamp = 1000100,
+			}
+			local childIntent2 = intents.createChildIntent(
+				parentIntent.intentId,
+				childMsg2,
+				'other-token-id',
 				{}
 			)
 			
@@ -889,28 +913,28 @@ describe('ANT Intent Resolution', function()
 					Owner = ao.id, -- Marketplace owns the ANT
 				}),
 				Tags = {
-					['X-Intent-Id'] = childIntent.intentId,
+					['X-Intent-Id'] = childIntent1.intentId,
 				},
 			}
 			
 			intents.stateNoticeHandler(stateNotice)
 			
 		-- Child intent should be resolved
-		local resolvedChild = intents.getIntentById(childIntent.intentId)
+		local resolvedChild = intents.getIntentById(childIntent1.intentId)
 		assert.is_not_nil(resolvedChild)
 		assert.are.equal('resolved', resolvedChild and resolvedChild.status)
 		
-		-- Parent should be completed (only one child)
-		local resolvedParent = intents.getIntentById(parentIntent.intentId)
-		assert.is_not_nil(resolvedParent)
-		assert.are.equal('completed', resolvedParent and resolvedParent.status)
+	-- Parent should be settling (first child resolved, second child still pending)
+	local parentAfterResolve = intents.getIntentById(parentIntent.intentId)
+	assert.is_not_nil(parentAfterResolve)
+	assert.are.equal('settling', parentAfterResolve and parentAfterResolve.status)
 			
-			-- Acknowledgment should be sent
-			assert.are.equal(1, #sentMessages)
-			assert.are.equal('user-ant-owner', sentMessages[1].Target)
-			assert.are.equal('State-Notice-Processed', sentMessages[1].Action)
-			assert.are.equal(childIntent.intentId, sentMessages[1]['Intent-Id'])
-			assert.are.equal('resolved', sentMessages[1]['Intent-Status'])
+		-- Acknowledgment should be sent
+		assert.are.equal(1, #sentMessages)
+		assert.are.equal('user-ant-owner', sentMessages[1].Target)
+		assert.are.equal('State-Notice-Processed', sentMessages[1].Action)
+		assert.are.equal(childIntent1.intentId, sentMessages[1]['Intent-Id'])
+		assert.are.equal('resolved', sentMessages[1]['Intent-Status'])
 		end)
 		
 		it('should fail intent when ANT owner is not marketplace', function()
@@ -1116,12 +1140,11 @@ describe('ANT Intent Resolution', function()
 				Timestamp = 1000300,
 				Tags = {['X-Intent-Id'] = child2.intentId},
 			}
-			intents.stateNoticeHandler(msg2)
-			
-		-- Now parent should be completed
-		local parentAfterSecond = intents.getIntentById(parentIntent.intentId)
-		assert.is_not_nil(parentAfterSecond)
-		assert.are.equal('completed', parentAfterSecond and parentAfterSecond.status)
+		intents.stateNoticeHandler(msg2)
+		
+	-- Now parent should be completed and pruned (no longer in Intents table)
+	local parentAfterSecond = intents.getIntentById(parentIntent.intentId)
+	assert.is_nil(parentAfterSecond)
 		end)
 	end)
 end)

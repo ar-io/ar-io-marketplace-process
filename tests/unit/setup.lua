@@ -1,6 +1,13 @@
 -- Set up package paths for both source and test directories
 package.path = './src/?.lua;./src/common/?.lua;./tests/unit/?.lua;' .. package.path
 
+-- Set up essential mocks BEFORE loading globals (needed by src/globals.lua)
+_G.ao = _G.ao or {}
+_G.ao.send = function(_)
+	return true
+end
+_G.ao.id = _G.ao.id or 'test-process'
+
 -- Load source globals FIRST to initialize all state variables
 print('Loading source globals...')
 require('globals')

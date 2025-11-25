@@ -167,11 +167,17 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 		})
 
 	-- Handle refund if sent amount was more than required
-	-- Note: For internal balance orders, refund comes from OrderLockedBalances
-	-- For Credit-Notice orders, refund goes via external transfer
 	if sentAmount > requiredAmount then
 		local refundAmount = sentAmount - requiredAmount
-		ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+		local utils = require('utils')
+		if utils.isArioToken(args.dominantToken) then
+			-- ARIO: Refund to buyer's internal balance (was already deducted by balances.transfer)
+			local balances = require('balances')
+			balances.increaseBalance(args.sender, tostring(refundAmount))
+		else
+			-- ANT: Refund via external transfer with intent tracking
+			ucm.transferWithIntent(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+		end
 	end
 
 			-- Mark order as executed and update fields

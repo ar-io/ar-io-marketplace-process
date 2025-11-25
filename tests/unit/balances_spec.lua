@@ -168,8 +168,20 @@ describe('Balance Management', function()
 	end)
 
 	describe('withdrawArioHandler', function()
-		pending('should reduce balance on withdrawal', function()
-			ARIOBalances['user-withdraw'] = '10000'
+		local sentMessages
+
+		before_each(function()
+			-- Mock ao.send to track messages
+			sentMessages = {}
+			---@diagnostic disable-next-line: duplicate-set-field
+			_G.ao.send = function(msg)
+				table.insert(sentMessages, msg)
+				return true
+			end
+		end)
+
+		it('should reduce balance and send direct transfer (no intent)', function()
+			ARIOBalances['user-withdraw'] = {balance = '10000', orders = {}}
 
 			local msg = {
 				From = 'user-withdraw',
@@ -178,21 +190,32 @@ describe('Balance Management', function()
 				},
 			}
 
-			-- This will try to call ucm.transfer which may not work in unit test
-			-- But balance reduction should happen
-			local success = pcall(function()
-				balances.withdrawArioHandler(msg)
-			end)
+			balances.withdrawArioHandler(msg)
 
-			-- If ucm is not available, this might fail, but balance should be reduced first
-			if ARIOBalances['user-withdraw'] then
-				-- Check if balance was reduced (7000 expected)
-				assert.are.equal('7000', ARIOBalances['user-withdraw'])
-			end
+			-- Balance should be reduced
+			assert.are.equal('7000', ARIOBalances['user-withdraw'].balance)
+
+			-- Should send Transfer message (ucm.transfer, not ucm.transferWithIntent)
+			assert.are.equal(2, #sentMessages) -- Transfer + Withdraw-Ario-Notice
+			
+			-- First message should be the Transfer (no X-Intent-Id tag)
+			local transferMsg = sentMessages[1]
+			assert.are.equal('Transfer', transferMsg.Action)
+			assert.are.equal(ARIO_TOKEN_PROCESS_ID, transferMsg.Target)
+			assert.are.equal('user-withdraw', transferMsg.Tags.Recipient)
+			assert.are.equal('3000', transferMsg.Tags.Quantity)
+			
+			-- Verify NO intent tracking (no X-Intent-Id tag)
+			assert.is_nil(transferMsg.Tags['X-Intent-Id'])
+			
+			-- Second message should be the Withdraw-Ario-Notice
+			local noticeMsg = sentMessages[2]
+			assert.are.equal('Withdraw-Ario-Notice', noticeMsg.Action)
+			assert.are.equal('user-withdraw', noticeMsg.Target)
 		end)
 
-		pending('should fail with insufficient balance', function()
-			ARIOBalances['user-poor'] = '100'
+		it('should fail with insufficient balance', function()
+			ARIOBalances['user-poor'] = {balance = '100', orders = {}}
 
 			local msg = {
 				From = 'user-poor',
@@ -206,7 +229,11 @@ describe('Balance Management', function()
 			end)
 
 			assert.is_false(success)
-			assert.is_not_nil(err:match('Insufficient balance'))
+			assert.is_not_nil(err)
+			assert.is_true(string.find(tostring(err), 'Insufficient balance') ~= nil)
+			
+			-- Balance should remain unchanged
+			assert.are.equal('100', ARIOBalances['user-poor'].balance)
 		end)
 	end)
 
