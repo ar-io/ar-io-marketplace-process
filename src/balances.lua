@@ -95,14 +95,21 @@ end
 --- @param limit number Max number of results to return
 --- @param sortBy string|nil Field to sort by
 --- @param sortOrder string "asc" or "desc" sort direction
---- @return table Array of {address, balance} objects
+--- @return table Array of balance breakdown objects with address, balance, locked, total, orders
 function balances.getPaginatedBalances(cursor, limit, sortBy, sortOrder)
 	local balancesArray = {}
 	local cursorField = "address" -- the cursor will be the wallet address
 	for address, account in pairs(ARIOBalances) do
+		local locked = balances.getUserTotalLockedBalance(address)
+		local available = account.balance
+		local total = bint(available) + bint(locked)
+		
 		table.insert(balancesArray, {
 			address = address,
-			balance = account.balance,
+			balance = available, -- Available balance
+			lockedBalance = locked, -- Total locked in orders
+			totalBalance = tostring(total), -- Available + locked
+			orders = account.orders or {}, -- Per-order locked amounts
 		})
 	end
 
@@ -132,30 +139,55 @@ end
 
 --- Handler for withdrawing ARIO from the marketplace
 --- @param msg table The message with Quantity tag
+--- @return string JSON-encoded response with status and quantity
 function balances.withdrawArioHandler(msg)
 	local account = msg.From
 	local quantity = msg.Tags.Quantity
+	local recipient = msg.Tags.Recipient or account
+	
 	assert(quantity and utils.checkValidAmount(quantity), "Invalid quantity. Must be integer greater than 0")
 	assert(balances.walletHasSufficientBalance(account, quantity), "Insufficient balance")
+	
 	balances.reduceBalance(account, quantity)
-	ucm.transfer(account, quantity, ARIO_TOKEN_PROCESS_ID, msg)
-	utils.Send(msg, { Target = account, Action = "Withdraw-Ario-Notice", Data = json.encode(quantity) })
+	ucm.transfer(recipient, quantity, ARIO_TOKEN_PROCESS_ID, msg)
+	
+	return json.encode({
+		Status = 'Success',
+		Message = 'ARIO withdrawal initiated',
+		Quantity = quantity,
+		Recipient = recipient,
+	})
 end
 
 --- Handler for getting paginated list of balances
 --- @param msg table The message with pagination tags
+--- @return string JSON-encoded paginated balances
 function balances.getPaginatedBalancesHandler(msg)
 	local page = utils.parsePaginationTags(msg)
 	local walletBalances = balances.getPaginatedBalances(page.cursor, page.limit, page.sortBy or "balance", page.sortOrder)
-	utils.Send(msg, { Target = msg.From, Action = "Balances-Notice", Data = json.encode(walletBalances) })
+	return json.encode(walletBalances)
 end
 
 --- Handler for getting a single balance
 --- @param msg table The message with optional Target/Address tag (defaults to msg.From)
+--- @return string JSON-encoded balance data with breakdown
 function balances.getBalanceHandler(msg)
 	local target = msg.Tags.Target or msg.Tags.Address or msg.From
-	local balance = balances.getBalance(target)
-	utils.Send(msg, { Target = msg.From, Action = "Balance-Notice", Data = json.encode(balance) })
+	local available = balances.getBalance(target)
+	local locked = balances.getUserTotalLockedBalance(target)
+	local total = bint(available) + bint(locked)
+	
+	balances.ensureAccountExists(target)
+	
+	local balanceData = {
+		address = target,
+		balance = available, -- Available balance
+		lockedBalance = locked, -- Total locked in orders
+		totalBalance = tostring(total), -- Available + locked
+		orders = ARIOBalances[target].orders or {}, -- Per-order locked amounts
+	}
+	
+	return json.encode(balanceData)
 end
 
 -- ============================================================================

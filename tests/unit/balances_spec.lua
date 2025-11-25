@@ -190,15 +190,23 @@ describe('Balance Management', function()
 				},
 			}
 
-			balances.withdrawArioHandler(msg)
+			local result = balances.withdrawArioHandler(msg)
 
 			-- Balance should be reduced
 			assert.are.equal('7000', ARIOBalances['user-withdraw'].balance)
 
+			-- Should return JSON with status and details
+			local json = require('json')
+			local resultData = json.decode(result)
+			assert.are.equal('Success', resultData.Status)
+			assert.are.equal('ARIO withdrawal initiated', resultData.Message)
+			assert.are.equal('3000', resultData.Quantity)
+			assert.are.equal('user-withdraw', resultData.Recipient)
+
 			-- Should send Transfer message (ucm.transfer, not ucm.transferWithIntent)
-			assert.are.equal(2, #sentMessages) -- Transfer + Withdraw-Ario-Notice
+			assert.are.equal(1, #sentMessages) -- Only Transfer (notice sent by wrapper)
 			
-			-- First message should be the Transfer (no X-Intent-Id tag)
+			-- Message should be the Transfer (no X-Intent-Id tag)
 			local transferMsg = sentMessages[1]
 			assert.are.equal('Transfer', transferMsg.Action)
 			assert.are.equal(ARIO_TOKEN_PROCESS_ID, transferMsg.Target)
@@ -207,11 +215,32 @@ describe('Balance Management', function()
 			
 			-- Verify NO intent tracking (no X-Intent-Id tag)
 			assert.is_nil(transferMsg.Tags['X-Intent-Id'])
-			
-			-- Second message should be the Withdraw-Ario-Notice
-			local noticeMsg = sentMessages[2]
-			assert.are.equal('Withdraw-Ario-Notice', noticeMsg.Action)
-			assert.are.equal('user-withdraw', noticeMsg.Target)
+		end)
+		
+		it('should support custom recipient', function()
+			ARIOBalances['user-withdraw'] = {balance = '10000', orders = {}}
+
+			local msg = {
+				From = 'user-withdraw',
+				Tags = {
+					Quantity = '3000',
+					Recipient = 'other-user',
+				},
+			}
+
+			local result = balances.withdrawArioHandler(msg)
+
+			-- Balance should be reduced from sender
+			assert.are.equal('7000', ARIOBalances['user-withdraw'].balance)
+
+			-- Result should show custom recipient
+			local json = require('json')
+			local resultData = json.decode(result)
+			assert.are.equal('other-user', resultData.Recipient)
+
+			-- Transfer should go to custom recipient
+			local transferMsg = sentMessages[1]
+			assert.are.equal('other-user', transferMsg.Tags.Recipient)
 		end)
 
 		it('should fail with insufficient balance', function()
