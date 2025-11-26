@@ -911,4 +911,97 @@ export class MarketplaceProcess {
 
     throw new Error(`Timeout waiting for ${status} order count to change`);
   }
+
+  /**
+   * Deposit ARIO to the marketplace (simulates Credit-Notice from ARIO token process)
+   */
+  async depositArio(amount: string, arioProcessId: string, address?: string): Promise<ReadResponse> {
+    // If no address is provided, use empty string to deposit to msg.From
+    // The Sender tag will be set from the message's From field
+    const depositAddress = address || '';
+    
+    const tags: MessageTag[] = [
+      { name: 'Action', value: 'Credit-Notice' },
+      { name: 'Sender', value: depositAddress },
+      { name: 'Quantity', value: amount },
+      { name: 'X-Action', value: 'Deposit' },
+    ];
+
+    try {
+      // Use ao.message directly to set From field
+      await this.process.ao.message({
+        process: this.process.processId,
+        tags,
+        signer: this.signer,
+        From: arioProcessId, // Credit-Notice must come FROM the ARIO token process
+      } as any);
+
+      return {
+        Action: 'Credit-Notice-Processed',
+        Data: JSON.stringify({ balance: amount }),
+        Tags: {},
+      };
+    } catch (error: any) {
+      return {
+        Action: 'Invalid-Credit-Notice',
+        Data: error.message || String(error),
+        Tags: { Error: 'Deposit-Error' },
+      };
+    }
+  }
+
+  /**
+   * Withdraw ARIO from the marketplace back to user
+   */
+  async withdrawArio(quantity: string): Promise<ReadResponse> {
+    const tags: MessageTag[] = [
+      { name: 'Action', value: 'Withdraw-Ario' },
+      { name: 'Quantity', value: quantity },
+    ];
+
+    try {
+      const { result } = (await this.process.send({
+        tags,
+        signer: this.signer,
+      })) as any;
+
+      return {
+        Action: 'Withdraw-Ario-Notice',
+        Data: JSON.stringify(result || {}),
+        Tags: {},
+      };
+    } catch (error: any) {
+      return {
+        Action: 'Invalid-Withdraw-Notice',
+        Data: error.message || String(error),
+        Tags: { Error: 'Withdraw-Error' },
+      };
+    }
+  }
+
+  /**
+   * Get ARIO balance for an address in the marketplace
+   */
+  async getMarketplaceBalance(address?: string): Promise<string> {
+    const targetAddress = address || this.signer.address;
+    
+    try {
+      const result = await this.process.read({
+        tags: [
+          { name: 'Action', value: 'Get-Balance' },
+          { name: 'Address', value: targetAddress },
+        ],
+      });
+
+      // Result should be JSON with balance field
+      if (typeof result === 'object' && 'balance' in result) {
+        return (result as any).balance || '0';
+      }
+      
+      return '0';
+    } catch (error) {
+      console.error('Error getting marketplace balance:', error);
+      return '0';
+    }
+  }
 }

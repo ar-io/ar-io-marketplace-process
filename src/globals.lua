@@ -8,6 +8,8 @@ require('types')
 ---@alias TokenId string Process ID of a token
 ---@alias OrderId string Unique identifier for an order
 ---@alias Address string Process ID or wallet address
+---@alias BalanceAmount string Amount of ARIO in mARIO
+---@alias IntentId string Unique identifier for an intent
 
 -- Note: AuctionBidInfo is defined in types.lua
 
@@ -29,14 +31,14 @@ Orderbook = Orderbook or {}
 OrderIndex = OrderIndex or {}
 
 
----@type table<string, Intent> Dictionary mapping intentId to intent data
+---@type table<IntentId, Intent> Dictionary mapping intentId to intent data
 Intents = Intents or {}
 
----@type string Global counter for intent IDs (string integer)
+---@type IntentId Global counter for intent IDs (string integer)
 IntentCounter = IntentCounter or "0"
 
 -- Pruning schedule tracking
----@type table Pruning schedule configuration
+---@type table<string, number|nil> Pruning schedule configuration
 Pruning = Pruning or {
 	nextScheduledOrderbookPruning = nil, -- timestamp of next scheduled prune
 	nextScheduledIntentsPruning = nil, -- timestamp of next scheduled intents pruning
@@ -68,5 +70,12 @@ AccruedFeesAmount = AccruedFeesAmount or '0'
 --- To find all orders a user is involved in: iterate ARIOBalances[user].orders
 --- To find all bidders on an auction: use order.bids field (English auctions only)
 ---]]
----@type table<string, {balance: string, orders: table<string, string>}> Dictionary mapping address to account data
+---@type table<Address, {balance: BalanceAmount, orders: table<OrderId, BalanceAmount>}> Dictionary mapping address to account data
 ARIOBalances = ARIOBalances or {}
+
+
+---@type table<string, boolean> Dictionary mapping module name to boolean indicating if the module whitelisted
+WhitelistedModules = WhitelistedModules or {}
+
+
+return {}

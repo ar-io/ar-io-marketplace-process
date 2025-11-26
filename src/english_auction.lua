@@ -347,14 +347,14 @@ function english_auction.handleArioOrder(args, validPair, pair)
 			Handler = 'Create-Order',
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
-			Quantity = tostring(args.quantity),
-			Price = args.price and tostring(args.price),
-			Message = 'ARIO order added to orderbook for English auction!',
-			['X-Group-ID'] = args.orderGroupId,
-			['Order-Type'] = ORDER_TYPES.ENGLISH,
-			['Expiration-Time'] = args.expirationTime,
-		},
-	})
+		Quantity = tostring(args.quantity),
+		Price = args.price and tostring(args.price),
+		Message = 'ARIO order added to orderbook for English auction!',
+		['X-Group-ID'] = args.orderGroupId,
+		['Order-Type'] = ORDER_TYPES.ENGLISH,
+		['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
+	},
+})
 end
 
 --- Handler for bidding on English auctions using internal ARIO balance.

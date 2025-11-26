@@ -95,14 +95,14 @@ function fixed_price.handleArioOrder(args, validPair, pair)
 			Handler = 'Create-Order',
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
-			Quantity = tostring(args.quantity),
-			Price = args.price and tostring(args.price),
-			Message = 'ARIO order added to orderbook for buy now!',
-			['X-Group-ID'] = args.orderGroupId,
-			['Order-Type'] = ORDER_TYPES.FIXED,
-			['Expiration-Time'] = args.expirationTime,
-		},
-	})
+		Quantity = tostring(args.quantity),
+		Price = args.price and tostring(args.price),
+		Message = 'ARIO order added to orderbook for buy now!',
+		['X-Group-ID'] = args.orderGroupId,
+		['Order-Type'] = ORDER_TYPES.FIXED,
+		['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
+	},
+})
 end
 
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to match with an existing ANT sell order or fail

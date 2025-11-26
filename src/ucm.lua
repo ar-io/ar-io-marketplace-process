@@ -776,10 +776,11 @@ end
 --- Get multiple orders with flexible filtering
 --- @param msg table Message with optional Status, Ids, Dominant-Token, Swap-Token tags and pagination
 function ucm.getOrdersHandler(msg)
-	local page = utils.parsePaginationTags(msg)
+	local _utils = require('utils')
+	local page = _utils.parsePaginationTags(msg)
 
 	local statusFilter = msg.Tags.Status
-	local idsFilter = utils.parseIdsFilter(msg.Tags.Ids)
+	local idsFilter = _utils.parseIdsFilter(msg.Tags.Ids)
 	local dominantToken = msg.Tags['Dominant-Token']
 	local swapToken = msg.Tags['Swap-Token']
 
@@ -848,5 +849,35 @@ function ucm.getOrdersHandler(msg)
 	-- The onAfterHandler will send the Get-Orders-Notice with this data
 	return json.encode(paginatedOrders)
 end
+
+function ucm.whitelistModule(moduleId)
+	assert(utils.isValidArweaveAddress(moduleId), 'Invalid module ID')
+	assert(not WhitelistedModules[moduleId], 'Module already whitelisted')
+	WhitelistedModules[moduleId] = true
+	return true
+end
+
+function ucm.unwhitelistModule(moduleId)
+	assert(utils.isValidArweaveAddress(moduleId), 'Invalid module ID')
+	assert(WhitelistedModules[moduleId], 'Module not whitelisted')
+	WhitelistedModules[moduleId] = nil
+	return true
+end
+
+function ucm.whitelistModuleHandler(msg)
+	local moduleId = msg.Tags['Module-Id']
+	assert(moduleId, 'Module-Id is required')
+    ucm.whitelistModule(moduleId)
+	return json.encode(WhitelistedModules)
+end
+
+function ucm.unwhitelistModuleHandler(msg)
+	local moduleId = msg.Tags['Module-Id']
+	assert(moduleId, 'Module-Id is required')
+	ucm.unwhitelistModule(moduleId)
+	return json.encode(WhitelistedModules)
+end
+
+
 
 return ucm

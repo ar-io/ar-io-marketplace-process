@@ -169,8 +169,8 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 	-- Handle refund if sent amount was more than required
 	if sentAmount > requiredAmount then
 		local refundAmount = sentAmount - requiredAmount
-		local utils = require('utils')
-		if utils.isArioToken(args.dominantToken) then
+		local _utils = require('utils')
+		if _utils.isArioToken(args.dominantToken) then
 			-- ARIO: Refund to buyer's internal balance (was already deducted by balances.transfer)
 			local balances = require('balances')
 			balances.increaseBalance(args.sender, tostring(refundAmount))

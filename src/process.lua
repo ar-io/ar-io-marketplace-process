@@ -35,6 +35,9 @@ ActionMap = {
 	withdrawArio = 'Withdraw-Ario',
 	-- Auction handlers
 	bidOnEnglishAuction = 'Bid-On-English-Auction',
+	-- Whitelist handlers
+	whitelistModule = 'Whitelist-Module',
+	unwhitelistModule = 'Unwhitelist-Module',
 }
 
 -- Intent handlers
@@ -67,3 +70,7 @@ utils.createHandler('Action', ActionMap.withdrawArio, balances.withdrawArioHandl
 -- Auction handlers
 local english_auction = require('english_auction')
 utils.createHandler('Action', ActionMap.bidOnEnglishAuction, english_auction.bidOnEnglishAuctionHandler, nil, true) -- Critical: locks bid balance
+
+-- Whitelist handlers
+utils.createHandler('Action', ActionMap.whitelistModule, ucm.whitelistModuleHandler, nil, true) -- Critical: whitelists a module
+utils.createHandler('Action', ActionMap.unwhitelistModule, ucm.unwhitelistModuleHandler, nil, true) -- Critical: unwhitelists a module

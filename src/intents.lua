@@ -1,8 +1,12 @@
 local intents = {}
 local bint = require('.bint')(256)
-local utils = require('utils')
 local json = require('json')
 local constants = require('constants')
+
+-- Lazy load utils to avoid circular dependency (utils → intents → utils)
+local function getUtils()
+	return require('utils')
+end
 
 --- Increment the global intent counter and return the new ID
 --- @return string intentId The new intent ID
@@ -218,7 +222,7 @@ end
 --- @param msg table|nil The message context (optional, for sending notices)
 --- @return boolean success Whether the failure was recorded
 function intents.failIntent(intentId, reason, msg)
-	local utils = require('utils')
+	local _utils = require('utils')
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -232,7 +236,8 @@ function intents.failIntent(intentId, reason, msg)
 
 	-- Send Intent-Resolved notice AFTER pruning succeeds
 	if success and resolvedIntent and msg then
-		utils.Send(msg, {
+		local _utils = require('utils')
+		_utils.Send(msg, {
 			Target = resolvedIntent.initiator,
 			Action = 'Intent-Resolved',
 			['Intent-Id'] = tostring(resolvedIntent.intentId),
@@ -251,7 +256,7 @@ end
 --- @param msg table|nil The message context (optional, for sending notices)
 --- @return boolean success Whether the update was successful
 function intents.updateIntentStatus(intentId, status, msg)
-	local utils = require('utils')
+	local _utils = require('utils')
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -270,7 +275,7 @@ function intents.updateIntentStatus(intentId, status, msg)
 
 		-- Send Intent-Resolved notice AFTER pruning succeeds
 		if success and resolvedIntent and msg then
-			utils.Send(msg, {
+			getUtils().Send(msg, {
 				Target = resolvedIntent.initiator,
 				Action = 'Intent-Resolved',
 				['Intent-Id'] = tostring(resolvedIntent.intentId),
@@ -303,7 +308,8 @@ function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
 
 	if parentIntentId then
 		-- Validate intent ID format
-		assert(utils.isValidIntentId(parentIntentId), 'Invalid X-Intent-Id format: ' .. tostring(parentIntentId))
+		local _utils = require('utils')
+		assert(_utils.isValidIntentId(parentIntentId), 'Invalid X-Intent-Id format: ' .. tostring(parentIntentId))
 
 		-- Validate parent intent exists
 		local parent = intents.getIntentById(parentIntentId)
@@ -489,11 +495,12 @@ end
 
 -- Handler: Get-Paginated-Intents
 function intents.getPaginatedIntentsHandler(msg)
-	local page = utils.parsePaginationTags(msg)
+	local _utils = require('utils')
+	local page = _utils.parsePaginationTags(msg)
 
 	local intentsArray = intents.getAllIntents()
 
-	local paginatedIntents = utils.paginateTableWithCursor(
+	local paginatedIntents = _utils.paginateTableWithCursor(
 		intentsArray,
 		page.cursor,
 		'createdAt',
@@ -516,7 +523,8 @@ function intents.getIntentByIdHandler(msg)
 
 	-- If parent, include all child intents
 	---@type table
-	local response = utils.deepCopy(intent) or intent
+	local _utils = require('utils')
+	local response = _utils.deepCopy(intent) or intent
 	if intent.type == constants.INTENT_TYPES.PARENT then
 		---@diagnostic disable-next-line: inject-field
 		response.children = {}
@@ -530,6 +538,7 @@ function intents.getIntentByIdHandler(msg)
 end
 
 function intents.pushANTIntentResolutionHandler(msg)
+	local _utils = require('utils')
 	local intentId = msg.Tags['X-Intent-Id']
 	assert(intentId, 'X-Intent-Id required')
 
@@ -550,7 +559,7 @@ function intents.pushANTIntentResolutionHandler(msg)
 
 	local antId = intent.expectedFrom
 
-	utils.Send(msg, {
+	_utils.Send(msg, {
 		Target = antId,
 		Action = "State",
 		Tags = {
@@ -561,14 +570,21 @@ end
 
 -- Handler: State-Notice - Resolves intents based on ANT state
 function intents.stateNoticeHandler(msg)
+	local _utils = require('utils')
 	local intentId = msg.Tags['X-Intent-Id']
 	assert(intentId, 'X-Intent-Id required')
-	assert(utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format')
+	assert(_utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format')
 	local intent = intents.getIntentById(intentId)
 	assert(intent, 'Intent not found')
 	assert(msg.From == intent.expectedFrom, 'Sender does not match intent expected from')
 
-	local antState = utils.safeDecodeJson(msg.Data)
+	-- Whitelist check for ANT State-Notice
+	if not _utils.isWhitelisted(msg) then
+		intents.failIntent(intentId, 'ANT module not whitelisted', msg)
+		return
+	end
+
+	local antState = _utils.safeDecodeJson(msg.Data)
 	assert(antState, 'Invalid State-Notice data')
 	local owner = antState.Owner
 	assert(owner == ao.id, 'Marketplace does not own this ANT')
@@ -587,7 +603,7 @@ function intents.stateNoticeHandler(msg)
 	end
 
 	-- Send acknowledgment
-	utils.Send(msg, {
+	_utils.Send(msg, {
 		Target = targetUser,
 		Action = 'State-Notice-Processed',
 		['Intent-Id'] = intentId,

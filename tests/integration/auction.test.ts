@@ -13,14 +13,15 @@ describe('Auction Mechanisms', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
 
-
   const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
-
+  const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER
 
   before(async () => {
+    const luaWithTestConfig = `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"\n` + BUNDLED_MARKETPLACE_SOURCE_CODE;
+    
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
-      lua: BUNDLED_MARKETPLACE_SOURCE_CODE,
+      lua: luaWithTestConfig,
     });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
@@ -31,6 +32,14 @@ describe('Auction Mechanisms', () => {
 
   beforeEach(async () => {
     await ao_mock.reset();
+    
+    // Re-set ARIO token and deposit for listing fees
+    await marketplaceProcess.process.send({
+      tags: [{ name: 'Action', value: 'Eval' }],
+      data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"`,
+      signer: TEST_SIGNER,
+    });
+    await marketplaceProcess.depositArio('100000000000', TEST_ARIO_TOKEN, TEST_SENDER);
   });
 
   describe('Dutch Auction', () => {

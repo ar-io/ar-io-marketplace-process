@@ -15,7 +15,7 @@ describe('Intent Workflow Tracking', () => {
   // create a new process and mock before the tests
   const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
   const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
-  const TEST_SENDER = 'y0yFQVYWtQblOKClbuBmo6rqxCiKD1KHOt_Aizgm8w8'; // Address from TEST_SIGNER
+  const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER - the default From address in test environment
 
   before(async () => {
     // Inject test ARIO token process BEFORE the bundle loads (so globals.lua picks it up)
@@ -42,6 +42,10 @@ describe('Intent Workflow Tracking', () => {
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
       signer: TEST_SIGNER,
     });
+    
+    // Deposit ARIO for listing fees (intents cost 1 ARIO)
+    // Use PROCESS_OWNER address (all 1s) which is the default From in test environment
+    await marketplaceProcess.depositArio('100000000000', TEST_ARIO_PROCESS, TEST_SENDER);
   });
 
   describe('Create-Intent', () => {
@@ -329,7 +333,10 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
     });
   });
 
-  // NO beforeEach - we don't want to reset and lose ARIO_TOKEN_PROCESS_ID
+  beforeEach(async () => {
+    // Deposit ARIO for listing fees
+    await marketplaceProcess.depositArio('100000000000', TEST_ARIO_PROCESS, TEST_SENDER);
+  });
   
   describe('Positive Cases - Happy Path', () => {
       it('should complete intent after successful fixed-price order creation via Credit-Notice', async () => {

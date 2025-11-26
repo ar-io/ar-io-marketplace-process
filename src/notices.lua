@@ -3,14 +3,14 @@ local constants = require('constants')
 
 -- Handler: Credit-Notice - Validates and creates orders
 function notices.creditNoticeHandler(msg)
-	local utils = require('utils')
+	local _utils = require('utils')
 	local intents = require('intents')
 	local ucm = require('ucm')
 	local balances = require('balances')
 
 	-- NOTE: this could be expanded in the future for more tokens
 	if msg.Tags['X-Action'] == constants.ACTIONS.DEPOSIT then
-		local isArioNotice = utils.isArioToken(msg.From)
+		local isArioNotice = _utils.isArioToken(msg.From)
 		assert(isArioNotice, "Deposit must be from ARIO")
 		balances.handleDeposit(msg)
 		return
@@ -24,19 +24,19 @@ function notices.creditNoticeHandler(msg)
 	-- Helper function to handle invalid transfers
 	-- Only accept ARIO as fees, refund anything else (like ANT tokens)
 	local function handleInvalidTransfer(errorMessage)
-		if utils.isArioToken(msg.From) then
+		if _utils.isArioToken(msg.From) then
 			-- Accept ARIO tokens as fees
-			if quantity and utils.checkValidAmount(quantity) then
-				utils.accrueFee(quantity)
+			if quantity and _utils.checkValidAmount(quantity) then
+				_utils.accrueFee(quantity)
 			end
 		else
 			-- Refund non-ARIO tokens (like ANT)
-			utils.refundAndError(msg, sender, errorMessage)
+			_utils.refundAndError(msg, sender, errorMessage)
 		end
 	end
 
 	-- BLOCK ARIO Credit-Notices with X-Order-Action (ARIO orders must use internal balance)
-	if msg.Tags['X-Order-Action'] == 'Create-Order' and utils.isArioToken(msg.From) then
+	if msg.Tags['X-Order-Action'] == 'Create-Order' and _utils.isArioToken(msg.From) then
 		handleInvalidTransfer('ARIO orders must use internal balance - deposit ARIO first, then call Create-Order')
 		return
 	end
@@ -48,7 +48,7 @@ function notices.creditNoticeHandler(msg)
 	end
 
 	-- Validate intent ID format
-	if not utils.isValidIntentId(msg.Tags['X-Intent-Id']) then
+	if not _utils.isValidIntentId(msg.Tags['X-Intent-Id']) then
 		handleInvalidTransfer('Invalid X-Intent-Id format')
 		return
 	end
@@ -76,14 +76,22 @@ function notices.creditNoticeHandler(msg)
 	-- Resolve parent intent (pending → active)
 	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp, msg)
 
+	-- Whitelist check for ANT order creation
+	if not _utils.isArioToken(msg.From) and msg.Tags['X-Order-Action'] == 'Create-Order' then
+		if not _utils.isWhitelisted(msg) then
+			intents.failIntent(msg.Tags['X-Intent-Id'], 'ANT module not whitelisted', msg)
+			return
+		end
+	end
+
 	-- Check if sender is a valid address
-	if not utils.checkValidAddress(sender) then
+	if not _utils.checkValidAddress(sender) then
 		handleInvalidTransfer('Sender must be a valid address')
 		return
 	end
 
 	-- Check if quantity is a valid integer greater than zero
-	if not utils.checkValidAmount(quantity) then
+	if not _utils.checkValidAmount(quantity) then
 		handleInvalidTransfer('Quantity must be an integer greater than zero')
 		return
 	end
@@ -97,9 +105,9 @@ function notices.creditNoticeHandler(msg)
 	-- If Order-Action then create the order
 	if msg.Tags['X-Order-Action'] == 'Create-Order' then
 		-- Validate that at least one token in the trade is ARIO
-		local isArioValid, arioError = utils.validateArioInTrade(msg.From, msg.Tags['X-Swap-Token'])
+		local isArioValid, arioError = _utils.validateArioInTrade(msg.From, msg.Tags['X-Swap-Token'])
 		if not isArioValid then
-			utils.refundAndError(msg, sender, arioError or 'At least one token in the trade must be ARIO')
+			_utils.refundAndError(msg, sender, arioError or 'At least one token in the trade must be ARIO')
 			return
 		end
 
@@ -137,7 +145,7 @@ function notices.creditNoticeHandler(msg)
 			-- (refundAndError throws errors containing the error message)
 			-- If it's a different type of error, refund it
 			if not string.find(tostring(err), 'required') and not string.find(tostring(err), 'must be') then
-				utils.refundAndError(msg, sender, 'Order creation failed: ' .. tostring(err), 'Order-Error')
+				_utils.refundAndError(msg, sender, 'Order creation failed: ' .. tostring(err), 'Order-Error')
 			end
 			return
 		end
@@ -167,7 +175,7 @@ function notices.creditNoticeHandler(msg)
 		end
 
 		-- Send acknowledgment with intent and order status
-		utils.Send(msg, {
+		_utils.Send(msg, {
 			Target = sender,
 			Action = 'Credit-Notice-Processed',
 			['Order-Id'] = msg.Id,
@@ -180,7 +188,7 @@ end
 
 -- Handler: Debit-Notice - Resolves child intents when transfers complete
 function notices.debitNoticeHandler(msg)
-	local utils = require('utils')
+	local _utils = require('utils')
 	local intents = require('intents')
 
 	local intentId = msg.Tags['X-Intent-Id']
@@ -189,7 +197,7 @@ function notices.debitNoticeHandler(msg)
 	end
 
 	-- Validate intent ID format
-	if not utils.isValidIntentId(intentId) then
+	if not _utils.isValidIntentId(intentId) then
 		return
 	end
 
@@ -208,7 +216,7 @@ function notices.debitNoticeHandler(msg)
 		local parentStatus = parent and parent.status or 'not-found'
 
 		-- Send acknowledgment with intent status
-		utils.Send(msg, {
+		_utils.Send(msg, {
 			Target = intent.initiator,
 			Action = 'Debit-Notice-Processed',
 			['Intent-Id'] = intentId,
@@ -222,7 +230,7 @@ end
 -- Handler: Transfer-Error - Handles transfer failures
 -- Transfer-Error is the token spec aligned error notice sent when a transfer fails
 function notices.transferErrorHandler(msg)
-	local utils = require('utils')
+	local _utils = require('utils')
 	local intents = require('intents')
 
 	local intentId = msg.Tags['X-Intent-Id']
@@ -231,7 +239,7 @@ function notices.transferErrorHandler(msg)
 	end
 
 	-- Validate intent ID format
-	if not utils.isValidIntentId(intentId) then
+	if not _utils.isValidIntentId(intentId) then
 		return
 	end
 

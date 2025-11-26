@@ -145,9 +145,9 @@ describe('fixed_price helpers', function()
 				dominantToken = 'ant-token-456',
 				swapToken = 'ario-token-123',
 				createdAt = 1000,
-				blockheight = 100,
+				blockheight = '100',
 				price = '5000',
-				expirationTime = 2000,
+				expirationTime = '2000',
 				msg = testGlobals.mockMsg({}),
 			}
 
@@ -186,7 +186,7 @@ describe('fixed_price helpers', function()
 				dominantToken = 'ant-token-456',
 				swapToken = 'ario-token-123',
 				createdAt = 1000,
-				blockheight = 100,
+				blockheight = '100',
 				price = '3000',
 				expirationTime = nil, -- No expiration
 				msg = testGlobals.mockMsg({}),
@@ -229,7 +229,7 @@ describe('fixed_price helpers', function()
 				}
 			}
 
-			-- Give buyer ARIO balance
+			-- Give buyer ARIO balance (need to cover price + fee)
 			ARIOBalances['buyer-123'] = {
 				balance = '10000',
 				orders = {}
@@ -242,7 +242,8 @@ describe('fixed_price helpers', function()
 				dominantToken = 'ario-token-123',
 				swapToken = 'ant-token-456',
 				createdAt = 1000,
-				blockheight = 100,
+				blockheight = '100',
+				requestedOrderId = 'sell-order-1', -- Request specific order
 				msg = testGlobals.mockMsg({}),
 			}
 
@@ -251,11 +252,11 @@ describe('fixed_price helpers', function()
 			-- Order should be removed from orderbook
 			assert.is_nil(pair.orders['sell-order-1'])
 			
-			-- Buyer balance should be reduced
+			-- Buyer balance should be reduced by the price (10000 - 5000 = 5000)
 			assert.are.equal('5000', ARIOBalances['buyer-123'].balance)
 			
-			-- Seller should have received ARIO
-			assert.are.equal('5000', balances.getBalance('seller-123'))
+			-- Seller should have received ARIO minus 0.5% maker fee (5000 * 0.995 = 4975)
+			assert.are.equal('4975', balances.getBalance('seller-123'))
 
 			-- Success message should be sent
 			local successMsg = nil
@@ -289,21 +290,19 @@ describe('fixed_price helpers', function()
 				dominantToken = 'ario-token-123',
 				swapToken = 'ant-token-456',
 				createdAt = 1000,
-				blockheight = 100,
+				blockheight = '100',
+				requestedOrderId = 'non-existent-order', -- Request order that doesn't exist
 				msg = testGlobals.mockMsg({}),
 			}
 
-			fixed_price.handleAntOrder(args, validPair, pair)
+			-- Should throw error when no matching order found
+			local success, err = pcall(function()
+				fixed_price.handleAntOrder(args, validPair, pair)
+			end)
 
-			-- Error message should be sent
-			local errorMsg = nil
-			for _, msg in ipairs(testGlobals.sentMessages) do
-				if msg.Action == 'Order-Error' or msg.Action == 'Transfer' then
-					errorMsg = msg
-					break
-				end
-			end
-			assert.is_not_nil(errorMsg)
+			-- Expect error to be thrown
+			assert.is_false(success)
+			assert.is_string(err)
 		end)
 
 		it('should skip orders with insufficient buyer balance', function()
@@ -349,7 +348,8 @@ describe('fixed_price helpers', function()
 				dominantToken = 'ario-token-123',
 				swapToken = 'ant-token-456',
 				createdAt = 1000,
-				blockheight = 100,
+				blockheight = '100',
+				requestedOrderId = 'sell-order-cheap', -- Request the cheaper order
 				msg = testGlobals.mockMsg({}),
 			}
 
@@ -374,14 +374,16 @@ describe('fixed_price helpers', function()
 						creator = 'seller-123',
 						token = 'ant-token-456',
 						price = '5000',
-						status = 'expired', -- Not active
+						status = 'active', -- Set as active but will be expired by time
 						orderType = 'fixed',
 						dominantToken = 'ant-token-456',
 						swapToken = 'ario-token-123',
+						expirationTime = 2000, -- Expiration time
 					}
 				}
 			}
 
+			-- Give buyer ARIO balance
 			ARIOBalances['buyer-123'] = {
 				balance = '10000',
 				orders = {}
@@ -393,23 +395,20 @@ describe('fixed_price helpers', function()
 				sender = 'buyer-123',
 				dominantToken = 'ario-token-123',
 				swapToken = 'ant-token-456',
-				createdAt = 1000,
-				blockheight = 100,
+				createdAt = 3000, -- After order expiration (> 2000)
+				blockheight = '100',
+				requestedOrderId = 'sell-order-expired', -- Request expired order
 				msg = testGlobals.mockMsg({}),
 			}
 
-			fixed_price.handleAntOrder(args, validPair, pair)
+			-- Should throw error when order is expired (skipped in matching)
+			local success, err = pcall(function()
+				fixed_price.handleAntOrder(args, validPair, pair)
+			end)
 
-			-- Should not match expired order
-			-- Error message should be sent
-			local errorFound = false
-			for _, msg in ipairs(testGlobals.sentMessages) do
-				if msg.Action == 'Order-Error' or msg.Action == 'Transfer' then
-					errorFound = true
-					break
-				end
-			end
-			assert.is_true(errorFound)
+			-- Expect error to be thrown (no matching orders found)
+			assert.is_false(success)
+			assert.is_not_nil(err)
 		end)
 	end)
 end)

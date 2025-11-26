@@ -50,7 +50,10 @@ return {
 		_G.AccruedFeesAmount = '0'
 		_G.ARIOBalances = {}
 		_G.IntentCounter = "0"
-		_G.sentMessages = {}
+		-- Clear the array instead of replacing to maintain reference
+		while #_G.sentMessages > 0 do
+			table.remove(_G.sentMessages)
+		end
 	end,
 
 	-- Utility to reset ARIO token ID (useful if tests need different values)
@@ -64,7 +67,7 @@ return {
 			Id = 'test-msg-123',
 			From = 'test-sender',
 			Timestamp = 1000,
-			['Block-Height'] = 100,
+			['Block-Height'] = '100',
 			Owner = 'test-owner',
 			Tags = {},
 			Data = '',

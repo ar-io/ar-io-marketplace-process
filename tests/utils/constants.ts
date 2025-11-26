@@ -69,7 +69,7 @@ export const AO_LOADER_OPTIONS: AoLoaderOptions = {
 export const DEFAULT_HANDLE_OPTIONS: DefaultHandleOptions = {
   Id: STUB_MESSAGE_ID,
   Target: PROCESS_ID,
-  Module: 'ANT',
+  // Module: 'ANT',
   ['Block-Height']: STUB_BLOCK_HEIGHT,
   // important to set the address to match the FROM address so that that `Authority` check passes. Else the `isTrusted` with throw an error.
   Owner: PROCESS_OWNER,

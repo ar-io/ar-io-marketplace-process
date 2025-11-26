@@ -15,11 +15,14 @@ describe('UCM (Universal Content Marketplace)', () => {
 
   const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');
   const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
+  const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER - the default From address
 
   before(async () => {
+    const luaWithTestConfig = `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"\n` + BUNDLED_MARKETPLACE_SOURCE_CODE;
+    
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
-      lua: BUNDLED_MARKETPLACE_SOURCE_CODE,
+      lua: luaWithTestConfig,
     });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
@@ -30,6 +33,14 @@ describe('UCM (Universal Content Marketplace)', () => {
 
   beforeEach(async () => {
     await ao_mock.reset();
+    
+    // Re-set ARIO token and deposit for listing fees
+    await marketplaceProcess.process.send({
+      tags: [{ name: 'Action', value: 'Eval' }],
+      data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"`,
+      signer: TEST_SIGNER,
+    });
+    await marketplaceProcess.depositArio('100000000000', TEST_ARIO_TOKEN, TEST_SENDER);
   });
 
   describe('Get-Orders with flexible filtering', () => {

@@ -30,14 +30,14 @@ end
 -- Force-load all source modules for coverage tracking
 print('\nForce-loading modules for coverage...')
 local modules_to_load = {
+	'utils',  -- Load utils FIRST so we can mock it before other modules use it
+	'types',
+	'intents',
+	'ucm',
 	'dutch_auction',
 	'english_auction',
 	'fixed_price',
-	'intents',
 	'notices',
-	'types',
-	'ucm',
-	'utils',
 }
 
 for _, module_name in ipairs(modules_to_load) do
@@ -54,6 +54,57 @@ for _, module_name in ipairs(modules_to_load) do
 				return type(address) == 'string' and #address > 40
 			end
 			print('  ✓ Added isValidAddress mock to utils')
+			
+			-- Mock Send to track messages for test assertions (when utils.Send is called)
+			local mockSend = function(msg, data)
+				-- Validate message first (use the real validator)
+				if result.validateMessage then
+					local success, err = pcall(result.validateMessage, data)
+					if not success then
+						error(err)
+					end
+				end
+				
+				-- Track the message in global array
+				-- Create a copy of data with all fields preserved
+				local trackedMsg = {
+					Target = data.Target,
+					Action = data.Action,
+					Data = data.Data or '',
+				}
+				
+				-- Copy all other fields (including tag-like fields)
+				for k, v in pairs(data) do
+					if k ~= 'Target' and k ~= 'Action' and k ~= 'Data' and k ~= 'Tags' then
+						trackedMsg[k] = v
+					end
+				end
+				
+				-- If Tags exists, copy it
+				if data.Tags then
+					trackedMsg.Tags = {}
+					for k, v in pairs(data.Tags) do
+						trackedMsg.Tags[k] = v
+					end
+				end
+				
+				table.insert(_G.sentMessages, trackedMsg)
+				
+				-- Call ao.send if it exists (for tests that mock it)
+				if _G.ao and _G.ao.send then
+					_G.ao.send(data)
+				end
+				
+				return data
+			end
+			
+			-- Apply mock to both the module return value and global utils
+			result.Send = mockSend
+			if _G.utils then
+				_G.utils.Send = mockSend
+			end
+			
+			print('  ✓ Added Send mock to utils')
 		end
 	else
 		print('  ✗ Failed to load: ' .. module_name .. ' - ' .. tostring(result))

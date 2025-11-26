@@ -1,8 +1,6 @@
-local utils = require("utils")
+
 local json = require("json")
-local bint = require('bint')(256)
-local constants = require('constants')
-local ucm = require('ucm')
+local bint = require('.bint')(256)
 local balances = {}
 
 --- Ensure an account exists in ARIOBalances with the correct structure
@@ -23,10 +21,11 @@ end
 --- @param allowUnsafeAddresses boolean Whether to allow non-standard addresses
 --- @return table Balance update result with from and recipient balances
 function balances.transfer(recipient, from, qty, allowUnsafeAddresses)
+	local _utils = require("utils")
 	assert(type(recipient) == "string", "Recipient is required!")
 	assert(type(from) == "string", "From is required!")
 	assert(from ~= recipient, "Cannot transfer to self")
-	assert(utils.isValidAddress(recipient, allowUnsafeAddresses), "Invalid recipient")
+	assert(_utils.isValidAOAddress(recipient, allowUnsafeAddresses), "Invalid recipient")
 	assert(bint(qty) ~= nil, "Quantity is required and must be a number!")
 	assert(recipient ~= from, "Cannot transfer to self")
 	assert(bint(qty) > 0, "Quantity must be greater than 0")
@@ -97,6 +96,7 @@ end
 --- @param sortOrder string "asc" or "desc" sort direction
 --- @return table Array of balance breakdown objects with address, balance, locked, total, orders
 function balances.getPaginatedBalances(cursor, limit, sortBy, sortOrder)
+	local _utils = require("utils")
 	local balancesArray = {}
 	local cursorField = "address" -- the cursor will be the wallet address
 	for address, account in pairs(ARIOBalances) do
@@ -113,7 +113,7 @@ function balances.getPaginatedBalances(cursor, limit, sortBy, sortOrder)
 		})
 	end
 
-	return utils.paginateTableWithCursor(balancesArray, cursor, cursorField, limit, sortBy, sortOrder)
+	return _utils.paginateTableWithCursor(balancesArray, cursor, cursorField, limit, sortBy, sortOrder)
 end
 
 --- Checks if a wallet has a sufficient balance
@@ -131,24 +131,27 @@ end
 --- Handle a deposit of ARIO into the marketplace
 --- @param msg table The Credit-Notice message with Sender and Quantity tags
 function balances.handleDeposit(msg)
+	local _utils = require("utils")
 	local sender = msg.Tags.Sender
 	local quantity = msg.Tags.Quantity
 	balances.increaseBalance(sender, quantity)
-	utils.Send(msg, { Target = sender, Action = "Deposit-Notice", Data = json.encode(quantity) })
+	_utils.Send(msg, { Target = sender, Action = "Deposit-Notice", Data = json.encode(quantity) })
 end
 
 --- Handler for withdrawing ARIO from the marketplace
 --- @param msg table The message with Quantity tag
 --- @return string JSON-encoded response with status and quantity
 function balances.withdrawArioHandler(msg)
+	local _utils = require("utils")
 	local account = msg.From
 	local quantity = msg.Tags.Quantity
 	local recipient = msg.Tags.Recipient or account
 	
-	assert(quantity and utils.checkValidAmount(quantity), "Invalid quantity. Must be integer greater than 0")
+	assert(quantity and _utils.checkValidAmount(quantity), "Invalid quantity. Must be integer greater than 0")
 	assert(balances.walletHasSufficientBalance(account, quantity), "Insufficient balance")
 	
 	balances.reduceBalance(account, quantity)
+	local ucm = require('ucm')  -- Lazy load to avoid circular dependency
 	ucm.transfer(recipient, quantity, ARIO_TOKEN_PROCESS_ID, msg)
 	
 	return json.encode({
@@ -163,7 +166,8 @@ end
 --- @param msg table The message with pagination tags
 --- @return string JSON-encoded paginated balances
 function balances.getPaginatedBalancesHandler(msg)
-	local page = utils.parsePaginationTags(msg)
+	local _utils = require("utils")
+	local page = _utils.parsePaginationTags(msg)
 	local walletBalances = balances.getPaginatedBalances(page.cursor, page.limit, page.sortBy or "balance", page.sortOrder)
 	return json.encode(walletBalances)
 end

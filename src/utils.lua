@@ -215,6 +215,17 @@ function utils.isArioToken(tokenAddress)
 	return tokenAddress == ARIO_TOKEN_PROCESS_ID
 end
 
+--- Checks if a message's From-Module tag is in the whitelist
+--- @param msg table The message to check
+--- @return boolean isWhitelisted Whether the module is whitelisted
+function utils.isWhitelisted(msg)
+	local fromModule = msg.Tags["From-Module"]
+	if not fromModule then
+		return false
+	end
+	return WhitelistedModules[fromModule] == true
+end
+
 --- Validates that at least one token in a trade is ARIO
 --- @param dominantToken string The dominant token address
 --- @param swapToken string The swap token address
