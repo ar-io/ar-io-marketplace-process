@@ -50,6 +50,7 @@ return {
 		_G.AccruedFeesAmount = '0'
 		_G.ARIOBalances = {}
 		_G.IntentCounter = "0"
+		_G.WhitelistedModules = {}
 		-- Clear the array instead of replacing to maintain reference
 		while #_G.sentMessages > 0 do
 			table.remove(_G.sentMessages)
@@ -91,4 +92,10 @@ return {
 
 	-- Expose sent messages for test assertions
 	sentMessages = _G.sentMessages,
+
+	-- Utility to whitelist a test module
+	whitelistTestModule = function(moduleId)
+		_G.WhitelistedModules = _G.WhitelistedModules or {}
+		_G.WhitelistedModules[moduleId] = true
+	end,
 }

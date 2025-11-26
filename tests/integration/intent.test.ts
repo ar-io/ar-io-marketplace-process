@@ -16,6 +16,8 @@ describe('Intent Workflow Tracking', () => {
   const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
   const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
   const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER - the default From address in test environment
+  const TEST_ANT_MODULE_WHITELISTED = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
+  const TEST_ANT_MODULE_NOT_WHITELISTED = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
 
   before(async () => {
     // Inject test ARIO token process BEFORE the bundle loads (so globals.lua picks it up)
@@ -40,6 +42,13 @@ describe('Intent Workflow Tracking', () => {
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
+      signer: TEST_SIGNER,
+    });
+    
+    // Whitelist test ANT module
+    await marketplaceProcess.process.send({
+      tags: [{ name: 'Action', value: 'Eval' }],
+      data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
     });
     
@@ -317,6 +326,8 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
   const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
   const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
   const TEST_SENDER = ''.padEnd(43, '1'); // Must match PROCESS_OWNER from DEFAULT_HANDLE_OPTIONS
+  const TEST_ANT_MODULE_WHITELISTED = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
+  const TEST_ANT_MODULE_NOT_WHITELISTED = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
 
   before(async () => {
     // Inject test ARIO token process BEFORE the bundle loads (so globals.lua picks it up)
@@ -334,6 +345,22 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
   });
 
   beforeEach(async () => {
+    await ao_mock.reset();
+    
+    // Re-set ARIO token after reset
+    await marketplaceProcess.process.send({
+      tags: [{ name: 'Action', value: 'Eval' }],
+      data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
+      signer: TEST_SIGNER,
+    });
+    
+    // Whitelist test ANT module
+    await marketplaceProcess.process.send({
+      tags: [{ name: 'Action', value: 'Eval' }],
+      data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
+      signer: TEST_SIGNER,
+    });
+    
     // Deposit ARIO for listing fees
     await marketplaceProcess.depositArio('100000000000', TEST_ARIO_PROCESS, TEST_SENDER);
   });
@@ -377,6 +404,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
             { name: 'X-Order-Type', value: 'fixed' },
             { name: 'X-Price', value: '1000000' },
             { name: 'X-Swap-Token', value: TEST_ARIO_PROCESS },
+            { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           data: '',
           signer: TEST_SIGNER,
@@ -465,6 +493,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
             // Missing X-Intent-Id
             { name: 'X-Order-Action', value: 'Create-Order' },
             { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
+            { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           data: '',
           signer: TEST_SIGNER,
@@ -493,6 +522,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
             { name: 'X-Intent-Id', value: 'invalid-id-with-letters' }, // Invalid format
             { name: 'X-Order-Action', value: 'Create-Order' },
             { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
+            { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           data: '',
           signer: TEST_SIGNER,
@@ -521,6 +551,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
             { name: 'X-Intent-Id', value: '99999' }, // Non-existent intent
             { name: 'X-Order-Action', value: 'Create-Order' },
             { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
+            { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           data: '',
           signer: TEST_SIGNER,
@@ -564,6 +595,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
             { name: 'X-Intent-Id', value: intentId },
             { name: 'X-Order-Action', value: 'Create-Order' },
             { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
+            { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           data: '',
           signer: TEST_SIGNER,
@@ -609,6 +641,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
             { name: 'X-Intent-Id', value: intentId },
             { name: 'X-Order-Action', value: 'Create-Order' },
             // Missing X-Dominant-Token
+            { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           data: '',
           signer: TEST_SIGNER,
@@ -656,6 +689,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
             { name: 'X-Intent-Id', value: intentId },
             { name: 'X-Order-Action', value: 'Create-Order' },
             { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS }, // Says ANT
+            { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           data: '',
           signer: TEST_SIGNER,

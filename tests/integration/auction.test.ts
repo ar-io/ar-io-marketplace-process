@@ -15,6 +15,8 @@ describe('Auction Mechanisms', () => {
 
   const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
   const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER
+  const TEST_ANT_MODULE_WHITELISTED = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
+  const TEST_ANT_MODULE_NOT_WHITELISTED = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
 
   before(async () => {
     const luaWithTestConfig = `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"\n` + BUNDLED_MARKETPLACE_SOURCE_CODE;
@@ -39,6 +41,14 @@ describe('Auction Mechanisms', () => {
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"`,
       signer: TEST_SIGNER,
     });
+    
+    // Whitelist test ANT module
+    await marketplaceProcess.process.send({
+      tags: [{ name: 'Action', value: 'Eval' }],
+      data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
+      signer: TEST_SIGNER,
+    });
+    
     await marketplaceProcess.depositArio('100000000000', TEST_ARIO_TOKEN, TEST_SENDER);
   });
 

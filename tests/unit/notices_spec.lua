@@ -262,7 +262,7 @@ describe('Notices Module', function()
 
 			-- Should throw error about invalid quantity (caught before address check)
 			local success = pcall(function()
-				notices.creditNoticeHandler(creditMsg)
+				notices.creditNoticeHandler(msg)
 			end)
 			
 			assert.is_false(success)
@@ -270,9 +270,13 @@ describe('Notices Module', function()
 	end)
 
 	describe('creditNoticeHandler - Order Creation', function()
+		local TEST_MODULE_ID = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
+
 		before_each(function()
 			-- Fund users for listing fees
 			ARIOBalances['user-123-1234567890123456789012345678901234567890'] = { balance = '10000000000', orders = {} }
+			-- Whitelist test ANT module
+			testGlobals.whitelistTestModule(TEST_MODULE_ID)
 		end)
 
 		it('should create ANT order with valid Credit-Notice', function()
@@ -301,6 +305,7 @@ describe('Notices Module', function()
 					['X-Order-Type'] = 'fixed',
 					['X-Price'] = '1000',
 					['X-Expiration-Time'] = '2000',
+					['From-Module'] = TEST_MODULE_ID,
 				},
 			})
 			
@@ -338,6 +343,7 @@ describe('Notices Module', function()
 					['X-Swap-Token'] = 'other-token-567890123456789012345678901234',  -- Not ARIO but valid length
 					['X-Order-Type'] = 'fixed',
 					['X-Price'] = '1000',
+					['From-Module'] = TEST_MODULE_ID,
 				},
 			})
 
@@ -617,6 +623,112 @@ describe('Notices Module', function()
 			-- After failing, intents are pruned
 			-- Just verify handler executed without crashing
 			assert.is_nil(intents.getIntentById(childId))
+		end)
+	end)
+
+	describe('creditNoticeHandler - Whitelist Enforcement', function()
+		local TEST_MODULE_WHITELISTED = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
+		local TEST_MODULE_NOT_WHITELISTED = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234'
+
+		before_each(function()
+			testGlobals.resetState()
+			-- Whitelist only the first module
+			testGlobals.whitelistTestModule(TEST_MODULE_WHITELISTED)
+			-- Set ARIO token to match global
+			_G.ARIO_TOKEN_PROCESS_ID = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+		end)
+
+		it('should create ANT order when module is whitelisted', function()
+			local validUser = 'user-whitelist-test123456789012345678901234'
+			local validAntToken = 'ant-token-whitelist-test1234567890123456789'
+			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
+			
+			local msg = { From = validUser, Timestamp = 1000 }
+			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intentId = intent.intentId
+
+			local creditMsg = createMockMsg({
+				From = validAntToken,
+				Tags = {
+					Sender = validUser,
+					Quantity = '1',
+					['X-Intent-Id'] = intentId,
+					['X-Order-Action'] = 'Create-Order',
+					['X-Swap-Token'] = _G.ARIO_TOKEN_PROCESS_ID,
+					['X-Order-Type'] = 'fixed',
+					['X-Price'] = '1000',
+					['From-Module'] = TEST_MODULE_WHITELISTED,
+				},
+			})
+			
+			notices.creditNoticeHandler(creditMsg)
+			
+			-- Verify order was created successfully (or intent completed)
+			local processed = false
+			for _, sentMsg in ipairs(testGlobals.sentMessages) do
+				-- Either Credit-Notice-Processed or Intent-Resolved with success
+				if sentMsg.Action == 'Credit-Notice-Processed' or 
+				   (sentMsg.Action == 'Intent-Resolved' and sentMsg.Status == 'completed') then
+					processed = true
+					break
+				end
+			end
+			assert.is_true(processed)
+		end)
+
+		it('should fail intent when ANT module is not whitelisted', function()
+			local validUser = 'user-not-whitelisted-12345678901234567890'
+			local validAntToken = 'ant-token-not-whitelisted-1234567890123456'
+			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
+			
+			local msg = { From = validUser, Timestamp = 1000 }
+			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intentId = intent.intentId
+
+			local creditMsg = createMockMsg({
+				From = validAntToken,
+				Tags = {
+					Sender = validUser,
+					Quantity = '1',
+					['X-Intent-Id'] = intentId,
+					['X-Order-Action'] = 'Create-Order',
+					['X-Swap-Token'] = _G.ARIO_TOKEN_PROCESS_ID,
+					['X-Order-Type'] = 'fixed',
+					['X-Price'] = '1000',
+					['From-Module'] = TEST_MODULE_NOT_WHITELISTED,  -- Not whitelisted
+				},
+			})
+			
+			notices.creditNoticeHandler(creditMsg)
+			
+			-- Verify failure message sent
+			local failureSent = false
+			for _, sentMsg in ipairs(testGlobals.sentMessages) do
+				if sentMsg.Action == 'Intent-Resolved' and sentMsg.Status == 'failed' then
+					failureSent = true
+					break
+				end
+			end
+			assert.is_true(failureSent, 'Should send Intent-Resolved with failed status')
+		end)
+
+		it('should allow ARIO deposits without whitelist check', function()
+			local validUser = 'user-ario-deposit-test123456789012345678'
+			
+			local creditMsg = createMockMsg({
+				From = _G.ARIO_TOKEN_PROCESS_ID,  -- ARIO token
+				Tags = {
+					Sender = validUser,
+					Quantity = '5000000000',
+					['X-Action'] = 'Deposit',
+					-- No From-Module tag - should still work for ARIO
+				},
+			})
+			
+			notices.creditNoticeHandler(creditMsg)
+			
+			-- Verify balance increased
+			assert.are.equal('5000000000', ARIOBalances[validUser].balance)
 		end)
 	end)
 end)

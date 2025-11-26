@@ -1,6 +1,7 @@
 print('\n=== Loading ucm module for testing ===')
-require('test_globals')
+local testGlobals = require('test_globals')
 local ucm = require('ucm')
+local json = require('json')
 print('✓ ucm module loaded')
 
 describe('ucm helpers', function()
@@ -978,6 +979,119 @@ describe('ucm helpers', function()
 			end)
 
 			assert.is_false(success)
+		end)
+	end)
+
+	describe('Whitelist Management', function()
+		local TEST_MODULE_ID = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
+		local TEST_MODULE_ID_2 = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234'
+
+		before_each(function()
+			testGlobals.resetState()
+		end)
+
+		describe('whitelistModule', function()
+			it('should add module to whitelist', function()
+				local result = ucm.whitelistModule(TEST_MODULE_ID)
+				
+				assert.is_true(result)
+				assert.is_true(WhitelistedModules[TEST_MODULE_ID])
+			end)
+
+			it('should reject invalid module ID', function()
+				local success = pcall(function()
+					ucm.whitelistModule('invalid-id')
+				end)
+				
+				assert.is_false(success)
+			end)
+
+			it('should reject already whitelisted module', function()
+				ucm.whitelistModule(TEST_MODULE_ID)
+				
+				local success = pcall(function()
+					ucm.whitelistModule(TEST_MODULE_ID)
+				end)
+				
+				assert.is_false(success)
+			end)
+		end)
+
+		describe('unwhitelistModule', function()
+			it('should remove module from whitelist', function()
+				ucm.whitelistModule(TEST_MODULE_ID)
+				
+				local result = ucm.unwhitelistModule(TEST_MODULE_ID)
+				
+				assert.is_true(result)
+				assert.is_nil(WhitelistedModules[TEST_MODULE_ID])
+			end)
+
+			it('should reject non-whitelisted module', function()
+				local success = pcall(function()
+					ucm.unwhitelistModule(TEST_MODULE_ID)
+				end)
+				
+				assert.is_false(success)
+			end)
+		end)
+
+		describe('whitelistModuleHandler', function()
+			it('should whitelist via message handler', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Module-Id'] = TEST_MODULE_ID,
+					},
+				})
+				
+				local result = ucm.whitelistModuleHandler(msg)
+				local whitelist = json.decode(result)
+				
+				assert.is_true(WhitelistedModules[TEST_MODULE_ID])
+				assert.is_true(whitelist[TEST_MODULE_ID])
+			end)
+
+			it('should require Module-Id tag', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {},
+				})
+				
+				local success = pcall(function()
+					ucm.whitelistModuleHandler(msg)
+				end)
+				
+				assert.is_false(success)
+			end)
+		end)
+
+		describe('unwhitelistModuleHandler', function()
+			it('should unwhitelist via message handler', function()
+				ucm.whitelistModule(TEST_MODULE_ID)
+				
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Module-Id'] = TEST_MODULE_ID,
+					},
+				})
+				
+				local result = ucm.unwhitelistModuleHandler(msg)
+				local whitelist = json.decode(result)
+				
+				assert.is_nil(WhitelistedModules[TEST_MODULE_ID])
+				assert.is_nil(whitelist[TEST_MODULE_ID])
+			end)
+
+			it('should require Module-Id tag', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {},
+				})
+				
+				local success = pcall(function()
+					ucm.unwhitelistModuleHandler(msg)
+				end)
+				
+				assert.is_false(success)
+			end)
 		end)
 	end)
 end)
