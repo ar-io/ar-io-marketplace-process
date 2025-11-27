@@ -51,6 +51,9 @@ Name = Name or 'ANT Marketplace'
 ---@type string|nil Process owner address
 Owner = Owner or nil
 
+---@type Address Authority allowed to push intent resolution (defaults to Owner)
+IntentPushingAuthority = IntentPushingAuthority or Owner
+
 -- Accrued fees tracking
 ---@type string Total accrued fees in mARIO (stored as string for bint compatibility)
 AccruedFeesAmount = AccruedFeesAmount or '0'

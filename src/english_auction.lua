@@ -305,7 +305,13 @@ function english_auction.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
 	-- This creates an auction selling ANT for ARIO
 	
-	-- Add the new order to the orderbook (buy now functionality)
+	-- Add to index FIRST for O(1) lookup (safer update order)
+	OrderIndex[args.orderId] = {
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+	}
+	
+	-- Then add the new order to the orderbook
 	pair.orders[args.orderId] = {
 		id = args.orderId,
 		quantity = tostring(args.quantity),
@@ -324,12 +330,6 @@ function english_auction.handleArioOrder(args, validPair, pair)
 	dominantToken = validPair[1],
 	swapToken = validPair[2],
 }
-
-	-- Add to index for O(1) lookup
-	OrderIndex[args.orderId] = {
-		dominantToken = validPair[1],
-		swapToken = validPair[2],
-	}
 
 	-- Schedule pruning for expiration if needed
 	if args.expirationTime then

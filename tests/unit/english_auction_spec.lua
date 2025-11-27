@@ -223,6 +223,7 @@ describe('English Auction', function()
 								creator = 'seller-1',
 								token = ANT_TOKEN,
 								quantity = '1',
+								originalQuantity = '1',
 								price = '1000000000000',
 								orderType = 'english',
 								dateCreated = 1735689600000,
@@ -823,6 +824,187 @@ describe('English Auction', function()
 
 			assert.is_false(success)
 			assert.is_not_nil(err:match('at least 1 ARIO higher'))
+		end)
+	end)
+
+	describe('English Auction Cancellation', function()
+		local english_auction = require('english_auction')
+
+		it('should allow cancellation of English auction without bids', function()
+			-- Setup: Create an English auction with no bids
+			ucm.createOrder({
+				orderId = 'auction-no-bids',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-123',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			-- Verify auction exists
+			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-no-bids']
+			assert.is_not_nil(order)
+			assert.are.equal('active', order.status)
+			assert.is_nil(order.highestBidder)
+
+			-- Cancel the auction
+			local cancelMsg = testGlobals.mockMsg({
+				From = 'seller-123',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-no-bids',
+				},
+			})
+
+			local result = ucm.cancelOrderHandler(cancelMsg)
+			local resultData = json.decode(result)
+
+			assert.are.equal('Success', resultData.Status)
+			assert.are.equal('Order cancelled', resultData.Message)
+
+			-- Verify order is removed from orderbook
+			assert.is_nil(Orderbook[ANT_TOKEN])
+			assert.is_nil(OrderIndex['auction-no-bids'])
+		end)
+
+		it('should block cancellation of English auction with bids', function()
+			-- Setup: Create an English auction
+			ucm.createOrder({
+				orderId = 'auction-with-bids',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-456',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			-- Place a bid on the auction
+			ARIOBalances['bidder-xyz'] = {balance = '10000000000', orders = {}}
+			local bidMsg = {
+				From = 'bidder-xyz',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-with-bids',
+					['Bid-Amount'] = '2000000000',
+				},
+			}
+			english_auction.bidOnEnglishAuctionHandler(bidMsg)
+
+			-- Verify auction has a bid
+			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids']
+			assert.are.equal('bidder-xyz', order.highestBidder)
+
+			-- Try to cancel the auction (should fail)
+			local cancelMsg = testGlobals.mockMsg({
+				From = 'seller-456',
+				Timestamp = 1600000,
+				Tags = {
+					['Order-Id'] = 'auction-with-bids',
+				},
+			})
+
+			local success, err = pcall(function()
+				ucm.cancelOrderHandler(cancelMsg)
+			end)
+
+			assert.is_false(success)
+			assert.is_not_nil(err:match('cannot cancel an English auction that has bids'))
+
+			-- Verify order still exists
+			assert.is_not_nil(Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids'])
+		end)
+
+		it('should only allow creator to cancel English auction', function()
+			-- Setup: Create an English auction
+			ucm.createOrder({
+				orderId = 'auction-creator-test',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'creator-789',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			-- Try to cancel from different user (should fail)
+			local cancelMsg = testGlobals.mockMsg({
+				From = 'not-the-creator',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-creator-test',
+				},
+			})
+
+			local success, err = pcall(function()
+				ucm.cancelOrderHandler(cancelMsg)
+			end)
+
+			assert.is_false(success)
+			assert.is_not_nil(err:match('Unauthorized'))
+
+			-- Verify order still exists
+			assert.is_not_nil(Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-creator-test'])
+		end)
+
+		it('should return ANT to creator when cancelling auction without bids', function()
+			-- Setup: Create an English auction
+			ucm.createOrder({
+				orderId = 'auction-return-ant',
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+				sender = 'seller-999',
+				quantity = 1,
+				price = '1000000000',
+				createdAt = '1000000',
+				blockheight = '123456',
+				orderType = 'english',
+				orderGroupId = 'test-group',
+				expirationTime = '3000000',
+				msg = { Tags = {}, From = ANT_TOKEN },
+			})
+
+			local transfersSent = {}
+			_G.ao.send = function(msg)
+				if msg.Action == 'Transfer' then
+					table.insert(transfersSent, msg)
+				end
+			end
+
+			-- Cancel the auction
+			local cancelMsg = testGlobals.mockMsg({
+				From = 'seller-999',
+				Timestamp = 1500000,
+				Tags = {
+					['Order-Id'] = 'auction-return-ant',
+					['X-Intent-Id'] = '12345',
+				},
+			})
+
+			ucm.cancelOrderHandler(cancelMsg)
+
+			-- Verify Transfer message was sent back to creator
+			assert.are.equal(1, #transfersSent)
+			assert.are.equal('Transfer', transfersSent[1].Action)
+			assert.are.equal(ANT_TOKEN, transfersSent[1].Target)
+			assert.are.equal('seller-999', transfersSent[1].Tags.Recipient)
+			assert.are.equal('1', transfersSent[1].Tags.Quantity)
 		end)
 	end)
 end)

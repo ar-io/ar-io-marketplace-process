@@ -850,7 +850,7 @@ describe('ANT Intent Resolution', function()
 		assert.is_not_nil(err and err:match('Intent not found'))
 		end)
 		
-		it('should require sender to match intent initiator', function()
+		it('should require sender to be authorized (initiator, owner, or pushing authority)', function()
 			ARIOBalances['user-owner'] = {balance = '10000000000', orders = {}}
 			
 			-- Create parent intent for user-owner
@@ -861,7 +861,7 @@ describe('ANT Intent Resolution', function()
 			}
 			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
 			
-			-- Try to call from different user
+			-- Try to call from unauthorized user (not initiator, owner, or pushing authority)
 			local msg = {
 				Id = 'msg-789',
 				From = 'different-user',
@@ -876,7 +876,7 @@ describe('ANT Intent Resolution', function()
 			end)
 			
 		assert.is_false(success)
-		assert.is_not_nil(err and err:match('Sender does not match intent initiator'))
+		assert.is_not_nil(err and err:match('Unauthorized'))
 		end)
 	end)
 	

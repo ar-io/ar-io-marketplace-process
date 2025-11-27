@@ -197,11 +197,11 @@ end
 --- @param _validPair string[] The validated pair [ANT, ARIO]
 function ucm.validateAntDominantOrder(args, _validPair)
 	-- ANT tokens can only be sold in quantities of exactly 1
-	if bint(args.quantity) ~= bint(constants.AUCTION.ANT_EXACT_QUANTITY) then
+	if bint(args.quantity) ~= bint(constants.QUANTITY.ANT_EXACT_AMOUNT) then
 		utils.refundAndError(
 			args.msg,
 			args.sender,
-			'ANT tokens can only be sold in quantities of exactly ' .. constants.AUCTION.ANT_EXACT_QUANTITY
+			'ANT tokens can only be sold in quantities of exactly ' .. constants.QUANTITY.ANT_EXACT_AMOUNT
 		)
 		return
 	end
@@ -876,6 +876,75 @@ function ucm.unwhitelistModuleHandler(msg)
 	assert(moduleId, 'Module-Id is required')
 	ucm.unwhitelistModule(moduleId)
 	return json.encode(WhitelistedModules)
+end
+
+--- Rebuild OrderIndex from Orderbook
+--- This is a recovery function that rebuilds the index from scratch
+--- @return table Statistics about the rebuild operation
+function ucm.rebuildOrderIndex()
+	local rebuilt = {}
+	local orphanedIndex = {}
+	
+	-- Build new index from orderbook
+	for dominantToken, swapTokens in pairs(Orderbook) do
+		for swapToken, pair in pairs(swapTokens) do
+			for orderId, order in pairs(pair.orders) do
+				-- Use order's stored tokens if available, otherwise use pair location
+				local orderDominantToken = dominantToken
+				local orderSwapToken = swapToken
+				
+				---@diagnostic disable-next-line: undefined-field
+				if order.dominantToken then
+					---@diagnostic disable-next-line: undefined-field
+					orderDominantToken = order.dominantToken
+				end
+				---@diagnostic disable-next-line: undefined-field
+				if order.swapToken then
+					---@diagnostic disable-next-line: undefined-field
+					orderSwapToken = order.swapToken
+				end
+				
+				rebuilt[orderId] = {
+					dominantToken = orderDominantToken,
+					swapToken = orderSwapToken,
+				}
+			end
+		end
+	end
+	
+	-- Find orphaned index entries (exist in index but not in orderbook)
+	for orderId in pairs(OrderIndex) do
+		if not rebuilt[orderId] then
+			table.insert(orphanedIndex, orderId)
+		end
+	end
+	
+	-- Replace index
+	OrderIndex = rebuilt
+	
+	return {
+		rebuiltCount = #utils.keys(rebuilt),
+		orphanedCount = #orphanedIndex,
+		orphanedIds = orphanedIndex,
+	}
+end
+
+--- Handler: Rebuild-Order-Index
+--- Rebuilds the OrderIndex from Orderbook (admin recovery function)
+--- @param msg Message The message from the process owner
+--- @return string jsonResponse JSON-encoded rebuild statistics
+function ucm.rebuildOrderIndexHandler(msg)
+	assert(msg.From == Owner, 'Unauthorized: only process owner can rebuild index')
+	
+	local result = ucm.rebuildOrderIndex()
+	
+	return json.encode({
+		Status = 'Success',
+		Message = 'OrderIndex rebuilt from Orderbook',
+		RebuiltCount = result.rebuiltCount,
+		OrphanedCount = result.orphanedCount,
+		OrphanedIds = result.orphanedIds,
+	})
 end
 
 

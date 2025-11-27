@@ -131,13 +131,14 @@ describe('Balance Management', () => {
 
     it('should return balances after deposits', async () => {
       // Make a deposit
-      await marketplaceProcess.depositArio('5000000000', TEST_ARIO_PROCESS);
+      await marketplaceProcess.depositArio('5000000000', TEST_ARIO_PROCESS, TEST_SENDER);
       
       const result = await marketplaceProcess.process.read({
         tags: [{ name: 'Action', value: 'Get-Paginated-Balances' }],
       });
 
-      const data = JSON.parse(JSON.stringify(result));
+      // Parse the result - process.read() returns the data directly, not wrapped in .Data
+      const data = typeof result === 'string' ? JSON.parse(result) : result;
       assert(data.items, 'Should return items array');
       assert(data.items.length > 0, 'Should have at least one balance');
       

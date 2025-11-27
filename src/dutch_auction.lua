@@ -30,7 +30,13 @@ function dutch_auction.handleArioOrder(args, validPair, pair)
 	
 	local decreaseStep = dutch_auction.calculateDecreaseStep(args)
 
-	-- Use dictionary-style (lookup table) for efficient order management
+	-- Add to index FIRST for O(1) lookup (safer update order)
+	OrderIndex[args.orderId] = {
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+	}
+
+	-- Then add to orderbook using dictionary-style (lookup table) for efficient order management
 	pair.orders[args.orderId] = {
 		id = args.orderId,
 		quantity = tostring(args.quantity),
@@ -45,12 +51,6 @@ function dutch_auction.handleArioOrder(args, validPair, pair)
 		decreaseInterval = args.decreaseInterval and tostring(args.decreaseInterval),
 		decreaseStep = tostring(decreaseStep),
 		status = ORDER_STATUSES.ACTIVE,
-		dominantToken = validPair[1],
-		swapToken = validPair[2],
-	}
-
-	-- Add to index for O(1) lookup
-	OrderIndex[args.orderId] = {
 		dominantToken = validPair[1],
 		swapToken = validPair[2],
 	}
@@ -121,7 +121,7 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 
 		-- Check if the user sent enough ARIO to pay for 1 ANT token at the current Dutch auction price
 		if bint(args.quantity) >= currentPrice then
-		local fillAmount = bint(1) -- 1 ANT token (always 1 for ANT orders)
+		local fillAmount = bint(constants.QUANTITY.ANT_EXACT_AMOUNT) -- 1 ANT token (always 1 for ANT orders)
 		-- Validate we have a valid fill amount
 		if fillAmount <= bint(0) then
 			utils.refundAndError(args.msg, args.sender, 'No amount to fill', 'Order-Error')
@@ -279,10 +279,23 @@ function dutch_auction.validateDutchParams(args)
 		return false, 'Decrease interval must be less than expiration time'
 	end
 
-	local decreaseStep = dutch_auction.calculateDecreaseStep(args)
+	-- Calculate intervals and price decrease
+	local intervalsCount = (bint(args.expirationTime) - bint(args.createdAt)) / bint(args.decreaseInterval)
+	local priceDecreaseMax = bint(args.price) - bint(args.minimumPrice)
+	
+	-- Ensure price decrease is evenly divisible by interval count
+	local remainder = priceDecreaseMax % intervalsCount
+	if remainder > bint(0) then
+		return false, 
+			'Price decrease (' .. tostring(priceDecreaseMax) .. ' mARIO) must be evenly divisible by interval count (' .. 
+			tostring(intervalsCount) .. '). Adjust your price range or decrease interval to ensure even price drops.'
+	end
+	
+	local decreaseStep = priceDecreaseMax / intervalsCount
 
-	if decreaseStep < 1 then
-		return false, 'Decrease step must be at least 1. Price difference is too small for the given time intervals.'
+	if decreaseStep < bint(1) then
+		return false, 'Decrease step must be at least 1 mARIO per interval. ' ..
+		              'Increase price difference, decrease auction duration, or increase decrease interval.'
 	end
 
 	return true

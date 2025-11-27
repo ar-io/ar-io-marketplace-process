@@ -38,6 +38,8 @@ ActionMap = {
 	-- Whitelist handlers
 	whitelistModule = 'Whitelist-Module',
 	unwhitelistModule = 'Unwhitelist-Module',
+	-- Admin recovery handlers
+	rebuildOrderIndex = 'Rebuild-Order-Index',
 }
 
 -- Intent handlers
@@ -74,3 +76,6 @@ utils.createHandler('Action', ActionMap.bidOnEnglishAuction, english_auction.bid
 -- Whitelist handlers
 utils.createHandler('Action', ActionMap.whitelistModule, ucm.whitelistModuleHandler, nil, true) -- Critical: whitelists a module
 utils.createHandler('Action', ActionMap.unwhitelistModule, ucm.unwhitelistModuleHandler, nil, true) -- Critical: unwhitelists a module
+
+-- Admin recovery handlers
+utils.createHandler('Action', ActionMap.rebuildOrderIndex, ucm.rebuildOrderIndexHandler, nil, true) -- Critical: rebuilds OrderIndex

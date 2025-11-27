@@ -48,7 +48,7 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 	end
 	
 	-- Calculate fee based on duration
-	local listingDurationHours = tonumber(tostring(listingDurationMs / bint(3600000))) -- Convert ms to hours
+	local listingDurationHours = tonumber(tostring(listingDurationMs / bint(constants.TIME.ONE_HOUR_MS))) -- Convert ms to hours
 	local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS * 24 -- 24 hours per day
 	
 	-- Calculate multiplier: ceiling of (hours / hoursPerFee)
@@ -71,7 +71,7 @@ function intents.createParentIntent(msg, action, forwardedTags)
 	local balances = require('balances')
 	
 	-- Calculate TTL (24 hours from creation)
-	local ttl = msg.Timestamp + constants.INTENT_TTL_MS
+	local ttl = msg.Timestamp + constants.TIME.ONE_DAY_MS
 	
 	-- For Create-Order actions, calculate and charge listing fee
 	if action == 'Create-Order' then
@@ -473,6 +473,17 @@ function intents.createIntentHandler(msg)
 		assert(intentParams['Swap-Token'], 'X-Intent-Swap-Token required for Create-Order')
 		assert(intentParams.Quantity, 'X-Intent-Quantity required for Create-Order')
 
+		-- Validate expiration time format and range
+		if intentParams['Expiration-Time'] then
+			local expTime = tonumber(intentParams['Expiration-Time'])
+			assert(expTime, 'X-Intent-Expiration-Time must be a valid number')
+			assert(expTime > msg.Timestamp, 'X-Intent-Expiration-Time must be in the future')
+			
+			local maxExpiration = msg.Timestamp + constants.LISTING.MAX_EXPIRATION_MS
+			assert(expTime <= maxExpiration, 
+				'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration))
+		end
+
 		-- Note: Full validation will happen in Credit-Notice handler
 		-- This is just basic parameter presence check
 	elseif intentAction == 'Cancel-Order' then
@@ -545,6 +556,14 @@ function intents.pushANTIntentResolutionHandler(msg)
 	local intent = intents.getIntentById(intentId)
 	assert(intent, 'Intent not found')
 
+	-- Validate intent is in pushable state
+	assert(
+		intent.status == constants.INTENT_STATUSES.PENDING or 
+		intent.status == constants.INTENT_STATUSES.ACTIVE or 
+		intent.status == constants.INTENT_STATUSES.SETTLING,
+		'Intent is not in a pushable state. Current status: ' .. intent.status
+	)
+
 	-- For child intents, check against parent's initiator (the original user)
 	-- For parent intents, check against the intent's own initiator
 	local expectedInitiator = intent.initiator
@@ -555,7 +574,13 @@ function intents.pushANTIntentResolutionHandler(msg)
 		end
 	end
 	
-	assert(msg.From == expectedInitiator, 'Sender does not match intent initiator')
+	-- Check if sender is authorized (3 authorities: initiator, Owner, or IntentPushingAuthority)
+	local isAuthorized = msg.From == expectedInitiator or 
+	                     msg.From == Owner or 
+	                     msg.From == IntentPushingAuthority
+	
+	assert(isAuthorized, 
+		'Unauthorized to push intent resolution. Only intent initiator, process owner, or intent pushing authority can push.')
 
 	local antId = intent.expectedFrom
 

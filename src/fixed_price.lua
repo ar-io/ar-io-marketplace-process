@@ -56,7 +56,13 @@ function fixed_price.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
 	-- This creates a fixed-price order selling ANT for ARIO
 	
-	-- Add the new order to the orderbook (buy now functionality)
+	-- Add to index FIRST for O(1) lookup (safer update order)
+	OrderIndex[args.orderId] = {
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+	}
+	
+	-- Then add the new order to the orderbook (buy now functionality)
 	-- Use dictionary-style (lookup table) for efficient order management
 	pair.orders[args.orderId] = {
 		id = args.orderId,
@@ -69,12 +75,6 @@ function fixed_price.handleArioOrder(args, validPair, pair)
 		expirationTime = args.expirationTime,
 		orderType = ORDER_TYPES.FIXED,
 		status = ORDER_STATUSES.ACTIVE,
-		dominantToken = validPair[1],
-		swapToken = validPair[2],
-	}
-
-	-- Add to index for O(1) lookup
-	OrderIndex[args.orderId] = {
 		dominantToken = validPair[1],
 		swapToken = validPair[2],
 	}
@@ -143,7 +143,7 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 			local sentAmount = bint(args.quantity)
 			if sentAmount >= requiredAmount then
 			-- User buys 1 ANT token
-		fillAmount = bint(1) -- always 1 for ANT orders
+		fillAmount = bint(constants.QUANTITY.ANT_EXACT_AMOUNT) -- always 1 for ANT orders
 
 		-- Validate we have a valid fill amount
 		if fillAmount <= bint(0) then

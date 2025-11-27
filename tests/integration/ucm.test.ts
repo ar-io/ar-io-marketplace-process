@@ -159,6 +159,116 @@ describe('UCM (Universal Content Marketplace)', () => {
       // Handler should return early (no messages sent)
       assert(result, 'Result should be defined');
     });
+
+    it('should reject Credit-Notice from non-whitelisted module', async () => {
+      // Create intent first
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        dominantToken: TEST_ANT_TOKEN,
+        swapToken: TEST_ARIO_TOKEN,
+        quantity: '1',
+        price: '1000000',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Try to send Credit-Notice with non-whitelisted module
+      const creditMsg = await marketplaceProcess.process.ao.message({
+        process: marketplaceProcess.process.processId,
+        tags: [
+          { name: 'Action', value: 'Credit-Notice' },
+          { name: 'Sender', value: TEST_SENDER },
+          { name: 'Quantity', value: '1' },
+          { name: 'X-Intent-Id', value: intentId },
+          { name: 'X-Order-Action', value: 'Create-Order' },
+          { name: 'X-Dominant-Token', value: TEST_ANT_TOKEN },
+          { name: 'X-Order-Type', value: 'fixed' },
+          { name: 'X-Price', value: '1000000' },
+          { name: 'X-Swap-Token', value: TEST_ARIO_TOKEN },
+          { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Non-whitelisted!
+        ],
+        data: '',
+        signer: TEST_SIGNER,
+        From: TEST_ANT_TOKEN,
+      } as any);
+
+      // Get result and check that intent was failed
+      const creditResult = await marketplaceProcess.process.ao.result({
+        message: creditMsg,
+        process: marketplaceProcess.process.processId,
+      });
+
+      // Should have Intent-Resolved message with failed status
+      const resolvedMsg = creditResult.Messages?.find((m: any) =>
+        m.Tags?.find((t: any) => t.name === 'Action' && t.value === 'Intent-Resolved')
+      );
+      
+      assert(resolvedMsg, 'Should have Intent-Resolved message');
+      
+      const statusTag = resolvedMsg.Tags?.find((t: any) => t.name === 'Status');
+      assert.strictEqual(statusTag?.value, 'failed', 'Intent should have failed status');
+      
+      const reasonTag = resolvedMsg.Tags?.find((t: any) => t.name === 'Failure-Reason');
+      assert(
+        reasonTag?.value?.includes('whitelisted'),
+        'Failure reason should mention whitelist: ' + reasonTag?.value
+      );
+    });
+
+    it('should accept Credit-Notice from whitelisted module', async () => {
+      // Create intent
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        dominantToken: TEST_ANT_TOKEN,
+        swapToken: TEST_ARIO_TOKEN,
+        quantity: '1',
+        price: '1000000',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Send Credit-Notice with whitelisted module
+      const creditMsg = await marketplaceProcess.process.ao.message({
+        process: marketplaceProcess.process.processId,
+        tags: [
+          { name: 'Action', value: 'Credit-Notice' },
+          { name: 'Sender', value: TEST_SENDER },
+          { name: 'Quantity', value: '1' },
+          { name: 'X-Intent-Id', value: intentId },
+          { name: 'X-Order-Action', value: 'Create-Order' },
+          { name: 'X-Dominant-Token', value: TEST_ANT_TOKEN },
+          { name: 'X-Order-Type', value: 'fixed' },
+          { name: 'X-Price', value: '1000000' },
+          { name: 'X-Swap-Token', value: TEST_ARIO_TOKEN },
+          { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
+        ],
+        data: '',
+        signer: TEST_SIGNER,
+        From: TEST_ANT_TOKEN,
+      } as any);
+
+      // Get result
+      const creditResult = await marketplaceProcess.process.ao.result({
+        message: creditMsg,
+        process: marketplaceProcess.process.processId,
+      });
+
+      // Should succeed with no error
+      assert(!creditResult.Error, 'Should not have error for whitelisted module');
+      
+      // Should have Intent-Resolved with completed/active status (not failed)
+      const resolvedMsg = creditResult.Messages?.find((m: any) =>
+        m.Tags?.find((t: any) => t.name === 'Action' && t.value === 'Intent-Resolved')
+      );
+      assert(resolvedMsg, 'Should have Intent-Resolved message');
+      
+      const statusTag = resolvedMsg.Tags?.find((t: any) => t.name === 'Status');
+      assert.notStrictEqual(statusTag?.value, 'failed', 'Intent should not be failed for whitelisted module');
+    });
   });
 
   describe('Settle-Auction', () => {

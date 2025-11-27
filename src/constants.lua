@@ -53,10 +53,23 @@ constants.ADDRESS = {
 	UNSAFE_MAX_LENGTH = 128, -- Maximum length for unsafe addresses
 }
 
+-- Time constants (all in milliseconds)
+constants.TIME = {
+	ONE_MINUTE_MS = 60000,
+	ONE_HOUR_MS = 3600000,
+	ONE_DAY_MS = 86400000,
+	THIRTY_DAYS_MS = 2592000000,
+}
+
+-- Quantity constants
+constants.QUANTITY = {
+	ANT_EXACT_AMOUNT = 1, -- ANT tokens must trade in exact units of 1
+}
+
 -- Auction and bidding constants
 constants.AUCTION = {
 	MINIMUM_BID_INCREMENT = '1000000000', -- Minimum bid increment in ARIO (1 ARIO = 1000000000 mARIO)
-	ANT_EXACT_QUANTITY = 1, -- ANT tokens must trade in exact units of 1
+	ANT_EXACT_QUANTITY = 1, -- ANT tokens must trade in exact units of 1 (deprecated, use constants.QUANTITY.ANT_EXACT_AMOUNT)
 }
 
 -- Intent status constants
@@ -76,11 +89,11 @@ constants.INTENT_TYPES = {
 }
 
 -- Intent TTL constant (24 hours in milliseconds)
-constants.INTENT_TTL_MS = 86400000
+constants.INTENT_TTL_MS = constants.TIME.ONE_DAY_MS
 
 -- Listing expiration limits
 constants.LISTING = {
-	MAX_EXPIRATION_MS = 2592000000, -- 30 days in milliseconds (30 * 24 * 60 * 60 * 1000)
+	MAX_EXPIRATION_MS = constants.TIME.THIRTY_DAYS_MS, -- 30 days in milliseconds
 }
 
 -- Expected message constants
