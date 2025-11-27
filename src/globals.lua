@@ -11,8 +11,6 @@ require('types')
 ---@alias BalanceAmount string Amount of ARIO in mARIO
 ---@alias IntentId string Unique identifier for an intent
 
--- Note: AuctionBidInfo is defined in types.lua
-
 -- Global constants
 ---@type TokenId Process ID for ARIO token (CHANGEME in production)
 ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID or 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
@@ -20,7 +18,8 @@ ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID or 'agYcCFJtrMG6cqMuZfskIkFTGvUPdd
 ---@type Address Treasury address for fee collection
 TREASURY_ADDRESS = TREASURY_ADDRESS or ao.id
 
-
+---@type Address Authority allowed to push intent resolution (defaults to Owner)
+IntentPushingAuthority = IntentPushingAuthority or Owner
 
 -- Global state tables
 ---@type table<string, table<string, Pair>> Nested dictionary: Orderbook[dominantToken][swapToken] = Pair
@@ -50,9 +49,6 @@ Name = Name or 'ANT Marketplace'
 
 ---@type string|nil Process owner address
 Owner = Owner or nil
-
----@type Address Authority allowed to push intent resolution (defaults to Owner)
-IntentPushingAuthority = IntentPushingAuthority or Owner
 
 -- Accrued fees tracking
 ---@type string Total accrued fees in mARIO (stored as string for bint compatibility)

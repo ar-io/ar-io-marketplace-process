@@ -35,7 +35,7 @@ function utils.keys(t)
 end
 
 --- Validate an intent ID format
---- @param intentId string The intent ID to validate
+--- @param intentId IntentId The intent ID to validate
 --- @return boolean valid Whether the intent ID is valid
 function utils.isValidIntentId(intentId)
 	if not intentId or type(intentId) ~= 'string' then
@@ -74,7 +74,7 @@ function utils.errorHandler(err)
 end
 
 --- Checks if an address is a valid Arweave address
---- @param address string The address to check
+--- @param address Address The address to check
 --- @return boolean isValid Whether the address is valid
 function utils.isValidArweaveAddress(address)
 	return type(address) == 'string'
@@ -83,7 +83,7 @@ function utils.isValidArweaveAddress(address)
 end
 
 --- Checks if an address is a valid Ethereum address
---- @param address string The address to check
+--- @param address Address The address to check
 --- @return boolean isValid Whether the address is valid
 function utils.isValidEthAddress(address)
 	return type(address) == 'string'
@@ -92,7 +92,7 @@ function utils.isValidEthAddress(address)
 end
 
 --- Checks if an address is a valid unsafe address (less strict validation)
---- @param address string The address to check
+--- @param address Address The address to check
 --- @return boolean isValid Whether the address is valid
 function utils.isValidUnsafeAddress(address)
 	if not address then
@@ -105,7 +105,7 @@ function utils.isValidUnsafeAddress(address)
 end
 
 --- Checks if an address is a valid AO address (Arweave or Ethereum)
---- @param address string|nil The address to check
+--- @param address Address|nil The address to check
 --- @param allowUnsafe boolean|nil Whether to allow unsafe addresses
 --- @return boolean isValid Whether the address is valid
 function utils.isValidAOAddress(address, allowUnsafe)
@@ -120,8 +120,8 @@ function utils.isValidAOAddress(address, allowUnsafe)
 end
 
 --- Converts an Ethereum address to EIP-55 checksum format
---- @param address string The Ethereum address to format
---- @return string formattedAddress The EIP-55 formatted address
+--- @param address Address The Ethereum address to format
+--- @return Address formattedAddress The EIP-55 formatted address
 function utils.formatEIP55Address(address)
 	local hex = string.lower(string.sub(address, 3))
 	local hash = crypto.digest.keccak256(hex)
@@ -142,8 +142,8 @@ function utils.formatEIP55Address(address)
 end
 
 --- Formats an address to EIP-55 checksum format if Ethereum, otherwise returns as-is
---- @param address string The address to format
---- @return string formattedAddress The formatted address
+--- @param address Address The address to format
+--- @return Address formattedAddress The formatted address
 function utils.formatAddress(address)
 	if utils.isValidEthAddress(address) then
 		return utils.formatEIP55Address(address)
@@ -191,7 +191,7 @@ function utils.splitString(input, delimiter)
 end
 
 --- Checks if an address is valid (Arweave length and format)
---- @param address string|nil The address to check
+--- @param address Address|nil The address to check
 --- @return boolean isValid Whether the address is valid
 function utils.checkValidAddress(address)
 	if not address or type(address) ~= 'string' then
@@ -209,7 +209,7 @@ function utils.checkValidAmount(data)
 end
 
 --- Checks if a token address is the ARIO token
---- @param tokenAddress string The token address to check
+--- @param tokenAddress TokenId The token address to check
 --- @return boolean isArioToken Whether the token is ARIO
 function utils.isArioToken(tokenAddress)
 	return tokenAddress == ARIO_TOKEN_PROCESS_ID
@@ -227,8 +227,8 @@ function utils.isWhitelisted(msg)
 end
 
 --- Validates that at least one token in a trade is ARIO
---- @param dominantToken string The dominant token address
---- @param swapToken string The swap token address
+--- @param dominantToken TokenId The dominant token address
+--- @param swapToken TokenId The swap token address
 --- @return boolean isValid Whether the trade includes ARIO
 --- @return string|nil error The error message if invalid
 function utils.validateArioInTrade(dominantToken, swapToken)
@@ -278,8 +278,8 @@ function utils.validatePairData(data)
 end
 
 --- Calculates the send amount after applying fees
---- @param amount string|number The original amount
---- @return string sendAmount The amount to send (after fee deduction)
+--- @param amount BalanceAmount|number The original amount
+--- @return BalanceAmount sendAmount The amount to send (after fee deduction)
 function utils.calculateSendAmount(amount)
 	local factor = bint(constants.FEE.FACTOR_NUMERATOR)
 	local divisor = bint(constants.FEE.FACTOR_DENOMINATOR)
@@ -288,8 +288,8 @@ function utils.calculateSendAmount(amount)
 end
 
 --- Calculates the fee amount from an original amount
---- @param amount string|number The original amount
---- @return string feeAmount The fee amount
+--- @param amount BalanceAmount|number The original amount
+--- @return BalanceAmount feeAmount The fee amount
 function utils.calculateFeeAmount(amount)
 	local factor = bint(constants.FEE.AMOUNT_NUMERATOR)
 	local divisor = bint(constants.FEE.AMOUNT_DENOMINATOR)
@@ -298,8 +298,8 @@ function utils.calculateFeeAmount(amount)
 end
 
 --- Calculates the fill amount by flooring the value
---- @param amount string|number The amount to calculate
---- @return string fillAmount The floored fill amount as string
+--- @param amount BalanceAmount|number The amount to calculate
+--- @return BalanceAmount fillAmount The floored fill amount as string
 function utils.calculateFillAmount(amount)
 	-- Convert to string first (handles bint objects), then to number
 	return tostring(math.floor(tonumber(tostring(amount)) or 0))
@@ -384,7 +384,7 @@ end
 --- 1. Deposits (X-Action: Deposit in balances.handleDeposit)
 --- 2. Returning bids from internal balance (in english_auction.returnPreviousBid)
 --- @param msg table The original message
---- @param sender string The sender address to refund to
+--- @param sender Address The sender address to refund to
 --- @param message string The error message
 --- @param action string|nil The action type (defaults to 'Validation-Error')
 function utils.refundAndError(msg, sender, message, action)
@@ -813,7 +813,7 @@ end
 
 --- Reset accrued fees to zero
 --- Should only be called when fees are withdrawn
---- @return string The amount that was accrued before reset
+--- @return BalanceAmount The amount that was accrued before reset
 function utils.resetAccruedFees()
 	local amount = AccruedFeesAmount
 	AccruedFeesAmount = '0'
@@ -821,7 +821,7 @@ function utils.resetAccruedFees()
 end
 
 --- Get current accrued fees amount
---- @return string The current accrued fees as a string
+--- @return BalanceAmount The current accrued fees as a string
 function utils.getAccruedFees()
 	return AccruedFeesAmount
 end

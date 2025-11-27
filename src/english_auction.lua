@@ -162,8 +162,8 @@ end
 --- Prune an expired English auction (auto-settle if it has bids)
 --- @param order table The order to prune
 --- @param pair table The pair containing the order
---- @param dominantToken string The dominant token ID
---- @param swapToken string The swap token ID
+--- @param dominantToken TokenId The dominant token ID
+--- @param swapToken TokenId The swap token ID
 --- @param now number The current timestamp
 --- @param msg table The message context
 function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapToken, now, msg)
@@ -299,7 +299,7 @@ end
 --- Creates an auction where ANT is being sold for ARIO bids
 --- ANT comes via Credit-Notice, ARIO bids come from internal balance
 --- @param args table Order arguments
---- @param validPair string[] The validated pair [ANT, ARIO]
+--- @param validPair TokenId[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
 function english_auction.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice

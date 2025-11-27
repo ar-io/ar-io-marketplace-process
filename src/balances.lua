@@ -4,7 +4,7 @@ local bint = require('.bint')(256)
 local balances = {}
 
 --- Ensure an account exists in ARIOBalances with the correct structure
---- @param address string The address to ensure exists
+--- @param address Address The address to ensure exists
 function balances.ensureAccountExists(address)
 	if not ARIOBalances[address] then
 		ARIOBalances[address] = {
@@ -15,9 +15,9 @@ function balances.ensureAccountExists(address)
 end
 
 --- Transfer ARIO from one address to another within the marketplace
---- @param recipient string The recipient address
---- @param from string The sender address
---- @param qty string The quantity to transfer (string integer in mARIO)
+--- @param recipient Address The recipient address
+--- @param from Address The sender address
+--- @param qty BalanceAmount The quantity to transfer (string integer in mARIO)
 --- @param allowUnsafeAddresses boolean Whether to allow non-standard addresses
 --- @return table Balance update result with from and recipient balances
 function balances.transfer(recipient, from, qty, allowUnsafeAddresses)
@@ -40,8 +40,8 @@ function balances.transfer(recipient, from, qty, allowUnsafeAddresses)
 end
 
 --- Get the ARIO balance for a target address
---- @param target string The address to check
---- @return string The balance as a string integer (or '0' if no balance)
+--- @param target Address The address to check
+--- @return BalanceAmount The balance as a string integer (or '0' if no balance)
 function balances.getBalance(target)
 	if not ARIOBalances[target] then
 		return '0'
@@ -50,7 +50,7 @@ function balances.getBalance(target)
 end
 
 --- Get all ARIO balances (safe copy)
---- @return table<string, string> Dictionary of address to balance (string integers)
+--- @return table<Address, BalanceAmount> Dictionary of address to balance (string integers)
 function balances.getBalances()
 	local balancesOnly = {}
 	for address, account in pairs(ARIOBalances) do
@@ -60,14 +60,14 @@ function balances.getBalances()
 end
 
 --- Get all ARIO balances (unsafe - direct reference)
---- @return table<string, string> Direct reference to ARIOBalances table
+--- @return table<Address, BalanceAmount> Direct reference to ARIOBalances table
 function balances.getBalancesUnsafe()
 	return ARIOBalances or {}
 end
 
 --- Reduce the ARIO balance for a target address
---- @param target string The address to reduce balance from
---- @param qty string The quantity to reduce (string integer in mARIO)
+--- @param target Address The address to reduce balance from
+--- @param qty BalanceAmount The quantity to reduce (string integer in mARIO)
 function balances.reduceBalance(target, qty)
 	assert(balances.walletHasSufficientBalance(target, qty), "Insufficient balance")
 	assert(bint(qty) > 0, "Quantity must be greater than 0")
@@ -78,8 +78,8 @@ function balances.reduceBalance(target, qty)
 end
 
 --- Increase the ARIO balance for a target address
---- @param target string The address to increase balance for
---- @param qty string The quantity to add (string integer in mARIO)
+--- @param target Address The address to increase balance for
+--- @param qty BalanceAmount The quantity to add (string integer in mARIO)
 function balances.increaseBalance(target, qty)
 	assert(bint(qty) ~= nil, "Quantity is required and must be a number!")
 	assert(bint(qty) > 0, "Quantity must be greater than 0")
@@ -90,7 +90,7 @@ function balances.increaseBalance(target, qty)
 end
 
 --- Gets paginated list of all balances
---- @param cursor string|nil The address to start from
+--- @param cursor Address|nil The address to start from
 --- @param limit number Max number of results to return
 --- @param sortBy string|nil Field to sort by
 --- @param sortOrder string "asc" or "desc" sort direction
@@ -117,8 +117,8 @@ function balances.getPaginatedBalances(cursor, limit, sortBy, sortOrder)
 end
 
 --- Checks if a wallet has a sufficient balance
---- @param wallet string The address of the wallet
---- @param quantity string The amount to check against the balance (string integer in mARIO)
+--- @param wallet Address The address of the wallet
+--- @param quantity BalanceAmount The amount to check against the balance (string integer in mARIO)
 --- @return boolean True if the wallet has a sufficient balance, false otherwise
 function balances.walletHasSufficientBalance(wallet, quantity)
 	local balance = balances.getBalance(wallet)
@@ -200,9 +200,9 @@ end
 
 --- Lock ARIO from available balance into an order
 --- Used for both English auction bids and buy orders
---- @param orderId string The order ID
---- @param user string The user address (bidder or creator)
---- @param qty string The quantity to lock (string integer in mARIO)
+--- @param orderId OrderId The order ID
+--- @param user Address The user address (bidder or creator)
+--- @param qty BalanceAmount The quantity to lock (string integer in mARIO)
 function balances.lockBalanceForOrder(orderId, user, qty)
 	assert(type(orderId) == "string", "OrderId is required!")
 	assert(type(user) == "string", "User is required!")
@@ -221,10 +221,10 @@ end
 
 --- Unlock ARIO from an order to a recipient's available balance
 --- Used when returning bids, cancelling orders, or settling auctions
---- @param orderId string The order ID
---- @param user string The user who locked the funds (bidder or creator)
---- @param recipient string The address to receive the funds
---- @param qty string The quantity to unlock (string integer in mARIO)
+--- @param orderId OrderId The order ID
+--- @param user Address The user who locked the funds (bidder or creator)
+--- @param recipient Address The address to receive the funds
+--- @param qty BalanceAmount The quantity to unlock (string integer in mARIO)
 function balances.unlockBalanceFromOrder(orderId, user, recipient, qty)
 	assert(type(orderId) == "string", "OrderId is required!")
 	assert(type(user) == "string", "User is required!")
@@ -251,9 +251,9 @@ function balances.unlockBalanceFromOrder(orderId, user, recipient, qty)
 end
 
 --- Get locked balance for a specific user on an order
---- @param orderId string The order ID
---- @param user string The user address
---- @return string The locked balance (or '0' if none)
+--- @param orderId OrderId The order ID
+--- @param user Address The user address
+--- @return BalanceAmount The locked balance (or '0' if none)
 function balances.getOrderLockedBalance(orderId, user)
 	if not ARIOBalances[user] or not ARIOBalances[user].orders then
 		return '0'
@@ -262,8 +262,8 @@ function balances.getOrderLockedBalance(orderId, user)
 end
 
 --- Get total locked balance across all orders for a user
---- @param user string The address of the user
---- @return string The total locked amount (or '0' if none)
+--- @param user Address The address of the user
+--- @return BalanceAmount The total locked amount (or '0' if none)
 function balances.getUserTotalLockedBalance(user)
 	if not ARIOBalances[user] or not ARIOBalances[user].orders then
 		return '0'
@@ -278,7 +278,7 @@ function balances.getUserTotalLockedBalance(user)
 end
 
 --- Get user's total balance breakdown (available + locked)
---- @param user string The address of the user
+--- @param user Address The address of the user
 --- @return table Balance breakdown with available, locked, and total
 function balances.getUserBalanceBreakdown(user)
 	local available = balances.getBalance(user)

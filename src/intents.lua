@@ -9,16 +9,16 @@ local function getUtils()
 end
 
 --- Increment the global intent counter and return the new ID
---- @return string intentId The new intent ID
+--- @return IntentId intentId The new intent ID
 function intents.incrementIntentCounter()
 	IntentCounter = tostring(bint(IntentCounter) + bint(1))
 	return tostring(IntentCounter)
 end
 
 --- Calculate the listing fee based on duration
---- @param expirationTime string|number|nil The expiration timestamp (nil for no expiration)
+--- @param expirationTime BalanceAmount|number|nil The expiration timestamp (nil for no expiration)
 --- @param currentTimestamp number The current timestamp in milliseconds
---- @return string|nil listingFee The calculated listing fee in mARIO (nil on error)
+--- @return BalanceAmount|nil listingFee The calculated listing fee in mARIO (nil on error)
 --- @return string|nil error Error message if validation fails (nil on success)
 function intents.calculateListingFee(expirationTime, currentTimestamp)
 	local listingFee = bint(constants.FEE.LISTING_FEE_ARIO)
@@ -114,9 +114,9 @@ function intents.createParentIntent(msg, action, forwardedTags)
 end
 
 --- Create a child intent
---- @param parentId string The parent intent ID
+--- @param parentId IntentId The parent intent ID
 --- @param msg Message The incoming message
---- @param expectedFrom string The process ID we expect a Debit-Notice from
+--- @param expectedFrom TokenId The process ID we expect a Debit-Notice from
 --- @param forwardedTags table<string, any> Table of tags to forward with the intent
 --- @return ChildIntent childIntent The created child intent
 function intents.createChildIntent(parentId, msg, expectedFrom, forwardedTags)
@@ -151,7 +151,7 @@ end
 
 --- Resolve an intent
 --- Handles status transitions and pruning of parent intents in terminal states
---- @param intentId string The intent ID to resolve
+--- @param intentId IntentId The intent ID to resolve
 --- @param timestamp number The timestamp of resolution
 --- @param msg table|nil Optional message context for parent completion notices
 --- @return boolean success Whether the resolution was successful
@@ -217,7 +217,7 @@ function intents.resolveIntent(intentId, timestamp, msg)
 end
 
 --- Fail an intent with a reason
---- @param intentId string The intent ID to fail
+--- @param intentId IntentId The intent ID to fail
 --- @param reason string The failure reason
 --- @param msg table|nil The message context (optional, for sending notices)
 --- @return boolean success Whether the failure was recorded
@@ -251,7 +251,7 @@ function intents.failIntent(intentId, reason, msg)
 end
 
 --- Update intent status
---- @param intentId string The intent ID
+--- @param intentId IntentId The intent ID
 --- @param status string The new status
 --- @param msg table|nil The message context (optional, for sending notices)
 --- @return boolean success Whether the update was successful
@@ -290,7 +290,7 @@ function intents.updateIntentStatus(intentId, status, msg)
 end
 
 --- Get intent by ID
---- @param intentId string The intent ID
+--- @param intentId IntentId The intent ID
 --- @return Intent|ParentIntent|ChildIntent|nil intent The intent or nil if not found
 function intents.getIntentById(intentId)
 	return Intents[intentId]
@@ -362,7 +362,7 @@ function intents.getIntentsByStatus(status)
 end
 
 --- Validate that an intent exists
---- @param intentId string The intent ID
+--- @param intentId IntentId The intent ID
 --- @return boolean exists Boolean indicating if intent exists
 function intents.validateIntentExists(intentId)
 	return Intents[intentId] ~= nil
@@ -379,7 +379,7 @@ function intents.getAllIntents()
 end
 
 --- Check if all child intents are resolved
---- @param parentId string The parent intent ID
+--- @param parentId IntentId The parent intent ID
 --- @return boolean allResolved Boolean indicating if all children are resolved
 function intents.areAllChildrenIntentsResolved(parentId)
 	local parent = Intents[parentId]

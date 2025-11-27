@@ -11,7 +11,7 @@ local english_auction = require('english_auction')
 local ucm = {}
 
 --- Find order by ID using OrderIndex (O(1) lookup)
---- @param orderId string The order ID to find
+--- @param orderId OrderId The order ID to find
 --- @return table|nil order The order object or nil
 --- @return table|nil pair The pair containing the order or nil
 function ucm.getOrderById(orderId)
@@ -105,9 +105,9 @@ end
 --- Creates child intents for tracking transfer completion
 --- NOTE: This function creates child intents. Use ONLY for ANT and other non-ARIO tokens.
 --- For ARIO withdrawals, use ucm.transfer() (without intent tracking).
---- @param recipient string The recipient address
---- @param quantity string The amount to transfer
---- @param token string The token process ID
+--- @param recipient Address The recipient address
+--- @param quantity BalanceAmount The amount to transfer
+--- @param token TokenId The token process ID
 --- @param handledMsg Message The original message context
 function ucm.transferWithIntent(recipient, quantity, token, handledMsg)
 	local intents = require('intents')
@@ -133,9 +133,9 @@ function ucm.transferWithIntent(recipient, quantity, token, handledMsg)
 end
 
 --- Direct transfer without intent tracking (for ARIO withdrawals)
---- @param recipient string The recipient address
---- @param quantity string The amount to transfer
---- @param token string The token process ID
+--- @param recipient Address The recipient address
+--- @param quantity BalanceAmount The amount to transfer
+--- @param token TokenId The token process ID
 --- @param handledMsg Message The original message context
 function ucm.transfer(recipient, quantity, token, handledMsg)
 	utils.Send(handledMsg, {
@@ -181,8 +181,8 @@ function ucm.executeTokenTransfers(args)
 end
 
 --- Get a trading pair from the orderbook (directional)
---- @param dominantToken string The dominant token ID
---- @param swapToken string The swap token ID
+--- @param dominantToken TokenId The dominant token ID
+--- @param swapToken TokenId The swap token ID
 --- @return Pair|nil The pair object or nil if not found
 function ucm.getPair(dominantToken, swapToken)
 	if Orderbook[dominantToken] and Orderbook[dominantToken][swapToken] then
@@ -194,7 +194,7 @@ end
 --- Validate ANT dominant token orders (selling ANT for ARIO)
 --- Throws error if validation fails
 --- @param args table Order arguments containing quantity, price, expirationTime, createdAt, sender, orderGroupId
---- @param _validPair string[] The validated pair [ANT, ARIO]
+--- @param _validPair TokenId[] The validated pair [ANT, ARIO]
 function ucm.validateAntDominantOrder(args, _validPair)
 	-- ANT tokens can only be sold in quantities of exactly 1
 	if bint(args.quantity) ~= bint(constants.QUANTITY.ANT_EXACT_AMOUNT) then
@@ -231,7 +231,7 @@ end
 --- Validate ARIO dominant token orders (buying ANT with ARIO)
 --- Throws error if validation fails
 --- @param args table Order arguments containing requestedOrderId, sender, quantity, orderGroupId
---- @param _validPair string[] The validated pair [ARIO, ANT]
+--- @param _validPair TokenId[] The validated pair [ARIO, ANT]
 function ucm.validateArioDominantOrder(args, _validPair)
 	-- Currently no specific validation rules for ARIO dominant orders
 	-- All general validations (quantity, pair, etc.) are handled in validateOrderParams
@@ -245,7 +245,7 @@ end
 
 --- Validate order parameters
 --- @param args table Order arguments containing dominantToken, swapToken, quantity, orderType, sender, orderGroupId
---- @return string[]|nil validPair The validated pair [dominantToken, swapToken] or nil if validation fails
+--- @return TokenId[]|nil validPair The validated pair [dominantToken, swapToken] or nil if validation fails
 function ucm.validateOrderParams(args)
 	-- 1. Check pair data
 	local validPair, pairError = utils.validatePairData({ args.dominantToken, args.swapToken })
@@ -300,7 +300,7 @@ function ucm.validateOrderParams(args)
 end
 
 --- Ensure a trading pair exists in the orderbook, creating it if necessary
---- @param validPair string[] The pair as [dominantToken, swapToken]
+--- @param validPair TokenId[] The pair as [dominantToken, swapToken]
 --- @return Pair The pair object
 function ucm.ensurePairExists(validPair)
 	local dominantToken, swapToken = validPair[1], validPair[2]
@@ -323,8 +323,8 @@ end
 
 --- Check if a pair is empty and remove it from the orderbook if so
 --- This prevents memory bloat from accumulating dead pairs
---- @param dominantToken string The dominant token ID
---- @param swapToken string The swap token ID
+--- @param dominantToken TokenId The dominant token ID
+--- @param swapToken TokenId The swap token ID
 function ucm.pruneEmptyPair(dominantToken, swapToken)
 	if not Orderbook[dominantToken] or not Orderbook[dominantToken][swapToken] then
 		return
@@ -358,7 +358,7 @@ end
 
 --- Handle ANT-dominant orders (selling ANT for ARIO) for different auction types
 --- @param args table Order arguments
---- @param validPair string[] The validated pair [ANT, ARIO]
+--- @param validPair TokenId[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
 function ucm.handleAntOrderAuctions(args, validPair, pair)
 	if args.orderType == constants.ORDER_TYPES.FIXED then
@@ -377,7 +377,7 @@ end
 
 --- Handle ARIO-dominant orders (buying ANT with ARIO) for different auction types
 --- @param args table Order arguments
---- @param validPair string[] The validated pair [ARIO, ANT]
+--- @param validPair TokenId[] The validated pair [ARIO, ANT]
 --- @param pair Pair The pair object from orderbook
 function ucm.handleArioOrderAuctions(args, validPair, pair)
 	-- Check if the desired token is already being sold (prevent duplicate sell orders)

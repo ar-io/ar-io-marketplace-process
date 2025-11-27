@@ -22,7 +22,7 @@ end
 
 --- Handle ARIO-dominant order (buying ANT with ARIO) for Dutch auction
 --- @param args table Order arguments
---- @param validPair string[] The validated pair [ARIO, ANT]
+--- @param validPair TokenId[] The validated pair [ARIO, ANT]
 --- @param pair Pair The pair object from orderbook
 function dutch_auction.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
@@ -82,7 +82,7 @@ end
 
 --- Handle ANT-dominant order (selling ANT for ARIO) for Dutch auction
 --- @param args table Order arguments
---- @param _validPair string[] The validated pair [ANT, ARIO]
+--- @param _validPair TokenId[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
 function dutch_auction.handleAntOrder(args, _validPair, pair)
 	local currentOrders = pair.orders
@@ -210,16 +210,18 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 	if matchedOrderId then
 		local matchedOrder = pair.orders[matchedOrderId]
 		if matchedOrder then
-		-- Order matched, no additional cleanup needed
+			-- Store tokens before removing the order
+			local dominantToken = matchedOrder.dominantToken
+			local swapToken = matchedOrder.swapToken
+			
+			pair.orders[matchedOrderId] = nil
+			-- Remove from index
+			OrderIndex[matchedOrderId] = nil
+			
+			-- Prune the pair if it's now empty
+			local ucm = require('ucm')
+			ucm.pruneEmptyPair(dominantToken, swapToken)
 		end
-		
-		pair.orders[matchedOrderId] = nil
-		-- Remove from index
-		OrderIndex[matchedOrderId] = nil
-		
-		-- Prune the pair if it's now empty
-		local ucm = require('ucm')
-		ucm.pruneEmptyPair(matchedOrder.dominantToken, matchedOrder.swapToken)
 	end
 
 	-- Send success response if any matches occurred

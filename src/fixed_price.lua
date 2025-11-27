@@ -20,7 +20,7 @@ end
 --- @param pair Pair The pair object from orderbook (priceData will be injected with vwap, block, dominantToken, matchLogs)
 --- @param matches table[] Array of match records containing quantity and price for each trade
 --- @param args table Order arguments containing blockheight for recording when the data was captured
---- @param currentToken string Current token ID (the dominant token in the trading pair)
+--- @param currentToken TokenId Current token ID (the dominant token in the trading pair)
 --- @return number Sum of volumes across all matches
 function fixed_price.updateVwapData(pair, matches, args, currentToken)
 	if #matches == 0 then
@@ -50,7 +50,7 @@ end
 -- Helper function to handle ARIO token orders: we are selling ANT token, so we need to add to orderbook
 --- Handle ARIO-dominant order (buying ANT with ARIO) for fixed price
 --- @param args table Order arguments
---- @param validPair string[] The validated pair [ARIO, ANT]
+--- @param validPair TokenId[] The validated pair [ARIO, ANT]
 --- @param pair Pair The pair object from orderbook
 function fixed_price.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
@@ -108,7 +108,7 @@ end
 -- Helper function to handle ANT token orders: we are buying ANT token, so we need to match with an existing ANT sell order or fail
 --- Handle ANT-dominant order (selling ANT for ARIO) for fixed price
 --- @param args table Order arguments
---- @param _validPair string[] The validated pair [ANT, ARIO]
+--- @param _validPair TokenId[] The validated pair [ANT, ARIO]
 --- @param pair Pair The pair object from orderbook
 function fixed_price.handleAntOrder(args, _validPair, pair)
 	local currentOrders = pair.orders
@@ -217,16 +217,18 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 	if matchedOrderId then
 		local matchedOrder = pair.orders[matchedOrderId]
 		if matchedOrder then
-		-- Order matched, no additional cleanup needed
+			-- Store tokens before removing the order
+			local dominantToken = matchedOrder.dominantToken
+			local swapToken = matchedOrder.swapToken
+			
+			pair.orders[matchedOrderId] = nil
+			-- Remove from index
+			OrderIndex[matchedOrderId] = nil
+			
+			-- Prune the pair if it's now empty
+			local ucm = require('ucm')
+			ucm.pruneEmptyPair(dominantToken, swapToken)
 		end
-		
-		pair.orders[matchedOrderId] = nil
-		-- Remove from index
-		OrderIndex[matchedOrderId] = nil
-		
-		-- Prune the pair if it's now empty
-		local ucm = require('ucm')
-		ucm.pruneEmptyPair(matchedOrder.dominantToken, matchedOrder.swapToken)
 	end
 
 	-- Update VWAP and get total volume
