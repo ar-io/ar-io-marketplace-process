@@ -7,9 +7,8 @@ import {
   getAuthority, 
   getAoInstance,
   createAoSigner as createLocalnetSigner,
-  loadConfig,
   getAoWallet
-} from 'ao-localnet';
+} from './ao_localnet_config.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,6 +17,61 @@ import type {
   DefaultHandleOptions,
   MessageTag,
 } from './types.js';
+
+/**
+ * Custom fetch wrapper that logs all HTTP requests and responses
+ * to help debug rate limiting issues
+ */
+export function createLoggingFetch(originalFetch: typeof fetch) {
+  return async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const urlString = url instanceof Request ? url.url : url.toString();
+    const method = init?.method || 'GET';
+    
+    console.log(`[FETCH] ${method} ${urlString}`);
+    
+    // Log request body for dry-run requests
+    if (urlString.includes('4004/dry-run') && init?.body) {
+      const bodyStr = typeof init.body === 'string' ? init.body : JSON.stringify(init.body);
+      const truncated = bodyStr.length > 300 ? bodyStr.substring(0, 300) + '...' : bodyStr;
+      console.log(`[FETCH] Request body:`, truncated);
+    }
+    
+    try {
+      const response = await originalFetch(url, init);
+      const clonedResponse = response.clone();
+      
+      // Try to read the response body
+      try {
+        const body = await clonedResponse.text();
+        const isJson = response.headers.get('content-type')?.includes('application/json');
+        
+        if (isJson && body) {
+          const jsonBody = JSON.parse(body);
+          if (jsonBody.error) {
+            console.log(`[FETCH] ⚠️  ${response.status} ${urlString}`);
+            console.log(`[FETCH] Error Response:`, JSON.stringify(jsonBody, null, 2));
+          } else {
+            console.log(`[FETCH] ✓ ${response.status} ${urlString} (${body.length} bytes)`);
+            // Log CU dry-run responses for debugging
+            if (urlString.includes('4004/dry-run')) {
+              const truncated = body.length > 500 ? body.substring(0, 500) + '...' : body;
+              console.log(`[FETCH] CU Response:`, truncated);
+            }
+          }
+        } else {
+          console.log(`[FETCH] ✓ ${response.status} ${urlString} (${body.length} bytes)`);
+        }
+      } catch (e) {
+        console.log(`[FETCH] ✓ ${response.status} ${urlString} (binary/non-text)`);
+      }
+      
+      return response;
+    } catch (error) {
+      console.log(`[FETCH] ✗ Failed: ${urlString}`, error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+  };
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -100,11 +154,10 @@ export {
   getUrls,
   getScheduler,
   getAosModule,
-  getAuthority as getAuthorityAddress,
+  getAuthorityAddress, // Export the async version that properly computes wallet address
   createAoSigner as createLocalnetSigner,
-  getAoInstance,
-  loadConfig
-} from 'ao-localnet';
+  getAoInstance
+} from './ao_localnet_config.js';
 
 // Convenience getters that call SDK functions
 export function getLocalnetUrls() {
@@ -139,7 +192,8 @@ export async function uploadAntModuleIfNeeded(): Promise<string> {
   
   // Import dynamically to avoid issues
   const Arweave = (await import('arweave')).default;
-  const { getAoWallet } = await import('ao-localnet');
+  // Use our own getAoWallet from ao_localnet_config instead of the broken ao-localnet package
+  const wallet = getAoWallet();
   
   // Read the ANT WASM module
   const antModulePath = path.join(__dirname, '../fixtures/modules/ant-drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8.wasm');
@@ -153,9 +207,6 @@ export async function uploadAntModuleIfNeeded(): Promise<string> {
     port: 4000,
     protocol: 'http',
   });
-  
-  // Get wallet
-  const wallet = getAoWallet();
   
   // Create transaction
   const tx = await arweave.createTransaction({

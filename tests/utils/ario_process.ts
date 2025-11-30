@@ -8,19 +8,23 @@ export class ArioProcess {
   private ario: ARIO;
   private ao: any;
   private processId: string;
-  private signer: AoSigner;
+  private aoSigner: AoSigner;
+  private dataItemSigner: any; // DataItemSigner for aoconnect
 
   constructor({
     process,
     signer,
+    dataItemSigner,
   }: {
     process: AOProcess;
     signer: AoSigner;
+    dataItemSigner?: any; // Optional, will use signer if not provided
   }) {
     this.ario = ARIO.init({ process, signer });
     this.ao = process.ao;
     this.processId = process.processId;
-    this.signer = signer;
+    this.aoSigner = signer;
+    this.dataItemSigner = dataItemSigner || signer; // Fallback to signer for backwards compat
   }
 
   /**
@@ -34,9 +38,10 @@ export class ArioProcess {
       return Balances["${address}"]
     `;
 
+    // Use dataItemSigner for aoconnect's message() call
     const result = await this.ao.message({
       process: this.processId,
-      signer: this.signer,
+      signer: this.dataItemSigner,
       tags: [{ name: 'Action', value: 'Eval' }],
       data: mintCode,
     });
@@ -75,9 +80,10 @@ export class ArioProcess {
       ...additionalTags,
     ];
 
+    // Use dataItemSigner for aoconnect's message() call
     const txId = await this.ao.message({
       process: this.processId,
-      signer: this.signer,
+      signer: this.dataItemSigner,
       tags,
     });
 

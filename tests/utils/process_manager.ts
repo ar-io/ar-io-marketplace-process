@@ -11,7 +11,9 @@ import {
   getAosModule as getModuleId,
   getAuthorityAddress,
   createLocalnetSigner,
-  uploadAntModuleIfNeeded
+  uploadAntModuleIfNeeded,
+  createLoggingFetch,
+  getLocalnetUrls
 } from './constants.js';
 import Arweave from 'arweave'
 
@@ -88,17 +90,41 @@ export function saveProcessConfig(config: ProcessConfig): void {
 async function validateProcess(
   processId: string,
   ao: any,
+  walletAddress?: string,
 ): Promise<boolean> {
-  try {
-    const process = new AOProcess({ ao, processId });
-    const result = await process.read({
-      tags: [{ name: 'Action', value: 'Info' }],
-    });
-    return !!result;
-  } catch (error) {
-    console.warn(`Process ${processId} validation failed:`, error);
-    return false;
+  const maxRetries = 5;
+  const baseDelayMs = 1000;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const process = new AOProcess({ ao, processId });
+      const readParams: any = {
+        tags: [{ name: 'Action', value: 'Info' }],
+      };
+      
+      // Add fromAddress if provided (required for CU dry-run Owner field)
+      if (walletAddress) {
+        readParams.fromAddress = walletAddress;
+      }
+      
+      const result = await process.read(readParams);
+      return !!result;
+    } catch (error: any) {
+      const isRateLimit = error?.message?.includes('Rate limit exceeded');
+      
+      if (!isRateLimit || attempt === maxRetries - 1) {
+        console.warn(`Process ${processId} validation failed:`, error);
+        return false;
+      }
+      
+      // Exponential backoff for rate limits
+      const delayMs = baseDelayMs * Math.pow(2, attempt);
+      console.log(`[Retry ${attempt + 1}/${maxRetries}] Rate limit hit during validation, waiting ${delayMs}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
   }
+  
+  return false;
 }
 
 /**
@@ -117,6 +143,13 @@ async function spawnArioProcess(params: {
 
   // Spawn process using ao.spawn
   const authority = await getAuthorityAddress();
+  
+  console.log('[DEBUG] AR.IO spawn params:', {
+    module: moduleId,
+    scheduler,
+    signer: signer ? 'present' : 'MISSING',
+    authority,
+  });
   
   const processId = await ao.spawn({
     module: moduleId,
@@ -153,7 +186,8 @@ async function spawnArioProcess(params: {
   const aoProcess = new AOProcess({ ao, processId });
   const arioProcess = new ArioProcess({
     process: aoProcess,
-    signer: aoSigner || signer, // Use aoSigner for SDK, fallback to signer
+    signer: aoSigner || signer, // AoSigner for AR.IO SDK methods
+    dataItemSigner: signer, // DataItemSigner for direct ao.message() calls
   });
 
   // Mint initial balance for testing - derive address from wallet JWK
@@ -175,8 +209,9 @@ async function spawnMarketplaceProcess(params: {
   scheduler: string;
   authority: string;
   arioProcessId?: string; // Optional ARIO process ID to set
+  walletAddress: string; // Wallet address for dry-run Owner field
 }): Promise<{ processId: string; process: MarketplaceProcess }> {
-  const { ao, signer, aoSigner, moduleId, scheduler, arioProcessId } = params;
+  const { ao, signer, aoSigner, moduleId, scheduler, arioProcessId, walletAddress } = params;
   const authority = await getAuthorityAddress();
 
   console.log('Spawning Marketplace process...');
@@ -230,7 +265,9 @@ async function spawnMarketplaceProcess(params: {
   const aoProcess = new AOProcess({ ao, processId });
   const marketplaceProcess = new MarketplaceProcess({
     process: aoProcess,
-    signer: aoSigner || signer, // Use aoSigner for SDK, fallback to signer
+    signer: aoSigner || signer, // AoSigner for AR.IO SDK methods
+    dataItemSigner: signer, // DataItemSigner for aoconnect calls
+    walletAddress, // Needed for CU dry-run Owner field
   });
 
   // Add a delay to ensure marketplace is fully initialized before querying
@@ -378,16 +415,26 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
     console.log('🔄 Ensuring ANT module is available...');
     await uploadAntModuleIfNeeded();
     
-    // Use the same wallet from ao-localnet for EVERYTHING to avoid wallet mismatch
-    const { getAoWallet } = await import('ao-localnet');
+    // Use the same wallet from our ao_localnet_config for EVERYTHING to avoid wallet mismatch
+    const { getAoWallet } = await import('./ao_localnet_config.js');
     const wallet = getAoWallet();
+    
+    // Get wallet address for dry-run Owner field
+    const Arweave = (await import('arweave')).default;
+    const arweave = Arweave.init({});
+    const walletAddress = await arweave.wallets.jwkToAddress(wallet);
     
     // Use ao-localnet's signer (compatible with their ao instance)
     const dataItemSigner = createLocalnetSigner(new ArweaveSigner(wallet));
     // For AR.IO SDK we need AoSigner type (using the SAME wallet)
     const aoSigner = createAoSdkSigner(new ArweaveSigner(wallet));
     
-    // Use pre-configured ao instance from SDK
+    // Monkey-patch global fetch with logging wrapper
+    const originalFetch = globalThis.fetch;
+    const loggingFetch = createLoggingFetch(originalFetch);
+    globalThis.fetch = loggingFetch as any;
+    
+    // Use pre-configured ao instance from SDK (now using our logging fetch)
     const ao = getAoInstance();
 
   // Try to load existing config
@@ -396,14 +443,15 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
   if (existingConfig) {
     console.log('Found existing process config, validating...');
 
-    // Validate all processes
-    const arioValid = await validateProcess(existingConfig.arioProcessId, ao);
+    // Validate all processes (with retry and fromAddress for CU dry-run)
+    const arioValid = await validateProcess(existingConfig.arioProcessId, ao, walletAddress);
     const marketplaceValid = await validateProcess(
       existingConfig.marketplaceProcessId,
       ao,
+      walletAddress,
     );
     const antRegistryValid = existingConfig.antRegistryProcessId 
-      ? await validateProcess(existingConfig.antRegistryProcessId, ao)
+      ? await validateProcess(existingConfig.antRegistryProcessId, ao, walletAddress)
       : false;
     
     // Always spawn a fresh ANT to ensure clean state for testing
@@ -416,7 +464,8 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
       // Create process instances
       const arioProcess = new ArioProcess({
         process: new AOProcess({ ao, processId: existingConfig.arioProcessId }),
-        signer,
+        signer: aoSigner,
+        dataItemSigner,
       });
 
       const marketplaceProcess = new MarketplaceProcess({
@@ -424,7 +473,9 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
           ao,
           processId: existingConfig.marketplaceProcessId,
         }),
-        signer,
+        signer: aoSigner,
+        dataItemSigner,
+        walletAddress, // Needed for CU dry-run Owner field
       });
 
       const antProcess = ANT.init({
@@ -490,6 +541,7 @@ export async function getOrSpawnProcesses(): Promise<SpawnedProcesses> {
       scheduler,
       authority,
       arioProcessId, // Pass the ARIO process ID
+      walletAddress, // Needed for CU dry-run Owner field
     });
 
   // Save configuration

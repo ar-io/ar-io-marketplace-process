@@ -1,5 +1,5 @@
 import { createDataItemSigner } from '@permaweb/aoconnect';
-import { getAoInstance, getAosModule, getScheduler, createAoSigner as createLocalnetSigner } from 'ao-localnet';
+import { getAoInstance, getAosModule, getScheduler, createAoSigner as createLocalnetSigner } from '../tests/utils/ao_localnet_config.js';
 import fs from 'fs';
 
 async function testSigner() {

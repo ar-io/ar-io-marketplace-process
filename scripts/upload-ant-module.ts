@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { createAoSigner, getAoWallet } from 'ao-localnet';
+import { createAoSigner, getAoWallet } from '../tests/utils/ao_localnet_config.js';
 import Arweave from 'arweave';
 
 const __filename = fileURLToPath(import.meta.url);

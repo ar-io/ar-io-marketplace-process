@@ -13,6 +13,9 @@ describe('Dutch Auction', function()
 	local transfers = {}
 	local sentMessages = {}
 
+	-- Store original ao.send
+	local originalAoSend = _G.ao.send
+
 	-- Setup and teardown
 	before_each(function()
 		transfers = {}
@@ -30,8 +33,8 @@ describe('Dutch Auction', function()
 		_G.ARIOBalances['ario-buyer-2'] = {balance = '1000000000000', orders = {}} -- 1000 ARIO
 		_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}}
 
-		-- Override ao.send to track messages and transfers
-		_G.ao.send = function(msg)
+		-- Wrap ao.send to track messages and transfers (avoid duplicate field error)
+		local wrappedSend = function(msg)
 			table.insert(sentMessages, msg)
 			if msg.Action == 'Transfer' then
 				local transfer = {
@@ -42,7 +45,14 @@ describe('Dutch Auction', function()
 				}
 				table.insert(transfers, transfer)
 			end
+			return originalAoSend(msg)
 		end
+		_G.ao.send = wrappedSend
+	end)
+
+	after_each(function()
+		-- Restore original ao.send
+		_G.ao.send = originalAoSend
 	end)
 
 	describe('ANT sell order (Dutch auction)', function()
@@ -105,6 +115,8 @@ describe('Dutch Auction', function()
 							id = 'ant-sell-order',
 							creator = 'ant-seller',
 							token = ANT_TOKEN,
+							dominantToken = ANT_TOKEN,
+							swapToken = ARIO_TOKEN,
 							quantity = '1',
 							originalQuantity = '1',
 							price = '500000000000',
@@ -220,6 +232,8 @@ describe('Dutch Auction', function()
 								id = 'ant-sell-order',
 								creator = 'ant-seller',
 								token = ANT_TOKEN,
+								dominantToken = ANT_TOKEN,
+								swapToken = ARIO_TOKEN,
 								quantity = '1',
 								originalQuantity = '1',
 								price = '500000000000',

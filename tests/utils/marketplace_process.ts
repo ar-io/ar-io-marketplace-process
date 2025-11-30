@@ -12,12 +12,67 @@ import { ArioProcess } from './ario_process.js';
 export class MarketplaceProcess {
   process: AOProcess;
 	signer: AoSigner;
+  dataItemSigner: any; // DataItemSigner for aoconnect calls
   cuUrl: string;
+  walletAddress: string; // Needed for dry-run Owner field
 
-  constructor({ process, signer }: { process: AOProcess, signer: AoSigner }) {
+  constructor({ 
+    process, 
+    signer, 
+    dataItemSigner,
+    walletAddress 
+  }: { 
+    process: AOProcess, 
+    signer: AoSigner, 
+    dataItemSigner?: any,
+    walletAddress: string 
+  }) {
     this.process = process;
     this.signer = signer;
+    this.dataItemSigner = dataItemSigner || signer; // Fallback for backwards compat
     this.cuUrl = process.ao.CU_URL || 'https://cu.ardrive.io';
+    this.walletAddress = walletAddress;
+  }
+
+  /**
+   * Retry wrapper with exponential backoff for handling "Rate limit exceeded" errors
+   * on freshly spawned processes.
+   * Automatically includes fromAddress in readParams for CU dry-run Owner field.
+   */
+  private async readWithRetry(
+    readParams: any,
+    maxRetries: number = 10,
+    baseDelayMs: number = 1000,
+    maxDelayMs: number = 30000
+  ): Promise<any> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Always include fromAddress so SDK includes Owner/From in dry-run request
+        const paramsWithOwner = { ...readParams, fromAddress: this.walletAddress };
+        const result = await this.process.read(paramsWithOwner);
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        
+        // Check if it's a rate limit error
+        const isRateLimit = error?.message?.includes('Rate limit exceeded');
+        
+        if (!isRateLimit || attempt === maxRetries - 1) {
+          // Not a rate limit error, or we're out of retries
+          throw error;
+        }
+
+        // Exponential backoff with cap: 1s, 2s, 4s, 8s, 16s, 30s (capped), 30s, ...
+        const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
+        const delayMs = Math.min(exponentialDelay, maxDelayMs);
+        console.log(`[Retry ${attempt + 1}/${maxRetries}] Rate limit hit, waiting ${delayMs}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+
+    throw lastError || new Error('Max retries exceeded');
   }
 
   /**
@@ -79,7 +134,7 @@ export class MarketplaceProcess {
   }
 
   async info(): Promise<InfoResponse> {
-    const response: any = await this.process.read({
+    const response: any = await this.readWithRetry({
       tags: [{ name: 'Action', value: 'Info' }],
     });
     return response as InfoResponse;
@@ -158,7 +213,7 @@ export class MarketplaceProcess {
     const filteredTags = tags.filter(
       (tag): tag is { name: string; value: string } => tag.value !== undefined,
     );
-    const result = await this.process.read({ tags: filteredTags });
+    const result = await this.readWithRetry({ tags: filteredTags });
     // Wrap the response to include Action field for test expectations
     return {
       Action: 'Get-Paginated-Intents-Notice',
@@ -169,7 +224,7 @@ export class MarketplaceProcess {
 
   async getIntentById(intentId: string): Promise<ReadResponse> {
     try {
-      const result = await this.process.read({
+      const result = await this.readWithRetry({
         tags: [
           { name: 'Action', value: 'Get-Intent-By-Id' },
           { name: 'Intent-Id', value: intentId },
@@ -216,7 +271,7 @@ export class MarketplaceProcess {
     const filteredTags = tags.filter(
       (tag): tag is { name: string; value: string } => tag.value !== undefined,
     );
-    const result = await this.process.read({ tags: filteredTags });
+    const result = await this.readWithRetry({ tags: filteredTags });
     // Wrap the response to include Action field for test expectations
     return {
       Action: 'Get-Orders-Notice',
@@ -232,7 +287,7 @@ export class MarketplaceProcess {
    */
   async getOrder(orderId: string): Promise<ReadResponse> {
     try {
-      const result = await this.process.read({
+      const result = await this.readWithRetry({
         tags: [
           { name: 'Action', value: 'Get-Order' },
           { name: 'Order-Id', value: orderId },
@@ -255,7 +310,7 @@ export class MarketplaceProcess {
   }
 
   async getOrderCountsByAddress(address: string): Promise<ReadResponse> {
-    return await this.process.read({
+    return await this.readWithRetry({
       tags: [
         { name: 'Action', value: 'Get-Order-Counts-By-Address' },
         { name: 'Address', value: address },
@@ -272,7 +327,7 @@ export class MarketplaceProcess {
       tags.push({ name: 'X-Group-ID', value: groupId });
     }
     try {
-      const result = await this.process.read({ tags });
+      const result = await this.readWithRetry({ tags });
       return {
         Action: 'Cancel-Order-Notice',
         Data: JSON.stringify(result),
@@ -303,7 +358,7 @@ export class MarketplaceProcess {
       tags.push({ name: 'Swap-Token', value: params.swapToken });
     }
     try {
-      const result = await this.process.read({ tags });
+      const result = await this.readWithRetry({ tags });
       return {
         Action: 'Settle-Auction-Notice',
         Data: JSON.stringify(result),
@@ -323,7 +378,7 @@ export class MarketplaceProcess {
    * @returns Volume information
    */
   async getVolume(): Promise<ReadResponse> {
-    return await this.process.read({
+    return await this.readWithRetry({
       tags: [
         { name: 'Action', value: 'Get-Activity' },
         { name: 'Query-Type', value: 'volume' },
@@ -344,7 +399,7 @@ export class MarketplaceProcess {
     if (count !== undefined) {
       tags.push({ name: 'Count', value: count.toString() });
     }
-    return await this.process.read({ tags });
+    return await this.readWithRetry({ tags });
   }
 
   // UCM handlers
@@ -790,6 +845,7 @@ export class MarketplaceProcess {
         processId: arioProcessId,
       }),
       signer: this.signer,
+      dataItemSigner: this.dataItemSigner,
     });
 
     // Transfer ARIO to marketplace as bid
@@ -914,8 +970,9 @@ export class MarketplaceProcess {
 
   /**
    * Deposit ARIO to the marketplace (simulates Credit-Notice from ARIO token process)
+   * Returns the message ID for verification
    */
-  async depositArio(amount: string, arioProcessId: string, address?: string): Promise<ReadResponse> {
+  async depositArio(amount: string, arioProcessId: string, address?: string): Promise<{ messageId: string }> {
     // If no address is provided, use empty string to deposit to msg.From
     // The Sender tag will be set from the message's From field
     const depositAddress = address || '';
@@ -927,27 +984,95 @@ export class MarketplaceProcess {
       { name: 'X-Action', value: 'Deposit' },
     ];
 
-    try {
-      // Use ao.message directly to set From field
-      await this.process.ao.message({
-        process: this.process.processId,
-        tags,
-        signer: this.signer,
-        From: arioProcessId, // Credit-Notice must come FROM the ARIO token process
-      } as any);
+    // Use ao.message directly to set From field
+    const messageId = await this.process.ao.message({
+      process: this.process.processId,
+      tags,
+      signer: this.signer,
+      From: arioProcessId, // Credit-Notice must come FROM the ARIO token process
+    } as any);
 
-      return {
-        Action: 'Credit-Notice-Processed',
-        Data: JSON.stringify({ balance: amount }),
-        Tags: {},
-      };
-    } catch (error: any) {
-      return {
-        Action: 'Invalid-Credit-Notice',
-        Data: error.message || String(error),
-        Tags: { Error: 'Deposit-Error' },
-      };
+    return { messageId };
+  }
+
+  /**
+   * Verify a Credit-Notice was processed by checking its result
+   * Uses GraphQL to find the message and CU to get the result
+   */
+  async verifyCreditNoticeProcessed(messageId: string, maxAttempts: number = 10): Promise<any> {
+    const graphqlUrl = this.process.ao.GRAPHQL_URL || 'http://localhost:4000/graphql';
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        // Query GraphQL for the message by ID
+        const gqlQuery = {
+          query: `
+            query GetMessage($messageId: ID!) {
+              transaction(id: $messageId) {
+                id
+                tags {
+                  name
+                  value
+                }
+              }
+            }
+          `,
+          variables: { messageId }
+        };
+
+        const gqlResponse = await fetch(graphqlUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gqlQuery),
+        });
+
+        if (!gqlResponse.ok) {
+          console.log(`[Attempt ${attempt + 1}/${maxAttempts}] GraphQL query failed, waiting 2s...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+
+        const gqlData = await gqlResponse.json();
+        if (!gqlData.data?.transaction) {
+          console.log(`[Attempt ${attempt + 1}/${maxAttempts}] Message not yet in GraphQL, waiting 2s...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+
+        // Get the result from CU
+        const resultUrl = `${this.cuUrl}/result/${messageId}?process-id=${this.process.processId}`;
+        const resultResponse = await fetch(resultUrl);
+        
+        if (!resultResponse.ok) {
+          console.log(`[Attempt ${attempt + 1}/${maxAttempts}] CU result not ready, waiting 2s...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+
+        const result = await resultResponse.json();
+        
+        // Check if the Credit-Notice was processed
+        if (result.Messages && result.Messages.length > 0) {
+          const creditNoticeMessage = result.Messages.find((m: any) => 
+            m.Tags?.some((t: any) => t.name === 'Action' && t.value === 'Credit-Notice-Processed')
+          );
+          
+          if (creditNoticeMessage) {
+            console.log(`✓ Credit-Notice processed successfully`);
+            return creditNoticeMessage;
+          }
+        }
+
+        console.log(`[Attempt ${attempt + 1}/${maxAttempts}] Credit-Notice not yet processed, waiting 2s...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+      } catch (error) {
+        console.log(`[Attempt ${attempt + 1}/${maxAttempts}] Error checking Credit-Notice:`, error instanceof Error ? error.message : String(error));
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
+
+    throw new Error(`Credit-Notice ${messageId} was not processed after ${maxAttempts} attempts`);
   }
 
   /**
@@ -986,7 +1111,7 @@ export class MarketplaceProcess {
     const targetAddress = address || this.signer.address;
     
     try {
-      const result = await this.process.read({
+      const result = await this.readWithRetry({
         tags: [
           { name: 'Action', value: 'Get-Balance' },
           { name: 'Address', value: targetAddress },

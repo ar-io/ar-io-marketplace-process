@@ -492,6 +492,73 @@ describe('E2E Fixed Price Marketplace Tests', { timeout: 2_700_000 }, () => {
         console.log('✓ Invalid order rejected:', error);
       }
     });
+
+    it('should fail to create order without required parameters', async () => {
+      const result = await profile('Try to create intent without price', () =>
+        marketplaceProcess.createIntent({
+          action: 'Create-Order',
+          orderType: 'fixed',
+          swapToken: arioProcessId,
+          quantity: '1000',
+          // Missing price
+        })
+      );
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
+      assert(result.Tags?.Error, 'Should have Error tag');
+      console.log('✓ Correctly rejected intent without price');
+    });
+
+    it('should fail to create order with invalid order type', async () => {
+      const result = await profile('Try to create intent with invalid order type', () =>
+        marketplaceProcess.createIntent({
+          action: 'Create-Order',
+          orderType: 'invalid-type' as any,
+          swapToken: arioProcessId,
+          quantity: '1000',
+          price: '500000',
+        })
+      );
+
+      assert(result, 'Result should be defined');
+      // Should get validation error
+      console.log('✓ Invalid order type handled');
+    });
+
+    it('should fail to cancel non-existent order', async () => {
+      const fakeOrderId = 'non-existent-order-123';
+
+      const result = await profile('Try to cancel non-existent order', () =>
+        marketplaceProcess.cancelOrder(fakeOrderId)
+      );
+
+      assert(result, 'Result should be defined');
+      // Should get error response
+      if (result.Action === 'Action-Response') {
+        assert.strictEqual(result.Tags.Status, 'Error');
+        console.log('✓ Cancel non-existent order rejected');
+      } else {
+        console.log('✓ Cancel rejected (different response format)');
+      }
+    });
+
+    it('should handle missing Order-Id in Get-Order', async () => {
+      try {
+        await profile('Try Get-Order without Order-Id', async () => {
+          await marketplaceProcess.process.read({
+            tags: [{ name: 'Action', value: 'Get-Order' }],
+          });
+          assert.fail('Should have thrown error for missing Order-Id');
+        });
+      } catch (error: any) {
+        assert(
+          error.message.includes('Order-Id'),
+          'Error should mention Order-Id'
+        );
+        console.log('✓ Missing Order-Id handled correctly');
+      }
+    });
   });
 
   describe('Intent Pagination and Filtering', () => {

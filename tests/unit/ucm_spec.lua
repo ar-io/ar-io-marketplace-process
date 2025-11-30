@@ -41,6 +41,8 @@ describe('ucm helpers', function()
 							originalQuantity = '1',
 							creator = 'creator-addr',
 							token = dominantToken,
+							dominantToken = dominantToken,
+							swapToken = swapToken,
 							dateCreated = 1000,
 							orderType = 'fixed',
 							status = 'active',
@@ -350,6 +352,8 @@ describe('ucm helpers', function()
 							quantity = '1',
 							originalQuantity = '1',
 							token = dominantToken,
+							dominantToken = dominantToken,
+							swapToken = swapToken,
 							dateCreated = 1000,
 							orderType = 'fixed',
 							status = 'active',
@@ -617,6 +621,8 @@ describe('ucm helpers', function()
 								status = 'active',
 								expirationTime = 1000,
 								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
 							},
 						},
 					},
@@ -641,6 +647,8 @@ describe('ucm helpers', function()
 								status = 'active',
 								expirationTime = 5000,
 								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
 							},
 						},
 					},
@@ -667,7 +675,9 @@ describe('ucm helpers', function()
 
 			local pair = ucm.getPair('ant-token', 'ario-token')
 			assert.is_not_nil(pair)
-			assert.are.same({'ant-token', 'ario-token'}, pair.pair)
+			if pair then
+				assert.are.same({'ant-token', 'ario-token'}, pair.pair)
+			end
 		end)
 
 		it('should return nil if pair does not exist', function()
@@ -821,6 +831,8 @@ describe('ucm helpers', function()
 								creator = 'user-123',
 								status = 'active',
 								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token-123',
 							},
 						},
 					},
