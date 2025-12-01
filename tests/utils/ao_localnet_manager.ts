@@ -58,87 +58,6 @@ export async function checkLocalnetStatus(): Promise<LocalnetStatus> {
 }
 
 /**
- * Ensure the MU's .env file has the correct rate limit configuration
- * for our test wallet. This is needed because the default .env file
- * whitelists a different wallet address.
- */
-async function ensureRateLimitConfiguration(): Promise<void> {
-  const muEnvPath = join(AO_LOCALNET_DIR, 'services/mu/.env');
-  
-  if (!existsSync(muEnvPath)) {
-    console.warn('⚠️  MU .env file not found, skipping rate limit configuration');
-    return;
-  }
-
-  try {
-    // Get our test wallet address
-    const walletPath = join(AO_LOCALNET_DIR, 'wallets/ao-wallet.json');
-    if (!existsSync(walletPath)) {
-      console.warn('⚠️  ao-wallet.json not found, skipping rate limit configuration');
-      return;
-    }
-
-    const { readFileSync, writeFileSync } = await import('fs');
-    const walletData = readFileSync(walletPath, 'utf-8');
-    const wallet = JSON.parse(walletData);
-    
-    // Compute wallet address using Arweave
-    const Arweave = (await import('arweave')).default;
-    const arweave = Arweave.init({});
-    const walletAddress = await arweave.wallets.jwkToAddress(wallet);
-
-    // Read current .env file
-    let envContent = readFileSync(muEnvPath, 'utf-8');
-    
-    // Check if our wallet is already whitelisted
-    if (envContent.includes(walletAddress)) {
-      console.log(`   ✓ Test wallet ${walletAddress.substring(0, 8)}... already whitelisted in MU`);
-      return;
-    }
-
-    // Update the DEFAULT_RATE_LIMIT to include our wallet
-    const rateLimitConfig = {
-      default: 1000,
-      addresses: {
-        [walletAddress]: 50000
-      },
-      ips: {},
-      processes: {}
-    };
-
-    // Replace the DEFAULT_RATE_LIMIT line
-    const rateLimitLine = `DEFAULT_RATE_LIMIT=${JSON.stringify(rateLimitConfig)}`;
-    envContent = envContent.replace(
-      /DEFAULT_RATE_LIMIT=.*/,
-      rateLimitLine
-    );
-
-    // Write updated .env file
-    writeFileSync(muEnvPath, envContent, 'utf-8');
-    console.log(`   ✓ Whitelisted test wallet ${walletAddress.substring(0, 8)}... in MU rate limits`);
-    
-    // Restart MU container to pick up new env vars (only if it's running)
-    try {
-      const { stdout } = await execAsync('docker ps --filter name=ao-localnet-mu-1 --format "{{.Names}}"');
-      if (stdout.includes('ao-localnet-mu-1')) {
-        console.log('   🔄 Restarting MU container...');
-        await execAsync('docker restart ao-localnet-mu-1');
-        
-        // Give MU a moment to restart
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        console.log('   ✓ MU restarted with new rate limits');
-      }
-    } catch (error) {
-      // MU not running yet, that's okay - it will pick up the new env when it starts
-    }
-    
-  } catch (error: any) {
-    console.warn(`⚠️  Failed to configure MU rate limits: ${error.message}`);
-    // Don't throw - rate limits are not critical for basic functionality
-  }
-}
-
-/**
  * Configure ao-localnet (generates wallets and downloads AOS module)
  */
 export async function configureLocalnet(): Promise<void> {
@@ -154,9 +73,6 @@ export async function configureLocalnet(): Promise<void> {
     if (stderr && !stderr.includes('WARN')) {
       console.warn('Configure warnings:', stderr);
     }
-    
-    // Ensure MU rate limits are configured for our test wallet
-    await ensureRateLimitConfiguration();
     
     console.log('✅ ao-localnet configured');
   } catch (error: any) {
@@ -306,8 +222,6 @@ export async function setupLocalnet(): Promise<void> {
     await configureLocalnet();
   } else {
     console.log('✓ Already configured');
-    // Still ensure rate limits are correct (in case of package reinstall)
-    await ensureRateLimitConfiguration();
   }
   
   // Start if not running
