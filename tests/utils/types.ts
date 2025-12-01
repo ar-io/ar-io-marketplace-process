@@ -190,6 +190,7 @@ export interface InfoResponse {
   activity: ActivityInfo;
   intents: IntentStats;
   ucm: UCMInfo;
+  whitelistedModules: string[];
 }
 
 /**

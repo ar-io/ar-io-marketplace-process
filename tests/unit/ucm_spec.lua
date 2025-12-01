@@ -894,17 +894,59 @@ describe('ucm helpers', function()
 			assert.are.equal(1, info.ucm.totalPairs)
 		end)
 
-		it('should handle empty orderbook', function()
-			_G.Orderbook = {}
+	it('should handle empty orderbook', function()
+		_G.Orderbook = {}
 
-			local msg = testGlobals.mockMsg({})
-			local result = ucm.infoHandler(msg)
-			local info = json.decode(result)
+		local msg = testGlobals.mockMsg({})
+		local result = ucm.infoHandler(msg)
+		local info = json.decode(result)
 
-			assert.are.equal(0, info.activity.totalOrders)
-			assert.are.equal(0, info.ucm.totalPairs)
-		end)
+		assert.are.equal(0, info.activity.totalOrders)
+		assert.are.equal(0, info.ucm.totalPairs)
 	end)
+
+	it('should include whitelistedModules as array in response', function()
+		-- Add some whitelisted modules
+		_G.WhitelistedModules = {
+			['drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'] = true,
+			['another-module-1234567890123456789012345678'] = true,
+		}
+
+		local msg = testGlobals.mockMsg({})
+		local result = ucm.infoHandler(msg)
+		local info = json.decode(result)
+
+		assert.is_not_nil(info.whitelistedModules)
+		assert.are.equal('table', type(info.whitelistedModules))
+		assert.are.equal(2, #info.whitelistedModules)
+		
+		-- Check that both modules are in the array
+		local hasModule1 = false
+		local hasModule2 = false
+		for _, moduleId in ipairs(info.whitelistedModules) do
+			if moduleId == 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8' then
+				hasModule1 = true
+			end
+			if moduleId == 'another-module-1234567890123456789012345678' then
+				hasModule2 = true
+			end
+		end
+		assert.is_true(hasModule1)
+		assert.is_true(hasModule2)
+	end)
+
+	it('should return empty array for whitelistedModules when none exist', function()
+		_G.WhitelistedModules = {}
+
+		local msg = testGlobals.mockMsg({})
+		local result = ucm.infoHandler(msg)
+		local info = json.decode(result)
+
+		assert.is_not_nil(info.whitelistedModules)
+		assert.are.equal('table', type(info.whitelistedModules))
+		assert.are.equal(0, #info.whitelistedModules)
+	end)
+end)
 
 	describe('matchesStatusFilter', function()
 		it('should match ALL filter', function()

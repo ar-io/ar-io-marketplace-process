@@ -664,6 +664,7 @@ function ucm.infoHandler(_msg)
 			accruedFees = tostring(utils.getAccruedFees()),
 			arioTokenProcess = ARIO_TOKEN_PROCESS_ID,
 		},
+		whitelistedModules = utils.keys(WhitelistedModules),
 	})
 end
 

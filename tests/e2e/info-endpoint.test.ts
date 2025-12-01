@@ -366,6 +366,38 @@ describe('E2E Info Endpoint Tests', { timeout: 1_800_000 }, () => {
     });
   });
 
+  describe('Whitelisted Modules', () => {
+    it('should return whitelistedModules as array', async () => {
+      logger.startWorkflow('whitelisted-modules');
+
+      try {
+        const info = await profile('Get marketplace info', () =>
+          marketplaceProcess.info()
+        );
+
+        assert(
+          info.whitelistedModules !== undefined,
+          'whitelistedModules should be defined'
+        );
+        assert(
+          Array.isArray(info.whitelistedModules),
+          'whitelistedModules should be an array'
+        );
+
+        console.log('Whitelisted Modules:');
+        console.log(JSON.stringify(info.whitelistedModules, null, 2));
+        
+        const moduleCount = info.whitelistedModules.length;
+        console.log(`✓ Found ${moduleCount} whitelisted module(s)`);
+
+        logger.completeWorkflow(true);
+      } catch (error: any) {
+        logger.completeWorkflow(false, error.message);
+        throw error;
+      }
+    });
+  });
+
   describe('Complete Info Response', () => {
     it('should return complete info with all sections populated', async () => {
       logger.startWorkflow('complete-info');
@@ -386,6 +418,7 @@ describe('E2E Info Endpoint Tests', { timeout: 1_800_000 }, () => {
         assert(info.activity, 'Activity section should exist');
         assert(info.intents, 'Intents section should exist');
         assert(info.ucm, 'UCM section should exist');
+        assert(info.whitelistedModules !== undefined, 'WhitelistedModules should exist');
 
         console.log('✓ All main sections present');
         console.log('✓ Info endpoint comprehensive test passed');
