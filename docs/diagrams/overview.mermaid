@@ -3,10 +3,10 @@ graph TB
         U1["User sends ARIO<br/>Action: Credit-Notice<br/>X-Action: Deposit"]
         U2["User sends ANT<br/>Action: Credit-Notice<br/>X-Action: Create-Order"]
         U3["User sends Message<br/>Action: Create-Intent"]
-        U4["User sends Message<br/>Action: Bid-On-English-Auction"]
+        U4["User sends Message<br/>Action: Bid-On-English-Auction<br/>Locks ARIO, holds until settlement"]
         U5["User sends Message<br/>Action: Withdraw-Ario"]
         U6["User sends Message<br/>Action: Cancel-Order"]
-        U7["User sends Message<br/>Action: Settle-Auction"]
+        U7["User sends Message<br/>Action: Settle-Auction<br/>Returns all losing bids"]
     end
 
     subgraph "ARIO Balance System"
@@ -41,10 +41,10 @@ graph TB
     subgraph "Bidding and Buying Internal Balance"
         BB1{"Action Type?"}
         BB2["Buy Fixed/Dutch<br/>Match with ANT seller"]
-        BB3["Bid on English Auction<br/>Lock ARIO in order"]
+        BB3["Bid on English Auction<br/>Lock ARIO until settlement"]
         BB4["Calculate Delta<br/>New - Current Bid"]
-        BB5["Lock Delta Amount<br/>From available balance"]
-        BB6["Update order.bids<br/>Add bidder"]
+        BB5["Lock Delta Amount<br/>Previous bids stay locked"]
+        BB6["Update order.bids<br/>bids[bidder] = true"]
         BB7["Update Highest Bid<br/>If highest"]
         BB8{"Sufficient Balance?"}
     end
@@ -54,9 +54,9 @@ graph TB
         E2["Immediate Match<br/>Fixed/Dutch"]
         E3["English Auction<br/>Settlement"]
         E4["Calculate Fees<br/>0.5% marketplace fee"]
-        E5["Transfer ARIO to Seller<br/>To internal balance"]
-        E6["Transfer ANT to Buyer<br/>Via Credit-Notice"]
-        E7["Return Losing Bids<br/>Unlock to available"]
+        E5["Transfer ARIO to Seller<br/>Winner's bid to seller balance"]
+        E6["Transfer ANT to Buyer<br/>Via Credit-Notice with intent"]
+        E7["Return ALL Losing Bids<br/>Unlock all non-winners"]
         E8["Clear order.bids<br/>Order Complete"]
     end
 
