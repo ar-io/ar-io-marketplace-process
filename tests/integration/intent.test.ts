@@ -848,7 +848,7 @@ describe('ANT Intent Resolution', () => {
   });
 
   describe('Push-ANT-Intent-Resolution', () => {
-    it('should trigger ANT state query for valid intent', async () => {
+    it('should trigger ANT state query for valid intent by initiator', async () => {
       const intentResult = await marketplaceProcess.createIntent({
         action: 'Create-Order',
         orderType: 'fixed',
@@ -860,6 +860,59 @@ describe('ANT Intent Resolution', () => {
       const intentData = JSON.parse(intentResult.Data);
       const intentId = intentData['Intent-Id'];
 
+      // Push resolution as the initiator (PROCESS_OWNER)
+      const messageId = await marketplaceProcess.process.send({
+        tags: [
+          { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+          { name: 'X-Intent-Id', value: intentId },
+        ],
+        signer: TEST_SIGNER,
+      });
+
+      const result = await marketplaceProcess.process.result({
+        message: messageId,
+        process: marketplaceProcess.process.processId,
+      });
+
+      assert(result, 'Result should be defined');
+
+      // Verify State query was sent to ANT process
+      const stateQuery = result.Messages?.find((m: any) =>
+        m.Tags?.find((t: any) => t.name === 'Action' && t.value === 'State'),
+      );
+
+      assert(stateQuery, 'Should send State query to ANT');
+      assert.strictEqual(
+        stateQuery.Target,
+        TEST_ANT_PROCESS,
+        'State query should target the ANT process',
+      );
+
+      // Verify State query includes X-Intent-Id
+      const intentIdTag = stateQuery.Tags?.find(
+        (t: any) => t.name === 'X-Intent-Id',
+      );
+      assert(intentIdTag, 'State query should include X-Intent-Id tag');
+      assert.strictEqual(
+        intentIdTag.value,
+        intentId,
+        'X-Intent-Id should match',
+      );
+    });
+
+    it('should allow process owner to push resolution', async () => {
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Push as owner (PROCESS_OWNER is already the default From)
       const result = await marketplaceProcess.process.send({
         tags: [
           { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
@@ -868,7 +921,246 @@ describe('ANT Intent Resolution', () => {
         signer: TEST_SIGNER,
       });
 
-      assert(result, 'Result should be defined');
+      assert(result, 'Owner should be able to push resolution');
+    });
+
+    it('should reject unauthorized user pushing resolution', async () => {
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Try to push from unauthorized address
+      const unauthorizedAddress = 'unauthorized-user'.padEnd(43, 'X');
+
+      try {
+        await (ao_mock as any).message({
+          tags: [
+            { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+            { name: 'X-Intent-Id', value: intentId },
+          ],
+          From: unauthorizedAddress,
+        });
+        assert.fail('Should have thrown an error for unauthorized user');
+      } catch (error: any) {
+        assert(
+          error.message.includes('Unauthorized') ||
+            error.message.includes('intent pushing authority'),
+          'Error should mention authorization failure',
+        );
+      }
+    });
+
+    it('should fail for intent in completed status', async () => {
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Mark intent as completed via Eval
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local intent = intents.getIntentById("${intentId}")
+          if intent then
+            intent.status = "completed"
+          end
+        `,
+        signer: TEST_SIGNER,
+      });
+
+      // Try to push resolution for completed intent
+      try {
+        await marketplaceProcess.process.send({
+          tags: [
+            { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+            { name: 'X-Intent-Id', value: intentId },
+          ],
+          signer: TEST_SIGNER,
+        });
+        assert.fail('Should have thrown an error for completed intent');
+      } catch (error: any) {
+        assert(
+          error.message.includes('not in a pushable state') ||
+            error.message.includes('completed'),
+          'Error should mention intent status issue',
+        );
+      }
+    });
+
+    it('should fail for intent in failed status', async () => {
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Mark intent as failed via Eval
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local intent = intents.getIntentById("${intentId}")
+          if intent then
+            intent.status = "failed"
+          end
+        `,
+        signer: TEST_SIGNER,
+      });
+
+      // Try to push resolution for failed intent
+      try {
+        await marketplaceProcess.process.send({
+          tags: [
+            { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+            { name: 'X-Intent-Id', value: intentId },
+          ],
+          signer: TEST_SIGNER,
+        });
+        assert.fail('Should have thrown an error for failed intent');
+      } catch (error: any) {
+        assert(
+          error.message.includes('not in a pushable state') ||
+            error.message.includes('failed'),
+          'Error should mention intent status issue',
+        );
+      }
+    });
+
+    it('should fail for intent in expired status', async () => {
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Mark intent as expired via Eval
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local intent = intents.getIntentById("${intentId}")
+          if intent then
+            intent.status = "expired"
+          end
+        `,
+        signer: TEST_SIGNER,
+      });
+
+      // Try to push resolution for expired intent
+      try {
+        await marketplaceProcess.process.send({
+          tags: [
+            { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+            { name: 'X-Intent-Id', value: intentId },
+          ],
+          signer: TEST_SIGNER,
+        });
+        assert.fail('Should have thrown an error for expired intent');
+      } catch (error: any) {
+        assert(
+          error.message.includes('not in a pushable state') ||
+            error.message.includes('expired'),
+          'Error should mention intent status issue',
+        );
+      }
+    });
+
+    it('should allow pushing for intent in active status', async () => {
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Mark intent as active via Eval
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local intent = intents.getIntentById("${intentId}")
+          if intent then
+            intent.status = "active"
+          end
+        `,
+        signer: TEST_SIGNER,
+      });
+
+      // Should succeed for active intent
+      const result = await marketplaceProcess.process.send({
+        tags: [
+          { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+          { name: 'X-Intent-Id', value: intentId },
+        ],
+        signer: TEST_SIGNER,
+      });
+
+      assert(result, 'Should allow pushing for active intent');
+    });
+
+    it('should allow pushing for intent in settling status', async () => {
+      const intentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const intentData = JSON.parse(intentResult.Data);
+      const intentId = intentData['Intent-Id'];
+
+      // Mark intent as settling via Eval
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local intent = intents.getIntentById("${intentId}")
+          if intent then
+            intent.status = "settling"
+          end
+        `,
+        signer: TEST_SIGNER,
+      });
+
+      // Should succeed for settling intent
+      const result = await marketplaceProcess.process.send({
+        tags: [
+          { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+          { name: 'X-Intent-Id', value: intentId },
+        ],
+        signer: TEST_SIGNER,
+      });
+
+      assert(result, 'Should allow pushing for settling intent');
     });
 
     it('should fail without X-Intent-Id', async () => {
@@ -902,6 +1194,67 @@ describe('ANT Intent Resolution', () => {
           'Error should mention Intent not found',
         );
       }
+    });
+
+    it('should allow parent initiator to push child intent resolution', async () => {
+      // Create a parent intent
+      const parentResult = await marketplaceProcess.createIntent({
+        action: 'Create-Order',
+        orderType: 'fixed',
+        swapToken: TEST_ARIO_PROCESS,
+        quantity: '1000',
+        price: '500',
+      });
+
+      const parentData = JSON.parse(parentResult.Data);
+      const parentId = parentData['Intent-Id'];
+
+      // Create a child intent via Eval (simulating internal creation)
+      const childId = 'child-intent-' + Date.now();
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local constants = require('constants')
+          
+          -- Create child intent
+          Intents["${childId}"] = {
+            id = "${childId}",
+            type = constants.INTENT_TYPES.CHILD,
+            status = constants.INTENT_STATUSES.PENDING,
+            initiator = "child-specific-user"..(string.rep("X", 43 - 18)),
+            action = "Transfer",
+            createdAt = 1000000,
+            expiresAt = 9999999999,
+            parentIntentId = "${parentId}",
+            expectedFrom = "${TEST_ANT_PROCESS}",
+            childIntentIds = {},
+            metadata = {}
+          }
+          
+          -- Link to parent
+          local parent = Intents["${parentId}"]
+          if parent then
+            if not parent.childIntentIds then
+              parent.childIntentIds = {}
+            end
+            parent.childIntentIds["${childId}"] = true
+            parent.type = constants.INTENT_TYPES.PARENT
+          end
+        `,
+        signer: TEST_SIGNER,
+      });
+
+      // Parent's initiator (PROCESS_OWNER) should be able to push child intent
+      const result = await marketplaceProcess.process.send({
+        tags: [
+          { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
+          { name: 'X-Intent-Id', value: childId },
+        ],
+        signer: TEST_SIGNER,
+      });
+
+      assert(result, "Parent's initiator should be able to push child intent");
     });
   });
 
