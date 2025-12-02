@@ -11,6 +11,8 @@ The ARNS Marketplace needs to accept external token transfers from other AO proc
 1. **ANT tokens** - Arweave Name Tokens that users want to list for sale on the marketplace
 2. **ARIO tokens** - The payment token used for deposits into the marketplace's internal ledger
 
+> See [ARIO Internal Ledger ADR](docs/adr/ADR-003-ario-internal-ledger.md) regarding decision on using a ledger for the ARIO token.
+
 These transfers originate from external token processes and arrive asynchronously as messages. The marketplace must:
 
 - Validate incoming transfers to prevent invalid or malicious transactions
@@ -46,6 +48,7 @@ function notices.creditNoticeHandler(msg)
 This handler is registered in `process.lua` as a critical handler (errors cause immediate failure):
 
 ```lua
+-- the last param 'true' signals that this is a critical memory error handler.
 utils.createHandler('Action', 'Credit-Notice', notices.creditNoticeHandler, nil, true)
 ```
 
@@ -206,7 +209,7 @@ Allow users to send tokens directly without validation, trusting sender honesty.
 **Rejected because**:
 - No protection against malicious or buggy token processes
 - No way to enforce intent-based workflows
-- Higher risk of state corruption and fund loss
+- Higher risk of state corruption and fund loss due to cranking issues on AO
 
 ### 2. Allowance Pattern
 
@@ -217,6 +220,8 @@ Use an ERC-20 style allowance system where users approve the marketplace to pull
 - Not standard in AO ecosystem
 - More complex state management
 - Doesn't solve asynchronous transfer tracking problem
+- Not supported by the AO token spec
+
 
 ### 3. Escrow Contract Pattern
 
@@ -237,16 +242,6 @@ Accept all transfers optimistically and validate later during order matching.
 - Complicates error handling and refunds
 - Poor user experience (late failures)
 - Risk of marketplace state corruption
-
-### 5. Batch Validation
-
-Queue incoming transfers and validate in batches during cranking.
-
-**Rejected because**:
-- Adds latency to user transactions
-- Requires cranking infrastructure
-- No clear benefit over immediate validation
-- Complicates error reporting
 
 ## Implementation Notes
 
@@ -366,7 +361,6 @@ This enables single-step ANT listings (where the ANT transfer is the only step) 
 ## References
 
 - [AO Token Specification](https://github.com/permaweb/ao/tree/main/blueprints)
-- ARNS Marketplace Specification: `docs/spec.md`
 - ADR-001: Module Whitelist for ANT Trading: `docs/ADR-001-module-whitelist.md`
 - ADR-003: ARIO Internal Ledger Pattern: `docs/ADR-003-ario-internal-ledger.md`
 - ADR-004: Intent-Based Workflow Pattern: `docs/ADR-004-intent-based-workflow.md`
@@ -377,11 +371,7 @@ This enables single-step ANT listings (where the ANT transfer is the only step) 
 ## Future Considerations
 
 1. **Multi-Token Support**: Extend to support additional payment tokens beyond ARIO
-2. **Batch Deposits**: Allow multiple users to batch deposits in a single message
-3. **Deposit Limits**: Add minimum/maximum deposit amounts for spam prevention
-4. **Rate Limiting**: Implement per-user transfer rate limits
-5. **Refund Options**: Allow users to configure refund vs fee behavior for ARIO
-6. **Partial Validation**: Support partial validation for debugging (test mode)
-7. **Validation Metrics**: Track validation failure rates by error type
-8. **Custom Validators**: Plugin system for custom validation rules
+2. **Deposit Limits**: Add minimum/maximum deposit amounts for spam prevention
+3. **Rate Limiting**: Implement per-user transfer rate limits
+4. **Validation Metrics**: Track validation failure rates by error type
 

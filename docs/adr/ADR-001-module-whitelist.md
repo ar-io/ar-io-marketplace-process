@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The ARNS Marketplace enables trading of Arweave Name Tokens (ANTs) for ARIO tokens through a decentralized order book system. ANTs are external processes that can be transferred to the marketplace, listed for sale, and eventually transferred to buyers. The marketplace relies on two key interactions with ANT processes:
+The ARNS Marketplace enables trading of Arweave Name Tokens (ANTs) for ARIO tokens through a minimal order book system. ANTs are external processes that can be transferred to the marketplace, listed for sale, and eventually transferred to buyers. The marketplace relies on two key interactions with ANT processes:
 
 1. **Credit-Notice**: When an ANT is transferred to the marketplace for listing
 2. **State-Notice**: When the marketplace queries ANT ownership to verify successful transfers
@@ -91,7 +91,7 @@ end
 
 1. **Centralization**: Requires marketplace owner to curate the whitelist
 2. **Maintenance burden**: New legitimate ANT modules must be manually whitelisted
-3. **User friction**: Users with non-whitelisted ANTs cannot trade immediately
+3. **User friction**: Users with non-whitelisted ANTs cannot trade immediately (e.g. older ANT processes)
 4. **Permission barrier**: Creates a gatekeeping mechanism for ANT trading
 
 ### Neutral
@@ -110,15 +110,8 @@ Instead of whitelisting modules (code), whitelist individual ANT process IDs.
 - Requires whitelisting every new ANT individually
 - Module-based approach is more maintainable
 
-### 2. Signature Verification
-Require ANT processes to sign responses with a trusted key.
 
-**Rejected because**:
-- More complex implementation
-- Requires key management infrastructure
-- Module whitelist is simpler and equally effective
-
-### 3. No Whitelist (Trust Any Process)
+### 2. No Whitelist (Trust Any Process)
 Allow any process to trade on the marketplace.
 
 **Rejected because**:
@@ -126,32 +119,13 @@ Allow any process to trade on the marketplace.
 - No protection against malicious ANTs
 - Could result in fund loss or state corruption
 
-### 4. Stake-based Trust System
-Require ANT processes to stake tokens as a bond for good behavior.
-
-**Rejected because**:
-- Overly complex for the current use case
-- Requires additional economic mechanisms
-- Module whitelist achieves the goal more simply
-
 ## Implementation Notes
 
-- The `From-Module` tag is populated by the AO message system and represents the source code (Arweave transaction) that the sending process is running
-- Whitelist management handlers require owner permissions (to be implemented)
+- The `From-Module` tag is populated by the AO message system and represents the WASM module (Arweave transaction) that the sending process is running
+- Whitelist management handlers require owner permissions
 - The whitelist is stored in process state and persists across messages
-- Empty `From-Module` tags result in `isWhitelisted()` returning false
 
 ## References
 
 - [AO Token Specification](https://github.com/permaweb/ao/tree/main/blueprints)
-- ARNS Marketplace Specification: `docs/spec.md`
-- Intent-based Workflows: Feature branch PE-8712
-
-## Future Considerations
-
-1. **Multi-signature whitelist management**: Require multiple approvers for whitelist changes
-2. **Time-locked whitelist updates**: Add delay between whitelist approval and activation
-3. **Automated module verification**: Tools to verify module code before whitelisting
-4. **Whitelist governance**: Community-driven whitelist curation process
-5. **Temporary whitelist entries**: Support for trial periods or expiring whitelist entries
 

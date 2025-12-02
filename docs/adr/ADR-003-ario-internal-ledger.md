@@ -6,27 +6,27 @@ Accepted
 
 ## Context
 
-The ARNS Marketplace facilitates trading of ANT tokens for ARIO tokens. In a naive implementation, every ARIO transaction would require an external transfer via the ARIO token process:
+The ARNS Marketplace facilitates trading of ANT tokens for ARIO tokens. In a simple implementation without an internal ledger, ARIO operations would require external transfers via the ARIO token process:
 
-1. User places bid → Transfer ARIO to marketplace
-2. User gets outbid → Transfer ARIO back to user
-3. User places new bid → Transfer ARIO to marketplace again
-4. Auction settles → Transfer ARIO to seller
+**Naive approach (external transfers for everything)**:
+1. User places bid → Transfer ARIO to marketplace (2+ messages)
+2. User increases bid → Transfer additional ARIO to marketplace (2+ messages)
+3. Auction settles → Transfer ARIO to seller (2+ messages)
+4. Settlement refunds → Transfer ARIO back to losing bidders (2+ messages per bidder)
 
 This creates severe inefficiencies:
 
-- **High Message Costs**: Each transfer requires 2+ messages (Transfer + Credit-Notice/Debit-Notice)
+- **High Message Costs**: Each transfer requires 2+ messages (Transfer + Credit-Notice)
 - **Latency**: External transfers add round-trip delays
 - **Complexity**: Intent tracking required for every ARIO movement
 - **Poor UX**: Users wait for confirmations on routine operations
-- **Gas Waste**: Unnecessary cross-process messages for internal accounting
+- **Scaling Issues**: More bidders = exponentially more messages at settlement
 
-Real-world example: An English auction with 10 bids would generate ~40 messages if using external transfers:
-- Bid 1: Transfer in (2 messages)
-- Bid 2: Transfer in + refund bid 1 (4 messages total)
-- Bid 3: Transfer in + refund bid 2 (4 messages total)
-- ... continues ...
-- Settlement: Transfer to seller + Transfer to winner (4 messages)
+Real-world example: An English auction with 10 bidders would generate ~24+ messages:
+- 10 bidders place bids: 10 × 2 = 20 messages
+- Settlement to seller: 2 messages
+- Refund 9 losing bidders: 9 × 2 = 18 messages
+- **Total: 40 messages** for a single auction
 
 Total: ~40 messages vs ~6 messages with internal ledger
 
@@ -66,32 +66,6 @@ ARIOBalances[address] = {
 - **Locked balance** (`orders[orderId]`): Reserved for specific order, cannot be used elsewhere
 - **Total balance**: Sum of available + all locked amounts
 - **String integers**: All amounts stored as strings for bint (256-bit integer) compatibility
-
-### Unified Structure Benefits
-
-This single structure replaces four previous globals:
-
-```lua
--- OLD (before ADR-003):
-ARIOBalances = {}              -- Just available balance
-EnglishAuctionBalances = {}    -- Auction bids
-OrderLockedBalances = {}       -- Buy order locks
-UserOrdersIndex = {}           -- Reverse lookup
-
--- NEW (after ADR-003):
-ARIOBalances = {               -- Everything in one place
-    [address] = {
-        balance = "...",       -- Available
-        orders = { ... }       -- All locks by orderId
-    }
-}
-```
-
-**Advantages**:
-- O(1) lookup for user's total involvement
-- Simpler memory management
-- Easier to query user's full position
-- Atomic operations on single data structure
 
 ### Deposit Flow
 
@@ -185,7 +159,7 @@ end
 **When balances are locked**:
 - Placing a bid on an English auction
 - Creating a buy order with internal ARIO balance
-- Replacing a lower bid (delta is locked, old bid unlocked)
+- Increasing an existing bid (delta is locked, increasing total locked amount)
 
 **Locked balance properties**:
 - Cannot be used for other orders
@@ -225,8 +199,7 @@ end
 
 **Unlock scenarios**:
 - **Order cancelled**: User gets their locked ARIO back
-- **Auction settled**: Winner's ARIO goes to seller, losers get ARIO back
-- **Bid replaced**: Previous bidder gets ARIO back
+- **Auction settled**: Winner's ARIO goes to seller (minus fee), losers get ARIO back
 - **Order expires**: Creator gets locked ARIO back
 
 **Note**: `recipient` parameter allows unlocking to a different user (e.g., auction winner's ARIO going to seller).
@@ -542,34 +515,52 @@ end
 
 **Delta calculation** is critical: users only lock the *difference* between their current bid and new bid, not the full amount again.
 
-### Bid Replacement and Refunds
+### Bid Locking Until Settlement
 
-When a new highest bid is placed, the previous bidder gets their ARIO back:
+All bids remain locked until auction settlement - losing bidders are NOT immediately refunded when outbid:
 
 ```lua
--- If there's a previous highest bidder (and it's not the same bidder)
-if order.highestBidder and order.highestBidder ~= bidder then
-    local previousBidAmount = order.highestBid
-    
-    -- Unlock previous bidder's ARIO back to their available balance
-    balances.unlockBalanceFromOrder(
-        orderId, 
-        order.highestBidder,    -- user who locked it
-        order.highestBidder,    -- recipient (same user)
-        previousBidAmount       -- amount to unlock
-    )
-    
-    -- Send notification to previous bidder
-    _utils.Send(msg, {
-        Target = order.highestBidder,
-        Action = 'Bid-Returned',
-        ['Order-Id'] = orderId,
-        ['Returned-Amount'] = previousBidAmount,
-    })
+-- When updating highest bid, only the pointer changes
+if not order.highestBid or newBidAmount > bint(order.highestBid) then
+    order.highestBid = tostring(newBidAmount)
+    order.highestBidder = bidder
+end
+
+-- All bids stay locked in ARIOBalances[bidder].orders[orderId]
+```
+
+At settlement, losing bids are returned to internal balances:
+
+```lua
+function english_auction.returnLosingBids(order, winningBidder, msg)
+    -- Return all bids except the winner's to internal balances
+    for bidder, _ in pairs(order.bids) do
+        if bidder ~= winningBidder then
+            local amount = balances.getOrderLockedBalance(order.id, bidder)
+            
+            if bint(amount) > 0 then
+                -- Unlock bid back to bidder's available balance
+                balances.unlockBalanceFromOrder(order.id, bidder, bidder, amount)
+                
+                -- Notify bidder
+                _utils.Send(msg, {
+                    Target = bidder,
+                    Action = 'Bid-Returned',
+                    ['Order-Id'] = order.id,
+                    Amount = amount,
+                    Message = 'Your bid has been returned as the auction ended',
+                })
+            end
+        end
+    end
 end
 ```
 
-This happens synchronously within the bid handler - no external transfers needed.
+**Rationale**: Keeping all bids locked until settlement:
+- Simplifies bid state management (no complex refund logic during active bidding)
+- Guarantees auction has sufficient liquidity (winner's funds always available)
+- Prevents bid sniping withdrawals (can't cancel bids by withdrawing funds)
+- Reduces transaction overhead (one bulk refund vs. many individual refunds)
 
 ### Migration from Old Globals
 

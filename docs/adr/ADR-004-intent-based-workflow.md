@@ -409,6 +409,56 @@ function intents.stateNoticeHandler(msg)
 end
 ```
 
+#### Access Control
+
+The State-Notice handler enforces multiple layers of security validation:
+
+**1. Intent Validation**
+- `X-Intent-Id` tag must be present and valid format
+- Intent must exist in the system
+- Intent must not already be resolved or expired
+
+**2. Message Source Verification**
+```lua
+assert(msg.From == intent.expectedFrom, 'Sender does not match intent expected from')
+```
+- The `msg.From` (ANT process ID) must exactly match `intent.expectedFrom`
+- This prevents arbitrary processes from claiming they own ANTs
+- Only the specific ANT process being verified can respond
+
+**3. Module Whitelist Check**
+```lua
+if not _utils.isWhitelisted(msg) then
+    intents.failIntent(intentId, 'ANT module not whitelisted', msg)
+    return
+end
+```
+- The ANT's module (code) must be whitelisted via `From-Module` tag
+- See [ADR-001: Module Whitelist](./ADR-001-module-whitelist.md)
+- Prevents malicious ANT processes from providing false ownership data
+- Only approved ANT implementations can participate in trading
+
+**4. Ownership Verification**
+```lua
+assert(antState.Owner == ao.id, 'Marketplace does not own this ANT')
+```
+- The ANT's `Owner` field must match the marketplace process ID (`ao.id`)
+- Confirms the transfer actually succeeded
+- Prevents intent resolution if ownership hasn't transferred
+
+**Security Rationale**
+
+These layered checks ensure:
+- **Authenticity**: Only the expected ANT process can respond
+- **Integrity**: Only whitelisted ANT modules (trusted code) are accepted
+- **Correctness**: Ownership is cryptographically verified via ANT state
+- **Non-repudiation**: ANT processes cannot lie about ownership if whitelisted
+
+Without these checks, malicious actors could:
+- Create fake ANT processes that claim marketplace ownership
+- Send fraudulent State-Notices to resolve intents prematurely
+- Steal ANTs by completing buys without actual ownership transfer
+
 **Use case**: Users can manually trigger ANT ownership check via `Push-ANT-Intent-Resolution` to resolve stuck intents.
 
 ### Transfer-Error Handler
