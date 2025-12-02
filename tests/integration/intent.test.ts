@@ -5,18 +5,17 @@ import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
+  TEST_ANT_MODULE_NOT_WHITELISTED,
+  TEST_ANT_MODULE_WHITELISTED,
+  TEST_ANT_PROCESS,
+  TEST_ARIO_PROCESS,
+  TEST_SENDER,
   TEST_SIGNER,
 } from '../utils/constants.js';
 
 describe('Intent Workflow Tracking', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
-
-  // create a new process and mock before the tests
-  const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
-  const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER - the default From address in test environment
-  const TEST_ANT_MODULE_WHITELISTED =
-    'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
 
   before(async () => {
     // Inject test ARIO token process BEFORE the bundle loads (so globals.lua picks it up)
@@ -332,13 +331,6 @@ describe('Intent Workflow Tracking', () => {
 describe('Credit-Notice Intent Resolution Workflow', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
-  const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
-  const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
-  const TEST_SENDER = ''.padEnd(43, '1'); // Must match PROCESS_OWNER from DEFAULT_HANDLE_OPTIONS
-  const TEST_ANT_MODULE_WHITELISTED =
-    'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
-  const TEST_ANT_MODULE_NOT_WHITELISTED =
-    '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
 
   before(async () => {
     // Inject test ARIO token process BEFORE the bundle loads (so globals.lua picks it up)
@@ -816,10 +808,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
 describe('ANT Intent Resolution', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
-  const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
-  const TEST_SENDER = ''.padEnd(43, '1');
-  const TEST_ANT_MODULE_WHITELISTED =
-    'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
 
   before(async () => {
     const luaWithTestConfig =

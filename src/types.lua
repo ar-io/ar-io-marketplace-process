@@ -96,6 +96,8 @@
 --- @field receiver Address|nil Order receiver (set after execution)
 --- @field endedAt number|nil Timestamp when order ended
 --- @field bids table<Address, boolean>|nil Bidders for English auctions (bidder address -> true)
+--- @field highestBid BalanceAmount|nil Highest bid amount for English auctions
+--- @field highestBidder Address|nil Highest bidder address for English auctions
 
 --- @class Pair
 --- @field pair TokenId[] Token pair [dominantToken, swapToken] - directional

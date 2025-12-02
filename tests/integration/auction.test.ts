@@ -6,20 +6,18 @@ import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   PROCESS_OWNER,
+  TEST_ANT_MODULE_NOT_WHITELISTED,
+  TEST_ANT_MODULE_WHITELISTED,
+  TEST_ANT_PROCESS,
+  TEST_ANT_TOKEN,
+  TEST_ARIO_TOKEN,
+  TEST_SENDER,
   TEST_SIGNER,
 } from '../utils/constants.js';
 
 describe('Auction Mechanisms', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
-
-  const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');
-  const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
-  const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER
-  const TEST_ANT_MODULE_WHITELISTED =
-    'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
-  const TEST_ANT_MODULE_NOT_WHITELISTED =
-    '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
 
   before(async () => {
     const luaWithTestConfig =
@@ -305,8 +303,6 @@ describe('Auction Mechanisms', () => {
 
   describe('Module Whitelist Validation', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
-      const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
-
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
         action: 'Create-Order',
@@ -372,8 +368,6 @@ describe('Auction Mechanisms', () => {
     });
 
     it('should accept Credit-Notice from whitelisted module', async () => {
-      const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
-
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
         action: 'Create-Order',

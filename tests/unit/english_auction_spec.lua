@@ -23,6 +23,7 @@ describe('English Auction', function()
 		_G.TREASURY_ADDRESS = nil
 
 		-- Mock ao.send to track transfers
+		---@diagnostic disable-next-line: duplicate-set-field
 		_G.ao.send = function(msg)
 			-- Mock activity query response for status checks
 			if msg.Action == 'Get-Order' then
@@ -465,9 +466,10 @@ describe('English Auction', function()
 		local returnBidMessages
 
 		before_each(function()
-			-- Track messages sent via utils.Send / ao.send
-			returnBidMessages = {}
-			_G.ao.send = function(msg)
+		-- Track messages sent via utils.Send / ao.send
+		returnBidMessages = {}
+		---@diagnostic disable-next-line: duplicate-set-field
+		_G.ao.send = function(msg)
 				table.insert(returnBidMessages, msg)
 			end
 			
@@ -565,10 +567,11 @@ describe('English Auction', function()
 		-- Balance should be reduced
 		assert.are.equal('8000000000', ARIOBalances['bidder-1'].balance)
 
-			-- Order should have bid
-			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-balance-1']
-			assert.are.equal('2000000000', order.highestBid)
-			assert.are.equal('bidder-1', order.highestBidder)
+		-- Order should have bid
+		---@type Order
+		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-balance-1']
+		assert.are.equal('2000000000', order.highestBid)
+		assert.are.equal('bidder-1', order.highestBidder)
 		end)
 
 		it('should increase existing bid with delta', function()
@@ -621,9 +624,10 @@ describe('English Auction', function()
 		-- Balance should be reduced by delta only
 		assert.are.equal('15000000000', ARIOBalances['bidder-2'].balance)
 
-			-- Order should have updated bid
-			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-delta-1']
-			assert.are.equal('5000000000', order.highestBid)
+		-- Order should have updated bid
+		---@type Order
+		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-delta-1']
+		assert.are.equal('5000000000', order.highestBid)
 		end)
 
 		it('should keep all bids until auction ends (no immediate returns)', function()
@@ -677,10 +681,11 @@ describe('English Auction', function()
 		assert.are.equal('2000000000', ARIOBalances['bidder-a'].orders['auction-refund-1'])
 		assert.are.equal('4000000000', ARIOBalances['bidder-b'].orders['auction-refund-1'])
 
-			-- Order should have bidder B as highest
-			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-refund-1']
-			assert.are.equal('4000000000', order.highestBid)
-			assert.are.equal('bidder-b', order.highestBidder)
+		-- Order should have bidder B as highest
+		---@type Order
+		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-refund-1']
+		assert.are.equal('4000000000', order.highestBid)
+		assert.are.equal('bidder-b', order.highestBidder)
 		end)
 
 		it('should fail with insufficient balance', function()
@@ -713,8 +718,9 @@ describe('English Auction', function()
 				english_auction.bidOnEnglishAuctionHandler(msg)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('Insufficient ARIO balance'))
+		assert.is_false(success)
+		assert(err)
+		assert.is_not_nil(err:match('Insufficient ARIO balance'))
 		end)
 
 		it('should fail if order does not exist', function()
@@ -733,8 +739,9 @@ describe('English Auction', function()
 				english_auction.bidOnEnglishAuctionHandler(msg)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('Order not found'))
+		assert.is_false(success)
+		assert(err)
+		assert.is_not_nil(err:match('Order not found'))
 		end)
 
 		it('should fail if auction has expired', function()
@@ -767,8 +774,9 @@ describe('English Auction', function()
 				english_auction.bidOnEnglishAuctionHandler(msg)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('expired'))
+		assert.is_false(success)
+		assert(err)
+		assert.is_not_nil(err:match('expired'))
 		end)
 
 		it('should fail if bid does not meet minimum increment', function()
@@ -814,8 +822,9 @@ describe('English Auction', function()
 				english_auction.bidOnEnglishAuctionHandler(msg2)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('at least 1 ARIO higher'))
+		assert.is_false(success)
+		assert(err)
+		assert.is_not_nil(err:match('at least 1 ARIO higher'))
 		end)
 	end)
 
@@ -838,11 +847,12 @@ describe('English Auction', function()
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
 
-			-- Verify auction exists
-			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-no-bids']
-			assert.is_not_nil(order)
-			assert.are.equal('active', order.status)
-			assert.is_nil(order.highestBidder)
+		-- Verify auction exists
+		---@type Order
+		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-no-bids']
+		assert.is_not_nil(order)
+		assert.are.equal('active', order.status)
+		assert.is_nil(order.highestBidder)
 
 			-- Cancel the auction
 			local cancelMsg = testGlobals.mockMsg({
@@ -892,9 +902,10 @@ describe('English Auction', function()
 			}
 			english_auction.bidOnEnglishAuctionHandler(bidMsg)
 
-			-- Verify auction has a bid
-			local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids']
-			assert.are.equal('bidder-xyz', order.highestBidder)
+		-- Verify auction has a bid
+		---@type Order
+		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids']
+		assert.are.equal('bidder-xyz', order.highestBidder)
 
 			-- Try to cancel the auction (should fail)
 			local cancelMsg = testGlobals.mockMsg({
@@ -909,8 +920,9 @@ describe('English Auction', function()
 				ucm.cancelOrderHandler(cancelMsg)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('cannot cancel an English auction that has bids'))
+		assert.is_false(success)
+		assert(err)
+		assert.is_not_nil(err:match('cannot cancel an English auction that has bids'))
 
 			-- Verify order still exists
 			assert.is_not_nil(Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids'])
@@ -945,8 +957,9 @@ describe('English Auction', function()
 				ucm.cancelOrderHandler(cancelMsg)
 			end)
 
-			assert.is_false(success)
-			assert.is_not_nil(err:match('Unauthorized'))
+		assert.is_false(success)
+		assert(err)
+		assert.is_not_nil(err:match('Unauthorized'))
 
 			-- Verify order still exists
 			assert.is_not_nil(Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-creator-test'])
@@ -968,12 +981,13 @@ describe('English Auction', function()
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
 
-			local transfersSent = {}
-			_G.ao.send = function(msg)
-				if msg.Action == 'Transfer' then
-					table.insert(transfersSent, msg)
-				end
+		local transfersSent = {}
+		---@diagnostic disable-next-line: duplicate-set-field
+		_G.ao.send = function(msg)
+			if msg.Action == 'Transfer' then
+				table.insert(transfersSent, msg)
 			end
+		end
 
 			-- Cancel the auction
 			local cancelMsg = testGlobals.mockMsg({

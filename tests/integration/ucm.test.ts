@@ -6,20 +6,17 @@ import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   PROCESS_OWNER,
+  TEST_ANT_MODULE_NOT_WHITELISTED,
+  TEST_ANT_MODULE_WHITELISTED,
+  TEST_ANT_TOKEN,
+  TEST_ARIO_TOKEN,
+  TEST_SENDER,
   TEST_SIGNER,
 } from '../utils/constants.js';
 
 describe('UCM (Universal Content Marketplace)', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
-
-  const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');
-  const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
-  const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER - the default From address
-  const TEST_ANT_MODULE_WHITELISTED =
-    'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
-  const TEST_ANT_MODULE_NOT_WHITELISTED =
-    '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
 
   before(async () => {
     const luaWithTestConfig =

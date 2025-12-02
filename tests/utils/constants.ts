@@ -160,5 +160,24 @@ export const TEST_SIGNER = createAoSigner(new ArweaveSigner(TEST_WALLET));
 export const TEST_DATA_ITEM_SIGNER = createDataItemSigner(TEST_WALLET);
 
 // =============================================================================
+// Integration Test Constants
+// =============================================================================
+
+// Test sender address (matches PROCESS_OWNER)
+export const TEST_SENDER = PROCESS_OWNER;
+
+// Test token/process IDs
+export const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');
+export const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
+export const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
+export const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
+
+// Test ANT module IDs
+export const TEST_ANT_MODULE_WHITELISTED =
+  'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
+export const TEST_ANT_MODULE_NOT_WHITELISTED =
+  '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
+
+// =============================================================================
 // Note: ao-localnet exports removed - use local test environment instead
 // =============================================================================

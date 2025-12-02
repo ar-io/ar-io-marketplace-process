@@ -169,11 +169,12 @@ describe('fixed_price helpers', function()
 			assert.are.equal('ant-token-456', OrderIndex['order-123'].dominantToken)
 			assert.are.equal('ario-token-123', OrderIndex['order-123'].swapToken)
 
-			-- Check success message was sent
-			assert.is_true(#testGlobals.sentMessages > 0)
-			local successMsg = testGlobals.sentMessages[1]
-			assert.are.equal('Order-Success', successMsg.Action)
-			assert.are.equal('order-123', successMsg.Tags['Order-Id'])
+		-- Check success message was sent
+		assert.is_true(#testGlobals.sentMessages > 0)
+		---@type SendParams
+		local successMsg = testGlobals.sentMessages[1]
+		assert.are.equal('Order-Success', successMsg.Action)
+		assert.are.equal('order-123', successMsg.Tags['Order-Id'])
 		end)
 
 		it('should handle order without expiration time', function()
@@ -258,16 +259,18 @@ describe('fixed_price helpers', function()
 			-- Seller should have received ARIO minus 0.5% maker fee (5000 * 0.995 = 4975)
 			assert.are.equal('4975', balances.getBalance('seller-123'))
 
-			-- Success message should be sent
-			local successMsg = nil
-			for _, msg in ipairs(testGlobals.sentMessages) do
-				if msg.Action == 'Order-Success' then
-					successMsg = msg
-					break
-				end
+		-- Success message should be sent
+		---@type SendParams|nil
+		local successMsg = nil
+		for _, msg in ipairs(testGlobals.sentMessages) do
+			if msg.Action == 'Order-Success' then
+				successMsg = msg
+				break
 			end
-			assert.is_not_nil(successMsg)
-			assert.are.equal('buy-order-1', successMsg.Tags['Order-Id'])
+		end
+		assert.is_not_nil(successMsg)
+		---@cast successMsg SendParams
+		assert.are.equal('buy-order-1', successMsg.Tags['Order-Id'])
 		end)
 
 		it('should return error if no matching orders found', function()

@@ -6,6 +6,7 @@ print('Setting up test mocks and utilities...')
 
 -- Mock ao.send for testing
 _G.ao = _G.ao or {}
+---@diagnostic disable-next-line: duplicate-set-field
 _G.ao.send = function(_)
 	return true
 end

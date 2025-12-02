@@ -3,6 +3,7 @@ package.path = './src/?.lua;./src/common/?.lua;./tests/unit/?.lua;' .. package.p
 
 -- Set up essential mocks BEFORE loading globals (needed by src/globals.lua)
 _G.ao = _G.ao or {}
+---@diagnostic disable-next-line: duplicate-set-field
 _G.ao.send = function(_)
 	return true
 end

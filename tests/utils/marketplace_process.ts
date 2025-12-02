@@ -24,12 +24,12 @@ export class MarketplaceProcess {
     process: AOProcess;
     signer: AoSigner;
     dataItemSigner?: any;
-    walletAddress: string;
+    walletAddress?: string;
   }) {
     this.process = process;
     this.signer = signer;
     this.dataItemSigner = dataItemSigner || signer; // Fallback for backwards compat
-    this.walletAddress = walletAddress;
+    this.walletAddress = walletAddress || '';
   }
 
   async info(): Promise<InfoResponse> {

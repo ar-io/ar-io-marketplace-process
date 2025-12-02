@@ -494,9 +494,10 @@ describe('Notices Module', function()
 
 			notices.debitNoticeHandler(msg)
 
-			-- Child should NOT be resolved
-			local child = intents.getIntentById(childId)
-			assert.are.equal('pending', child.status)
+		-- Child should NOT be resolved
+		local child = intents.getIntentById(childId)
+		assert(child)
+		assert.are.equal('pending', child.status)
 		end)
 	end)
 
@@ -590,9 +591,10 @@ describe('Notices Module', function()
 
 			notices.transferErrorHandler(msg)
 
-			-- Parent should NOT be failed
-			local parent = intents.getIntentById(parentId)
-			assert.are.not_equal('failed', parent.status)
+		-- Parent should NOT be failed
+		local parent = intents.getIntentById(parentId)
+		assert(parent)
+		assert.are_not.equal('failed', parent.status)
 		end)
 
 		it('should use Data field if Message/Error tags not present', function()

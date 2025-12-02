@@ -5,15 +5,14 @@ import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
+  TEST_ARIO_PROCESS,
+  TEST_SENDER,
   TEST_SIGNER,
 } from '../utils/constants.js';
 
 describe('Balance Management', () => {
   let marketplaceProcess: MarketplaceProcess;
   let ao_mock: LocalAO;
-
-  const TEST_ARIO_PROCESS = 'test-ario-process'.padEnd(43, '1');
-  const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER
 
   before(async () => {
     // Create marketplace process
