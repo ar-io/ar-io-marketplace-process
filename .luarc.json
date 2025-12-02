@@ -43,10 +43,7 @@
         "Intents",
         "ARIO_TOKEN_PROCESS_ID"
       ],
-      "disable": [
-        "lowercase-global",
-        "redundant-parameter"
-      ],
+      "disable": ["lowercase-global", "redundant-parameter"],
       "neededFileStatus": {
         "unused-local": "Any",
         "unused-function": "Any",

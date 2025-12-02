@@ -21,76 +21,78 @@ async function spawnMarketplaceProcess() {
 
     // Load wallet
     console.log('Loading wallet from:', walletPath);
-    const wallet = JSON.parse(readFileSync(path.join(__dirname,'../', walletPath), 'utf-8'));
+    const wallet = JSON.parse(
+      readFileSync(path.join(__dirname, '../', walletPath), 'utf-8'),
+    );
     const signer = createDataItemSigner(wallet);
-    
 
-      
-      const moduleId = process.env.AOS_MODULE;
-      const scheduler = process.env.SCHEDULER;
-	  const authority = process.env.AUTHORITY;
-	  const cuUrl = process.env.CU_URL;
+    const moduleId = process.env.AOS_MODULE;
+    const scheduler = process.env.SCHEDULER;
+    const authority = process.env.AUTHORITY;
+    const cuUrl = process.env.CU_URL;
 
-	  if (!moduleId || !scheduler || !authority || !cuUrl) {
-		throw new Error('MODULE_ID, SCHEDULER, AUTHORITY, and CU_URL are required in .env file');
-	  }
+    if (!moduleId || !scheduler || !authority || !cuUrl) {
+      throw new Error(
+        'MODULE_ID, SCHEDULER, AUTHORITY, and CU_URL are required in .env file',
+      );
+    }
 
-	  const lua = readFileSync(path.join(__dirname, '../dist/aos-bundled.lua'), 'utf-8');
+    const lua = readFileSync(
+      path.join(__dirname, '../dist/aos-bundled.lua'),
+      'utf-8',
+    );
 
-	  const ao = connect({CU_URL: cuUrl});
-      
-      const processId = await ao.spawn({
-        module: moduleId,
-        scheduler: scheduler,
+    const ao = connect({ CU_URL: cuUrl });
+
+    const processId = await ao.spawn({
+      module: moduleId,
+      scheduler: scheduler,
+      signer,
+      tags: [
+        { name: 'Name', value: 'AR-IO Marketplace Test ' + Date.now() },
+        { name: 'Authority', value: authority },
+      ],
+    });
+
+    console.log('Process spawned successfully with ID:', processId);
+    console.log('Loading Lua...');
+    const luaLoadId = await ao.message({
+      process: processId,
+      signer,
+      tags: [{ name: 'Action', value: 'Eval' }],
+      data: lua,
+    });
+
+    console.log('Lua loaded successfully with ID:', luaLoadId);
+
+    // Optionally set ARIO token process ID from environment
+    const arioProcessId = process.env.ARIO_PROCESS_ID;
+    if (arioProcessId) {
+      console.log('Setting ARIO_TOKEN_PROCESS_ID to:', arioProcessId);
+      await ao.message({
+        process: processId,
         signer,
-        tags: [
-          { name: 'Name', value: 'AR-IO Marketplace Test ' + Date.now() },
-		  { name: 'Authority', value: authority },
-        ],
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `ARIO_TOKEN_PROCESS_ID = "${arioProcessId}"`,
       });
+      console.log('ARIO token process ID configured');
+    }
 
-	  console.log('Process spawned successfully with ID:', processId);
-	  console.log('Loading Lua...');
-	  const luaLoadId = await ao.message({
-		process: processId,
-		signer,
-		tags: [
-			{ name: 'Action', value: 'Eval' },
-		],
-		data: lua,
-	  });
+    const marketplaceProcess = new MarketplaceProcess({
+      process: new AOProcess({ ao, processId }),
+      signer: signer as any,
+    });
 
-          console.log('Lua loaded successfully with ID:', luaLoadId);
+    const info = await marketplaceProcess.info();
+    console.log('Info:\n', JSON.stringify(info, null, 2));
 
-          // Optionally set ARIO token process ID from environment
-          const arioProcessId = process.env.ARIO_PROCESS_ID;
-          if (arioProcessId) {
-            console.log('Setting ARIO_TOKEN_PROCESS_ID to:', arioProcessId);
-            await ao.message({
-              process: processId,
-              signer,
-              tags: [{ name: 'Action', value: 'Eval' }],
-              data: `ARIO_TOKEN_PROCESS_ID = "${arioProcessId}"`,
-            });
-            console.log('ARIO token process ID configured');
-          }
-
-          const marketplaceProcess = new MarketplaceProcess({
-            process: new AOProcess({ ao, processId }),
-            signer: signer as any,
-          });
-
-          const info = await marketplaceProcess.info();
-          console.log('Info:\n', JSON.stringify(info, null, 2));
-
-	  return {processId, marketplaceProcess};
-    
+    return { processId, marketplaceProcess };
   } catch (error) {
     console.error('Error:', error);
-	throw error
+    throw error;
   }
 }
 
-spawnMarketplaceProcess()
+spawnMarketplaceProcess();
 
 export default spawnMarketplaceProcess;

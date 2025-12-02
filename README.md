@@ -899,26 +899,43 @@ Before running the tests, ensure you have the following installed:
 
 ### Running Tests
 
-To run the test suite:
+The test suite consists of unit tests (Lua) and integration tests (TypeScript):
 
-1. Navigate to the tests directory:
-   ```bash
-   cd tests
-   ```
+**Unit Tests** (Lua with busted):
+```bash
+pnpm test:unit
+```
 
-2. To run any specific test, run:
-   ```bash
-   lua <test_name>.lua
-   ```
+**Integration Tests** (TypeScript with ao-loader):
+```bash
+pnpm test:integration
+```
 
-### E2E Testing
-To test the `process.lua` in a real environment, follow these steps.
+**All Tests**:
+```bash
+pnpm test
+```
 
-1. Start the processes that will be deploying the required contract: `aos your_process_name [--wallet /optional/path/to/wallet.json]`. There should be 2 in total.
-2. Deploy the token blueprint to act as ARIO tokens in one of the processes: `> .load-blueprint token`. The address of that process will be handling token messages. 
-3. Deploy the `process.lua` with correct addresses from the first and second step. 
-4. Handlers define what actions can be taken and can be invoked by sending messages to the process.
-5. Check ao.link for debugging or messages results.
+### E2E Testing (Coming Soon)
+
+End-to-end tests using [ao-localnet](https://github.com/atticusofsparta/ao-localnet-archive) are planned but not yet implemented. The ao-localnet tool requires additional configuration and setup work before it can be reliably integrated for automated E2E testing.
+
+**Current Status**: E2E infrastructure removed pending ao-localnet improvements
+
+**What's Needed**:
+- ao-localnet configuration and stability improvements
+- Test wallet and process bootstrapping
+- Full marketplace workflow tests (deposit → trade → settle)
+
+### Manual Testing
+
+To test the `process.lua` in a real AO environment:
+
+1. Start the AO process: `aos your_process_name [--wallet /path/to/wallet.json]`
+2. Deploy a token blueprint for ARIO: `.load-blueprint token`
+3. Deploy the marketplace process: `.load src/process.lua`
+4. Send messages to test handlers (see API Reference above)
+5. Check [ao.link](https://ao.link) for debugging and message results
 
 ## Deployment
 
@@ -971,11 +988,14 @@ This project consists of several components organized into different directories
 
 ### Testing (`tests/`)
 
-- **`tests.lua`** - Comprehensive test suite for the marketplace functionality
-- **`node/`** - Node.js based tests for the SDK and toolkit components
+- **`unit/`** - Lua unit tests with busted (426 tests, 83% coverage)
+- **`integration/`** - TypeScript integration tests with ao-loader (69 tests)
+- **`utils/`** - Test utilities and helpers
 
-### Configuration Files
+### Documentation (`docs/`)
 
-- **`.editorconfig`** - Editor configuration for consistent coding style
-- **`.gitignore`** - Git ignore rules for the project
-- **`spec.md`** - Detailed specification document for the ARnS Marketplace protocol
+- **`adr/`** - Architecture Decision Records (ADRs) documenting key design decisions:
+  - ADR-001: Module Whitelist for ANT Trading
+  - ADR-002: Credit-Notice Pattern
+  - ADR-003: ARIO Internal Ledger
+  - ADR-004: Intent-Based Workflow

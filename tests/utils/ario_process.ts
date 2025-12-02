@@ -120,4 +120,3 @@ export class ArioProcess {
     return await this.ario.transfer(params);
   }
 }
-

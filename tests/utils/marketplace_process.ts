@@ -11,21 +11,21 @@ import { ArioProcess } from './ario_process.js';
 
 export class MarketplaceProcess {
   process: AOProcess;
-	signer: AoSigner;
+  signer: AoSigner;
   dataItemSigner: any; // DataItemSigner for aoconnect calls
   cuUrl: string;
   walletAddress: string; // Needed for dry-run Owner field
 
-  constructor({ 
-    process, 
-    signer, 
+  constructor({
+    process,
+    signer,
     dataItemSigner,
-    walletAddress 
-  }: { 
-    process: AOProcess, 
-    signer: AoSigner, 
-    dataItemSigner?: any,
-    walletAddress: string 
+    walletAddress,
+  }: {
+    process: AOProcess;
+    signer: AoSigner;
+    dataItemSigner?: any;
+    walletAddress: string;
   }) {
     this.process = process;
     this.signer = signer;
@@ -43,22 +43,25 @@ export class MarketplaceProcess {
     readParams: any,
     maxRetries: number = 10,
     baseDelayMs: number = 1000,
-    maxDelayMs: number = 30000
+    maxDelayMs: number = 30000,
   ): Promise<any> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         // Always include fromAddress so SDK includes Owner/From in dry-run request
-        const paramsWithOwner = { ...readParams, fromAddress: this.walletAddress };
+        const paramsWithOwner = {
+          ...readParams,
+          fromAddress: this.walletAddress,
+        };
         const result = await this.process.read(paramsWithOwner);
         return result;
       } catch (error: any) {
         lastError = error;
-        
+
         // Check if it's a rate limit error
         const isRateLimit = error?.message?.includes('Rate limit exceeded');
-        
+
         if (!isRateLimit || attempt === maxRetries - 1) {
           // Not a rate limit error, or we're out of retries
           throw error;
@@ -67,8 +70,10 @@ export class MarketplaceProcess {
         // Exponential backoff with cap: 1s, 2s, 4s, 8s, 16s, 30s (capped), 30s, ...
         const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
         const delayMs = Math.min(exponentialDelay, maxDelayMs);
-        console.log(`[Retry ${attempt + 1}/${maxRetries}] Rate limit hit, waiting ${delayMs}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        console.log(
+          `[Retry ${attempt + 1}/${maxRetries}] Rate limit hit, waiting ${delayMs}ms before retry...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
 
@@ -78,20 +83,23 @@ export class MarketplaceProcess {
   /**
    * Poll the CU for a message result to check if it was processed
    */
-  async pollCuForResult(messageId: string, maxAttempts: number = 5): Promise<any> {
+  async pollCuForResult(
+    messageId: string,
+    maxAttempts: number = 5,
+  ): Promise<any> {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const url = `${this.cuUrl}/result/${messageId}?process-id=${this.process.processId}`;
         const response = await fetch(url);
         const result = await response.json();
-        
+
         if (!result.error) {
           return result;
         }
-        
+
         // Wait before retrying
         if (i < maxAttempts - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       } catch (error) {
         console.log(`[CU Poll] Attempt ${i + 1}/${maxAttempts} failed:`, error);
@@ -109,23 +117,29 @@ export class MarketplaceProcess {
       const url = `${this.cuUrl}/results/${this.process.processId}?limit=20&sort=DESC`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (!data.edges) {
         return false;
       }
-      
+
       // Look for Credit-Notice messages with this Intent-Id
       for (const edge of data.edges) {
         const tags = edge.node?.message?.Tags || [];
-        const hasAction = tags.some((t: any) => t.name === 'Action' && t.value === 'Credit-Notice');
-        const hasIntentId = tags.some((t: any) => t.name === 'X-Intent-Id' && t.value === intentId);
-        
+        const hasAction = tags.some(
+          (t: any) => t.name === 'Action' && t.value === 'Credit-Notice',
+        );
+        const hasIntentId = tags.some(
+          (t: any) => t.name === 'X-Intent-Id' && t.value === intentId,
+        );
+
         if (hasAction && hasIntentId) {
-          console.log(`✓ Found Credit-Notice with Intent-Id ${intentId} at message ${edge.node.message.Id}`);
+          console.log(
+            `✓ Found Credit-Notice with Intent-Id ${intentId} at message ${edge.node.message.Id}`,
+          );
           return true;
         }
       }
-      
+
       return false;
     } catch (error) {
       console.log('[CU Check] Failed to check for Credit-Notice:', error);
@@ -175,7 +189,7 @@ export class MarketplaceProcess {
       // Use send() to actually create the intent (modifies state)
       const { result } = (await this.process.send({
         tags: filteredTags,
-				signer: this.signer,
+        signer: this.signer,
       })) as any;
 
       // The handler returns data directly as the result object
@@ -597,22 +611,22 @@ export class MarketplaceProcess {
       });
     }
 
-        // Step 2: Transfer ANT to marketplace with intent ID
-        const tags = [
-          { name: 'Action', value: 'Transfer' },
-          { name: 'Recipient', value: this.process.processId },
-          { name: 'Target', value: this.process.processId }, // Explicit Target for Credit-Notice
-          { name: 'Quantity', value: '1' },
-          { name: 'X-Intent-Id', value: intentId }, // Required!
-          { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
-          { name: 'X-Dominant-Token', value: antProcessId }, // Required! Must match From
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: price },
-          { name: 'X-Swap-Token', value: swapToken },
-        ];
+    // Step 2: Transfer ANT to marketplace with intent ID
+    const tags = [
+      { name: 'Action', value: 'Transfer' },
+      { name: 'Recipient', value: this.process.processId },
+      { name: 'Target', value: this.process.processId }, // Explicit Target for Credit-Notice
+      { name: 'Quantity', value: '1' },
+      { name: 'X-Intent-Id', value: intentId }, // Required!
+      { name: 'X-Order-Action', value: 'Create-Order' }, // Required!
+      { name: 'X-Dominant-Token', value: antProcessId }, // Required! Must match From
+      { name: 'X-Order-Type', value: 'fixed' },
+      { name: 'X-Price', value: price },
+      { name: 'X-Swap-Token', value: swapToken },
+    ];
 
     let txId: string;
-    
+
     if (logger) {
       txId = await logger.logMessage({
         action: 'Transfer ANT (List Fixed Price)',
@@ -907,9 +921,13 @@ export class MarketplaceProcess {
     let checkCount = 0;
 
     if (intentId) {
-      console.log(`Waiting for order from Intent ${intentId} (count to increase from ${previousCount})...`);
+      console.log(
+        `Waiting for order from Intent ${intentId} (count to increase from ${previousCount})...`,
+      );
     } else {
-      console.log(`Waiting for order count to increase from ${previousCount}...`);
+      console.log(
+        `Waiting for order count to increase from ${previousCount}...`,
+      );
     }
 
     while (Date.now() - startTime < timeout) {
@@ -919,7 +937,9 @@ export class MarketplaceProcess {
         const currentIntents = info.intents.total;
         checkCount++;
 
-        console.log(`[Check #${checkCount}] Orders: ${currentCount} (need > ${previousCount}), Intents: ${currentIntents}, ${Math.round((Date.now() - startTime) / 1000)}s elapsed`);
+        console.log(
+          `[Check #${checkCount}] Orders: ${currentCount} (need > ${previousCount}), Intents: ${currentIntents}, ${Math.round((Date.now() - startTime) / 1000)}s elapsed`,
+        );
 
         if (currentCount > previousCount) {
           // New order appeared, fetch orders
@@ -934,7 +954,9 @@ export class MarketplaceProcess {
       await new Promise((resolve) => setTimeout(resolve, interval));
     }
 
-    console.error(`Timeout: Order count did not increase after ${timeout}ms (${checkCount} checks)`);
+    console.error(
+      `Timeout: Order count did not increase after ${timeout}ms (${checkCount} checks)`,
+    );
     throw new Error(`Timeout waiting for new orders after ${timeout}ms`);
   }
 
@@ -952,7 +974,7 @@ export class MarketplaceProcess {
     while (Date.now() - startTime < timeout) {
       try {
         const info = await this.info();
-        const statusField = status + 'Orders' as keyof typeof info.activity;
+        const statusField = (status + 'Orders') as keyof typeof info.activity;
         const currentCount = info.activity[statusField];
 
         if (currentCount !== previousCount) {
@@ -972,11 +994,15 @@ export class MarketplaceProcess {
    * Deposit ARIO to the marketplace (simulates Credit-Notice from ARIO token process)
    * Returns the message ID for verification
    */
-  async depositArio(amount: string, arioProcessId: string, address?: string): Promise<{ messageId: string }> {
+  async depositArio(
+    amount: string,
+    arioProcessId: string,
+    address?: string,
+  ): Promise<{ messageId: string }> {
     // If no address is provided, use empty string to deposit to msg.From
     // The Sender tag will be set from the message's From field
     const depositAddress = address || '';
-    
+
     const tags: MessageTag[] = [
       { name: 'Action', value: 'Credit-Notice' },
       { name: 'Sender', value: depositAddress },
@@ -999,9 +1025,13 @@ export class MarketplaceProcess {
    * Verify a Credit-Notice was processed by checking its result
    * Uses GraphQL to find the message and CU to get the result
    */
-  async verifyCreditNoticeProcessed(messageId: string, maxAttempts: number = 10): Promise<any> {
-    const graphqlUrl = this.process.ao.GRAPHQL_URL || 'http://localhost:4000/graphql';
-    
+  async verifyCreditNoticeProcessed(
+    messageId: string,
+    maxAttempts: number = 10,
+  ): Promise<any> {
+    const graphqlUrl =
+      this.process.ao.GRAPHQL_URL || 'http://localhost:4000/graphql';
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         // Query GraphQL for the message by ID
@@ -1017,7 +1047,7 @@ export class MarketplaceProcess {
               }
             }
           `,
-          variables: { messageId }
+          variables: { messageId },
         };
 
         const gqlResponse = await fetch(graphqlUrl, {
@@ -1027,52 +1057,67 @@ export class MarketplaceProcess {
         });
 
         if (!gqlResponse.ok) {
-          console.log(`[Attempt ${attempt + 1}/${maxAttempts}] GraphQL query failed, waiting 2s...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(
+            `[Attempt ${attempt + 1}/${maxAttempts}] GraphQL query failed, waiting 2s...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           continue;
         }
 
         const gqlData = await gqlResponse.json();
         if (!gqlData.data?.transaction) {
-          console.log(`[Attempt ${attempt + 1}/${maxAttempts}] Message not yet in GraphQL, waiting 2s...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(
+            `[Attempt ${attempt + 1}/${maxAttempts}] Message not yet in GraphQL, waiting 2s...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           continue;
         }
 
         // Get the result from CU
         const resultUrl = `${this.cuUrl}/result/${messageId}?process-id=${this.process.processId}`;
         const resultResponse = await fetch(resultUrl);
-        
+
         if (!resultResponse.ok) {
-          console.log(`[Attempt ${attempt + 1}/${maxAttempts}] CU result not ready, waiting 2s...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(
+            `[Attempt ${attempt + 1}/${maxAttempts}] CU result not ready, waiting 2s...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           continue;
         }
 
         const result = await resultResponse.json();
-        
+
         // Check if the Credit-Notice was processed
         if (result.Messages && result.Messages.length > 0) {
-          const creditNoticeMessage = result.Messages.find((m: any) => 
-            m.Tags?.some((t: any) => t.name === 'Action' && t.value === 'Credit-Notice-Processed')
+          const creditNoticeMessage = result.Messages.find((m: any) =>
+            m.Tags?.some(
+              (t: any) =>
+                t.name === 'Action' && t.value === 'Credit-Notice-Processed',
+            ),
           );
-          
+
           if (creditNoticeMessage) {
             console.log(`✓ Credit-Notice processed successfully`);
             return creditNoticeMessage;
           }
         }
 
-        console.log(`[Attempt ${attempt + 1}/${maxAttempts}] Credit-Notice not yet processed, waiting 2s...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        console.log(
+          `[Attempt ${attempt + 1}/${maxAttempts}] Credit-Notice not yet processed, waiting 2s...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (error) {
-        console.log(`[Attempt ${attempt + 1}/${maxAttempts}] Error checking Credit-Notice:`, error instanceof Error ? error.message : String(error));
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(
+          `[Attempt ${attempt + 1}/${maxAttempts}] Error checking Credit-Notice:`,
+          error instanceof Error ? error.message : String(error),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
 
-    throw new Error(`Credit-Notice ${messageId} was not processed after ${maxAttempts} attempts`);
+    throw new Error(
+      `Credit-Notice ${messageId} was not processed after ${maxAttempts} attempts`,
+    );
   }
 
   /**
@@ -1109,7 +1154,7 @@ export class MarketplaceProcess {
    */
   async getMarketplaceBalance(address?: string): Promise<string> {
     const targetAddress = address || this.signer.address;
-    
+
     try {
       const result = await this.readWithRetry({
         tags: [
@@ -1122,7 +1167,7 @@ export class MarketplaceProcess {
       if (typeof result === 'object' && 'balance' in result) {
         return (result as any).balance || '0';
       }
-      
+
       return '0';
     } catch (error) {
       console.error('Error getting marketplace balance:', error);

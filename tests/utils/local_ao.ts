@@ -140,18 +140,17 @@ export class LocalAO implements Partial<AoClient> {
     // Debug: log message options for Credit-Notice
     const actionTag = params.tags?.find((t: any) => t.name === 'Action');
     if (actionTag?.value === 'Credit-Notice') {
-      console.log('[LocalAO] Sending Credit-Notice with From:', messageOptions.From);
+      console.log(
+        '[LocalAO] Sending Credit-Notice with From:',
+        messageOptions.From,
+      );
       console.log('[LocalAO] Tags:', JSON.stringify(params.tags, null, 2));
     }
 
-    const res = await this.handle(
-      this.currentMemory,
-      messageOptions,
-      {
-        ...AO_LOADER_HANDLER_ENV,
-        ...(handlerEnvOverrides ?? {}),
-      },
-    ).catch((e) => console.error(e));
+    const res = await this.handle(this.currentMemory, messageOptions, {
+      ...AO_LOADER_HANDLER_ENV,
+      ...(handlerEnvOverrides ?? {}),
+    }).catch((e) => console.error(e));
     if (!res) throw new Error('Error from handle: ' + res);
     const { Memory, ...rest } = res;
     this.currentMemory = Memory;

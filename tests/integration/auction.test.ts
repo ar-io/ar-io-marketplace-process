@@ -6,7 +6,7 @@ import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   PROCESS_OWNER,
-	TEST_SIGNER,
+  TEST_SIGNER,
 } from '../utils/constants.js';
 
 describe('Auction Mechanisms', () => {
@@ -16,12 +16,16 @@ describe('Auction Mechanisms', () => {
   const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');
   const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
   const TEST_SENDER = ''.padEnd(43, '1'); // PROCESS_OWNER
-  const TEST_ANT_MODULE_WHITELISTED = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
-  const TEST_ANT_MODULE_NOT_WHITELISTED = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
+  const TEST_ANT_MODULE_WHITELISTED =
+    'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
+  const TEST_ANT_MODULE_NOT_WHITELISTED =
+    '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
 
   before(async () => {
-    const luaWithTestConfig = `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"\n` + BUNDLED_MARKETPLACE_SOURCE_CODE;
-    
+    const luaWithTestConfig =
+      `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"\n` +
+      BUNDLED_MARKETPLACE_SOURCE_CODE;
+
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
       lua: luaWithTestConfig,
@@ -29,28 +33,32 @@ describe('Auction Mechanisms', () => {
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
-			signer: TEST_SIGNER,
+      signer: TEST_SIGNER,
     });
   });
 
   beforeEach(async () => {
     await ao_mock.reset();
-    
+
     // Re-set ARIO token and deposit for listing fees
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"`,
       signer: TEST_SIGNER,
     });
-    
+
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
     });
-    
-    await marketplaceProcess.depositArio('100000000000', TEST_ARIO_TOKEN, TEST_SENDER);
+
+    await marketplaceProcess.depositArio(
+      '100000000000',
+      TEST_ARIO_TOKEN,
+      TEST_SENDER,
+    );
   });
 
   describe('Dutch Auction', () => {
@@ -298,7 +306,7 @@ describe('Auction Mechanisms', () => {
   describe('Module Whitelist Validation', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
-      
+
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
         action: 'Create-Order',
@@ -340,24 +348,32 @@ describe('Auction Mechanisms', () => {
 
       // Should have Intent-Resolved message with failed status
       const resolvedMsg = creditResult.Messages?.find((m: any) =>
-        m.Tags?.find((t: any) => t.name === 'Action' && t.value === 'Intent-Resolved')
+        m.Tags?.find(
+          (t: any) => t.name === 'Action' && t.value === 'Intent-Resolved',
+        ),
       );
-      
+
       assert(resolvedMsg, 'Should have Intent-Resolved message');
-      
+
       const statusTag = resolvedMsg.Tags?.find((t: any) => t.name === 'Status');
-      assert.strictEqual(statusTag?.value, 'failed', 'Intent should have failed status');
-      
-      const reasonTag = resolvedMsg.Tags?.find((t: any) => t.name === 'Failure-Reason');
+      assert.strictEqual(
+        statusTag?.value,
+        'failed',
+        'Intent should have failed status',
+      );
+
+      const reasonTag = resolvedMsg.Tags?.find(
+        (t: any) => t.name === 'Failure-Reason',
+      );
       assert(
         reasonTag?.value?.includes('whitelisted'),
-        'Failure reason should mention whitelist: ' + reasonTag?.value
+        'Failure reason should mention whitelist: ' + reasonTag?.value,
       );
     });
 
     it('should accept Credit-Notice from whitelisted module', async () => {
       const TEST_ANT_PROCESS = 'test-ant-process-'.padEnd(43, '1');
-      
+
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
         action: 'Create-Order',
@@ -398,16 +414,25 @@ describe('Auction Mechanisms', () => {
       });
 
       // Should succeed with no error
-      assert(!creditResult.Error, 'Should not have error for whitelisted module');
-      
+      assert(
+        !creditResult.Error,
+        'Should not have error for whitelisted module',
+      );
+
       // Should have Intent-Resolved with completed/active status (not failed)
       const resolvedMsg = creditResult.Messages?.find((m: any) =>
-        m.Tags?.find((t: any) => t.name === 'Action' && t.value === 'Intent-Resolved')
+        m.Tags?.find(
+          (t: any) => t.name === 'Action' && t.value === 'Intent-Resolved',
+        ),
       );
       assert(resolvedMsg, 'Should have Intent-Resolved message');
-      
+
       const statusTag = resolvedMsg.Tags?.find((t: any) => t.name === 'Status');
-      assert.notStrictEqual(statusTag?.value, 'failed', 'Intent should not be failed for whitelisted module');
+      assert.notStrictEqual(
+        statusTag?.value,
+        'failed',
+        'Intent should not be failed for whitelisted module',
+      );
     });
   });
 
