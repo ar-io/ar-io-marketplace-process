@@ -176,7 +176,7 @@ export const TEST_ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA';
 export const TEST_ANT_MODULE_WHITELISTED =
   'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8';
 export const TEST_ANT_MODULE_NOT_WHITELISTED =
-  '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234';
+  '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_12345';
 
 // =============================================================================
 // Note: ao-localnet exports removed - use local test environment instead
