@@ -208,14 +208,11 @@ export class MarketplaceProcess {
     }
   }
 
-  async cancelOrder(orderId: string, groupId?: string): Promise<ReadResponse> {
+  async cancelOrder(orderId: string): Promise<ReadResponse> {
     const tags: Array<{ name: string; value: string }> = [
       { name: 'Action', value: 'Cancel-Order' },
       { name: 'Order-Id', value: orderId },
     ];
-    if (groupId) {
-      tags.push({ name: 'X-Group-ID', value: groupId });
-    }
     try {
       const { result } = (await this.process.send({
         tags,
@@ -289,11 +286,9 @@ export class MarketplaceProcess {
   async depositArio(
     amount: string,
     arioProcessId: string,
-    address?: string,
+    address: string,
   ): Promise<ReadResponse> {
-    // If no address is provided, use empty string to deposit to msg.From
-    // The Sender tag will be set from the message's From field
-    const depositAddress = address || '';
+    const depositAddress = address;
 
     const tags: MessageTag[] = [
       { name: 'Action', value: 'Credit-Notice' },

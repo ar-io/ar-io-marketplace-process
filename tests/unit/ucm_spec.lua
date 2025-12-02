@@ -115,12 +115,11 @@ describe('ucm helpers', function()
 		end)
 
 		it('should reject quantity not equal to 1', function()
-			local args = {
-				quantity = '2',
-				sender = 'test-sender',
-				orderGroupId = 'group-1',
-				msg = { Tags = { Quantity = '2' }, From = 'token-process-id' },
-			}
+		local args = {
+			quantity = '2',
+			sender = 'test-sender',
+			msg = { Tags = { Quantity = '2' }, From = 'token-process-id' },
+		}
 
 			local success, err = pcall(function()
 				ucm.validateAntDominantOrder(args, validPair)
@@ -136,7 +135,6 @@ describe('ucm helpers', function()
 			local args = {
 				quantity = '1',
 				sender = 'test-sender',
-				orderGroupId = 'group-1',
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
@@ -155,7 +153,6 @@ describe('ucm helpers', function()
 				quantity = '1',
 				price = '0',
 				sender = 'test-sender',
-				orderGroupId = 'group-1',
 				createdAt = 1000,
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
@@ -174,7 +171,6 @@ describe('ucm helpers', function()
 				expirationTime = 2000,
 				createdAt = 1000,
 				sender = 'test-sender',
-				orderGroupId = 'group-1',
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
@@ -199,7 +195,6 @@ describe('ucm helpers', function()
 		it('should reject missing requestedOrderId', function()
 			local args = {
 				sender = 'test-sender',
-				orderGroupId = 'group-1',
 				msg = { Tags = { Quantity = '1000' }, From = 'token-process-id' },
 			}
 
@@ -217,7 +212,6 @@ describe('ucm helpers', function()
 			local args = {
 				requestedOrderId = 'order-123',
 				sender = 'test-sender',
-				orderGroupId = 'group-1',
 				msg = { Tags = { Quantity = '1000' }, From = 'token-process-id' },
 			}
 
@@ -312,7 +306,6 @@ describe('ucm helpers', function()
 				createdAt = 1000,
 				orderType = 'fixed',
 				sender = 'test-sender',
-				orderGroupId = 'group-1',
 				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			}
 

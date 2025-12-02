@@ -58,7 +58,6 @@ describe('English Auction', function()
 				createdAt = '1735689600000',
 				blockheight = '123456789',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '1736035200000',
 				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			})
@@ -87,7 +86,6 @@ describe('English Auction', function()
 				createdAt = '1735689600000',
 				blockheight = '123456789',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			})
 
@@ -541,7 +539,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '2000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -586,7 +583,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -642,7 +638,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -699,7 +694,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -754,7 +748,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '2000000', -- Expires at 2000000
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -789,7 +782,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -842,7 +834,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -885,7 +876,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -938,7 +928,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})
@@ -975,7 +964,6 @@ describe('English Auction', function()
 				createdAt = '1000000',
 				blockheight = '123456',
 				orderType = 'english',
-				orderGroupId = 'test-group',
 				expirationTime = '3000000',
 				msg = { Tags = {}, From = ANT_TOKEN },
 			})

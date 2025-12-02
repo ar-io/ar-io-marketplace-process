@@ -96,11 +96,10 @@ function fixed_price.handleArioOrder(args, validPair, pair)
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
 		Quantity = tostring(args.quantity),
-		Price = args.price and tostring(args.price),
-		Message = 'ARIO order added to orderbook for buy now!',
-		['X-Group-ID'] = args.orderGroupId,
-		['Order-Type'] = ORDER_TYPES.FIXED,
-		['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
+	Price = args.price and tostring(args.price),
+	Message = 'ARIO order added to orderbook for buy now!',
+	['Order-Type'] = ORDER_TYPES.FIXED,
+	['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
 	},
 })
 end
@@ -246,9 +245,8 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 				['Dominant-Token'] = args.dominantToken,
 				['Swap-Token'] = args.swapToken,
 				Quantity = tostring(sumVolume),
-				Price = args.price and tostring(args.price) or 'None',
-				Message = 'ANT order executed immediately!',
-				['X-Group-ID'] = args.orderGroupId or 'None',
+			Price = args.price and tostring(args.price) or 'None',
+			Message = 'ANT order executed immediately!',
 			},
 		})
 	else

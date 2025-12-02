@@ -367,14 +367,14 @@ function utils.isExpired(expirationTime, currentTimestamp)
 end
 
 --- Sends an error notice to the target
---- @param args {target: string, action: string, message: string, orderGroupId: string?, msg: table?} Error handling parameters
+--- @param args {target: string, action: string, message: string, msg: table?} Error handling parameters
 function utils.handleError(args)
 	local msg = args.msg or { Tags = {} }
 	utils.Send(msg, {
 		Target = args.target,
 		Action = args.action,
 		Error = args.message,
-		Tags = { Status = 'Error', Message = args.message, ['X-Group-ID'] = args.orderGroupId },
+		Tags = { Status = 'Error', Message = args.message },
 	})
 end
 
@@ -399,7 +399,6 @@ function utils.refundAndError(msg, sender, message, action)
 		target = sender,
 		action = action or 'Validation-Error',
 		message = message,
-		orderGroupId = msg.Tags['X-Group-ID'] or 'None',
 		msg = msg,
 	})
 	

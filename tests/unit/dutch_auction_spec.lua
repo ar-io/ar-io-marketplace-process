@@ -67,7 +67,6 @@ describe('Dutch Auction', function()
 				createdAt = '1735689600000',
 				blockheight = '123456789',
 				orderType = 'dutch',
-				orderGroupId = 'test-group',
 				expirationTime = '1736035200000',
 				minimumPrice = '100000000000',
 				decreaseInterval = '86400000',

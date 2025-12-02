@@ -57,7 +57,6 @@
 
 --- @class OrderArgs
 --- @field orderId OrderId Order identifier
---- @field orderGroupId string Order group identifier
 --- @field dominantToken TokenId Token being deposited
 --- @field swapToken TokenId Token being requested
 --- @field sender Address Order creator address
@@ -116,14 +115,12 @@
 --- @field message string Error message
 --- @field quantity BalanceAmount|nil Quantity to refund
 --- @field transferToken TokenId|nil Token to refund
---- @field orderGroupId string|nil Order group ID
 --- @field msg Message|nil Message context for intent tracking
 
 --- @class SettleArgs
 --- @field orderId OrderId Order ID to settle
 --- @field sender Address Settlement initiator
 --- @field timestamp number Settlement timestamp
---- @field orderGroupId string Order group ID
 --- @field dominantToken TokenId Dominant token
 --- @field swapToken TokenId Swap token
 --- @field msg Message|nil Message context for intent tracking

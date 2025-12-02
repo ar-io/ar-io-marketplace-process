@@ -71,11 +71,10 @@ function dutch_auction.handleArioOrder(args, validPair, pair)
 			Handler = 'Create-Order',
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
-			Quantity = tostring(args.quantity),
-			Price = args.price and tostring(args.price),
-			Message = 'ARIO order added to orderbook for Dutch auction!',
-			['X-Group-ID'] = args.orderGroupId,
-			['Order-Type'] = ORDER_TYPES.DUTCH,
+		Quantity = tostring(args.quantity),
+		Price = args.price and tostring(args.price),
+		Message = 'ARIO order added to orderbook for Dutch auction!',
+		['Order-Type'] = ORDER_TYPES.DUTCH,
 		},
 	})
 end
@@ -235,11 +234,10 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 				Handler = 'Create-Order',
 				['Dominant-Token'] = args.dominantToken,
 				['Swap-Token'] = args.swapToken,
-				Quantity = tostring(args.quantity),
-				Price = args.price and tostring(args.price) or 'None',
-				Message = 'ANT order executed immediately in Dutch auction!',
-				['X-Group-ID'] = args.orderGroupId or 'None',
-				['Order-Type'] = ORDER_TYPES.DUTCH,
+			Quantity = tostring(args.quantity),
+			Price = args.price and tostring(args.price) or 'None',
+			Message = 'ANT order executed immediately in Dutch auction!',
+			['Order-Type'] = ORDER_TYPES.DUTCH,
 			},
 		})
 	else

@@ -631,24 +631,7 @@ describe('utils', function()
 						Target = validTarget,
 						Action = 'Some-Error',
 						Error = 'Something went wrong',
-						Tags = { Status = 'Error', Message = 'Something went wrong', ['X-Group-ID'] = nil },
-					},
-				},
-			},
-			{
-				description = 'error notice includes X-Group-ID when provided',
-				args = {
-					target = validTarget,
-					action = 'Grouped-Error',
-					message = 'Grouped message',
-					orderGroupId = 'group-123',
-				},
-				expected = {
-					{
-						Target = validTarget,
-						Action = 'Grouped-Error',
-						Error = 'Grouped message',
-						Tags = { Status = 'Error', Message = 'Grouped message', ['X-Group-ID'] = 'group-123' },
+						Tags = { Status = 'Error', Message = 'Something went wrong' },
 					},
 				},
 			},

@@ -193,7 +193,7 @@ end
 
 --- Validate ANT dominant token orders (selling ANT for ARIO)
 --- Throws error if validation fails
---- @param args table Order arguments containing quantity, price, expirationTime, createdAt, sender, orderGroupId
+--- @param args table Order arguments containing quantity, price, expirationTime, createdAt, sender
 --- @param _validPair TokenId[] The validated pair [ANT, ARIO]
 function ucm.validateAntDominantOrder(args, _validPair)
 	-- ANT tokens can only be sold in quantities of exactly 1
@@ -230,7 +230,7 @@ end
 
 --- Validate ARIO dominant token orders (buying ANT with ARIO)
 --- Throws error if validation fails
---- @param args table Order arguments containing requestedOrderId, sender, quantity, orderGroupId
+--- @param args table Order arguments containing requestedOrderId, sender, quantity
 --- @param _validPair TokenId[] The validated pair [ARIO, ANT]
 function ucm.validateArioDominantOrder(args, _validPair)
 	-- Currently no specific validation rules for ARIO dominant orders
@@ -244,7 +244,7 @@ function ucm.validateArioDominantOrder(args, _validPair)
 end
 
 --- Validate order parameters
---- @param args table Order arguments containing dominantToken, swapToken, quantity, orderType, sender, orderGroupId
+--- @param args table Order arguments containing dominantToken, swapToken, quantity, orderType, sender
 --- @return TokenId[]|nil validPair The validated pair [dominantToken, swapToken] or nil if validation fails
 function ucm.validateOrderParams(args)
 	-- 1. Check pair data
@@ -468,7 +468,6 @@ function ucm.createOrderHandler(msg)
 	
 	local orderArgs = {
 		orderId = msg.Id,
-		orderGroupId = msg.Tags['Group-ID'] or 'None',
 		dominantToken = dominantToken,
 		swapToken = swapToken,
 		sender = msg.From,
@@ -497,12 +496,11 @@ function ucm.createOrderHandler(msg)
 		Status = 'Success',
 		Message = 'ARIO order created using internal balance',
 		['Order-Id'] = msg.Id,
-		['Group-ID'] = orderArgs.orderGroupId,
 	})
 end
 
 --- Settle an expired English auction
---- @param args table Settlement arguments containing orderId, sender, timestamp, orderGroupId, dominantToken, swapToken, msg
+--- @param args table Settlement arguments containing orderId, sender, timestamp, dominantToken, swapToken, msg
 function ucm.settleAuction(args)
 	-- Find the auction order using O(1) lookup
 	local targetOrder, targetPair = ucm.getOrderById(args.orderId)
@@ -526,18 +524,16 @@ function ucm.settleAuction(args)
 		timestamp = args.timestamp,
 		msg = args.msg,
 		sender = args.sender,
-		orderGroupId = args.orderGroupId,
 	})
 end
 
 --- Cancel an order
 --- Accepts the original msg so we can keep consistent behavior and responses
---- @param msg Message The message containing Order-Id and X-Group-ID tags
+--- @param msg Message The message containing Order-Id tag
 --- @return string jsonResponse JSON-encoded response with status and order ID
 function ucm.cancelOrderHandler(msg)
 	-- Parse parameters from tags (Train-Case)
 	local orderId = msg.Tags['Order-Id']
-	local groupId = msg.Tags['X-Group-ID'] or 'None'
 
 	assert(orderId, 'Invalid arguments, required { Order-Id }')
 
@@ -592,7 +588,6 @@ function ucm.cancelOrderHandler(msg)
 	return json.encode({
 		Status = 'Success',
 		Message = 'Order cancelled',
-		['X-Group-ID'] = groupId,
 		['Order-Id'] = orderId,
 	})
 end
@@ -670,7 +665,7 @@ end
 
 --- Handler: Settle-Auction
 --- Settle an expired English auction by Order-Id
---- @param msg Message The message containing Order-Id, Dominant-Token, Swap-Token, and X-Group-ID tags
+--- @param msg Message The message containing Order-Id, Dominant-Token, Swap-Token tags
 --- @return string jsonResponse JSON-encoded response with status and order ID
 function ucm.settleAuctionHandler(msg)
 	-- Parse parameters from tags (Train-Case)
@@ -684,7 +679,6 @@ function ucm.settleAuctionHandler(msg)
 		orderId = orderId,
 		sender = msg.From,
 		timestamp = msg.Timestamp,
-		orderGroupId = msg.Tags['X-Group-ID'] or 'None',
 		dominantToken = dominantToken,
 		swapToken = swapToken,
 		msg = msg, -- Pass msg context for intent tracking

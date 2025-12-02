@@ -111,15 +111,14 @@ function notices.creditNoticeHandler(msg)
 			return
 		end
 
-		local orderArgs = {
-			orderId = msg.Id,
-			orderGroupId = msg.Tags['X-Group-ID'] or 'None',
-			dominantToken = msg.From,
-			swapToken = msg.Tags['X-Swap-Token'],
-			sender = sender,
-			quantity = quantity,
-			createdAt = msg.Timestamp,
-			blockheight = msg['Block-Height'],
+	local orderArgs = {
+		orderId = msg.Id,
+		dominantToken = msg.From,
+		swapToken = msg.Tags['X-Swap-Token'],
+		sender = sender,
+		quantity = quantity,
+		createdAt = msg.Timestamp,
+		blockheight = msg['Block-Height'],
 			orderType = msg.Tags['X-Order-Type'] or 'fixed',
 			expirationTime = msg.Tags['X-Expiration-Time'] and tonumber(msg.Tags['X-Expiration-Time']),
 			minimumPrice = msg.Tags['X-Minimum-Price'],

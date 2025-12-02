@@ -151,10 +151,9 @@ function english_auction.handleAntOrder(args)
 			Handler = 'Create-Order',
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
-			['Bid-Amount'] = tostring(bidAmount), -- Use the quantity sent by user
-			Message = 'Bid placed successfully on English auction!',
-			['X-Group-ID'] = args.orderGroupId,
-			['Order-Type'] = ORDER_TYPES.ENGLISH,
+		['Bid-Amount'] = tostring(bidAmount), -- Use the quantity sent by user
+		Message = 'Bid placed successfully on English auction!',
+		['Order-Type'] = ORDER_TYPES.ENGLISH,
 		},
 	})
 end
@@ -285,10 +284,9 @@ function english_auction.settleAuction(args)
 			Tags = {
 				Status = 'Success',
 				['Order-Id'] = orderId,
-				Winner = order.highestBidder,
-				['Winning-Bid'] = order.highestBid,
-				Message = 'Auction settled successfully!',
-				['X-Group-ID'] = args.orderGroupId or 'None',
+			Winner = order.highestBidder,
+			['Winning-Bid'] = order.highestBid,
+			Message = 'Auction settled successfully!',
 			},
 		})
 	end
@@ -348,11 +346,10 @@ function english_auction.handleArioOrder(args, validPair, pair)
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
 		Quantity = tostring(args.quantity),
-		Price = args.price and tostring(args.price),
-		Message = 'ARIO order added to orderbook for English auction!',
-		['X-Group-ID'] = args.orderGroupId,
-		['Order-Type'] = ORDER_TYPES.ENGLISH,
-		['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
+	Price = args.price and tostring(args.price),
+	Message = 'ARIO order added to orderbook for English auction!',
+	['Order-Type'] = ORDER_TYPES.ENGLISH,
+	['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
 	},
 })
 end

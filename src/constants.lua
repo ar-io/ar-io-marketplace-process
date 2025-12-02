@@ -141,7 +141,6 @@ constants.TAGS = {
 	-- Common tags
 	STATUS = 'Status',
 	MESSAGE = 'Message',
-	GROUP_ID = 'X-Group-ID',
 	-- Intent tags
 	INTENT_ID = 'X-Intent-Id',
 	INTENT_ACTION = 'X-Intent-Action',
