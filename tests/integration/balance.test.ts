@@ -1,6 +1,5 @@
 import { before, beforeEach, describe, it } from 'node:test';
 import { MarketplaceProcess } from '../utils/marketplace_process.js';
-import { ArioProcess } from '../utils/ario_process.js';
 import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
 import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';

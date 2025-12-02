@@ -43,8 +43,5 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "ao-localnet": "github:atticusofsparta/ao-localnet-archive"
-  }
+  "license": "ISC"
 }
