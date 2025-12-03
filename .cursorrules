@@ -11,3 +11,13 @@ Examples:
 - ❌ `test-output.txt`
 - ❌ `debug.json` (when used for logging)
 
+## Linting and Code Quality
+
+All code edits must pass linting without errors before being considered complete. If a change introduces linter errors, they must be fixed immediately.
+
+For Lua code specifically:
+- Prefer using `error()` for error handling over `warn()` or warnings
+- Critical failures should halt execution with `error()` rather than allowing continued execution with warnings
+- Use `assert()` for precondition checks that should fail fast
+- Reserve warnings only for non-critical issues that don't prevent normal operation
+

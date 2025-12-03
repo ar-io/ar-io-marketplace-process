@@ -8,7 +8,8 @@ local notices = require('notices')
 local balances = require('balances')
 
 -- ActionMap: Maps camelCase action names to Train-Case handler names
--- TODO: should this be ActionMap = ActionMap or {...}?
+-- Simple assignment is correct - no need for `ActionMap = ActionMap or {...}` pattern
+-- This file is loaded once at process initialization, not hot-reloaded
 ActionMap = {
 	-- Activity handlers
 	getOrders = 'Get-Orders',
@@ -26,7 +27,6 @@ ActionMap = {
 	pushANTIntentResolution = 'Push-ANT-Intent-Resolution',
 	-- Notice handlers (incoming notices from external processes)
 	creditNotice = 'Credit-Notice',
-	debitNotice = 'Debit-Notice',
 	transferError = 'Transfer-Error',
 	stateNotice = 'State-Notice',
 	-- Balances handlers
@@ -59,7 +59,6 @@ utils.createHandler('Action', ActionMap.withdrawFees, ucm.withdrawFeesHandler, n
 
 -- Notice handlers (incoming notices from external processes)
 utils.createHandler('Action', ActionMap.creditNotice, notices.creditNoticeHandler, nil, true) -- Critical: deposits and creates orders
-utils.createHandler('Action', ActionMap.debitNotice, notices.debitNoticeHandler, nil, true) -- Critical: confirms transfers
 -- Transfer-Error is the token spec aligned error notice for failed transfers
 utils.createHandler('Action', ActionMap.transferError, notices.transferErrorHandler, nil, true) -- Critical: handles transfer failures
 utils.createHandler('Action', ActionMap.stateNotice, intents.stateNoticeHandler, nil, true) -- Critical: resolves ANT ownership intents

@@ -16,6 +16,7 @@ function intents.incrementIntentCounter()
 end
 
 --- Calculate the listing fee based on duration
+--- Minimum duration is 1 hour - shorter durations are charged the 1-hour rate
 --- @param expirationTime BalanceAmount|number|nil The expiration timestamp (nil for no expiration)
 --- @param currentTimestamp number The current timestamp in milliseconds
 --- @return BalanceAmount|nil listingFee The calculated listing fee in mARIO (nil on error)
@@ -24,7 +25,7 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 	local listingFee = bint(constants.FEE.LISTING_FEE_ARIO)
 	
 	if not expirationTime then
-		-- No expiration time, use base fee
+		-- No expiration time, use base fee (1 day minimum)
 		return tostring(listingFee), nil
 	end
 	
@@ -47,6 +48,12 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 		return nil, 'Expiration time cannot exceed 30 days'
 	end
 	
+	-- Clamp minimum duration to 1 hour
+	local minimumDurationMs = bint(constants.TIME.ONE_HOUR_MS)
+	if listingDurationMs < minimumDurationMs then
+		listingDurationMs = minimumDurationMs
+	end
+	
 	-- Calculate fee based on duration
 	local listingDurationHours = tonumber(tostring(listingDurationMs / bint(constants.TIME.ONE_HOUR_MS))) -- Convert ms to hours
 	local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS * 24 -- 24 hours per day
@@ -62,12 +69,12 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 	return tostring(listingFee), nil
 end
 
---- Create a parent intent
+--- Create an intent
 --- @param msg Message The incoming message
 --- @param action string The action being performed (Create-Order, Cancel-Order, etc.)
 --- @param forwardedTags table<string, any> Table of tags to forward with the intent
---- @return ParentIntent intent The created parent intent
-function intents.createParentIntent(msg, action, forwardedTags)
+--- @return Intent intent The created intent
+function intents.createIntent(msg, action, forwardedTags)
 	local balances = require('balances')
 	
 	-- Calculate TTL (24 hours from creation)
@@ -91,10 +98,7 @@ function intents.createParentIntent(msg, action, forwardedTags)
 	
 	local intent = {
 		intentId = intents.incrementIntentCounter(),
-		type = constants.INTENT_TYPES.PARENT,
 		initiator = msg.From,
-		parentIntentId = nil,
-		childIntentIds = {}, -- map for O(1) lookup
 		action = action,
 		status = constants.INTENT_STATUSES.PENDING,
 		createdAt = msg.Timestamp,
@@ -113,47 +117,11 @@ function intents.createParentIntent(msg, action, forwardedTags)
 	return intent
 end
 
---- Create a child intent
---- @param parentId IntentId The parent intent ID
---- @param msg Message The incoming message
---- @param expectedFrom TokenId The process ID we expect a Debit-Notice from
---- @param forwardedTags table<string, any> Table of tags to forward with the intent
---- @return ChildIntent childIntent The created child intent
-function intents.createChildIntent(parentId, msg, expectedFrom, forwardedTags)
-	-- Validate parent intent exists
-	local parent = Intents[parentId]
-	assert(parent, 'Parent intent not found: ' .. tostring(parentId))
-
-	local childIntent = {
-		intentId = intents.incrementIntentCounter(),
-		type = constants.INTENT_TYPES.CHILD,
-		initiator = ao.id, -- marketplace process
-		parentIntentId = parentId,
-		action = constants.ACTIONS.TRANSFER,
-		expectedMessage = constants.EXPECTED_MESSAGES.DEBIT_NOTICE,
-		expectedFrom = expectedFrom,
-		status = constants.INTENT_STATUSES.PENDING,
-		createdAt = msg.Timestamp,
-		resolvedAt = nil,
-		failureReason = nil,
-		forwardedTags = forwardedTags or {},
-	}
-
-	-- Add to Intents table
-	Intents[childIntent.intentId] = childIntent
-
-	-- Add to parent's childIntentIds map
-	Intents[parentId].childIntentIds[childIntent.intentId] = true
-
-
-	return childIntent
-end
-
 --- Resolve an intent
---- Handles status transitions and pruning of parent intents in terminal states
+--- Handles status transitions and pruning of intents in terminal states
 --- @param intentId IntentId The intent ID to resolve
 --- @param timestamp number The timestamp of resolution
---- @param msg table|nil Optional message context for parent completion notices
+--- @param msg table|nil Optional message context for completion notices
 --- @return boolean success Whether the resolution was successful
 --- @return table|nil resolvedIntent The resolved intent data if pruned, nil otherwise
 function intents.resolveIntent(intentId, timestamp, msg)
@@ -164,53 +132,26 @@ function intents.resolveIntent(intentId, timestamp, msg)
 
 	local resolvedIntent = nil
 
-	if intent.type == constants.INTENT_TYPES.PARENT then
-		-- Parent intent resolution (pending -> active)
-		if intent.status == constants.INTENT_STATUSES.PENDING then
+	-- Intent resolution (pending -> active)
+	if intent.status == constants.INTENT_STATUSES.PENDING then
 		intent.status = constants.INTENT_STATUSES.ACTIVE
 		intent.resolvedAt = timestamp
 	end
 
-	-- Prune parent intents (and their children) when they reach terminal states
-		if intent.status == constants.INTENT_STATUSES.COMPLETED or intent.status == constants.INTENT_STATUSES.FAILED then
-			-- Capture intent data BEFORE pruning
-			resolvedIntent = {
-				intentId = intent.intentId,
-				initiator = intent.initiator,
-				action = intent.action,
-				status = intent.status,
-				resolvedAt = timestamp,
-				failureReason = intent.failureReason,
-			}
+	-- Prune intents when they reach terminal states
+	if intent.status == constants.INTENT_STATUSES.COMPLETED or intent.status == constants.INTENT_STATUSES.FAILED then
+		-- Capture intent data BEFORE pruning
+		resolvedIntent = {
+			intentId = intent.intentId,
+			initiator = intent.initiator,
+			action = intent.action,
+			status = intent.status,
+			resolvedAt = timestamp,
+			failureReason = intent.failureReason,
+		}
 
-			-- Delete all child intents
-			for childId in pairs(intent.childIntentIds) do
-				Intents[childId] = nil
-			end
-			-- Delete parent intent
-			Intents[intentId] = nil
-		end
-	elseif intent.type == constants.INTENT_TYPES.CHILD then
-		-- Child intent resolution
-		intent.status = constants.INTENT_STATUSES.RESOLVED
-		intent.resolvedAt = timestamp
-		
-		-- Update parent status based on child resolution
-		if intent.parentIntentId then
-			local parent = Intents[intent.parentIntentId]
-			if parent then
-				-- Transition parent to settling when first child is resolved
-				if parent.status == constants.INTENT_STATUSES.PENDING or parent.status == constants.INTENT_STATUSES.ACTIVE then
-					parent.status = constants.INTENT_STATUSES.SETTLING
-					parent.resolvedAt = timestamp
-				end
-				
-				-- Check if parent intent should be completed
-				if intents.areAllChildrenIntentsResolved(intent.parentIntentId) then
-					intents.updateIntentStatus(intent.parentIntentId, constants.INTENT_STATUSES.COMPLETED, msg)
-				end
-			end
-		end
+		-- Delete intent
+		Intents[intentId] = nil
 	end
 
 	return true, resolvedIntent
@@ -291,57 +232,49 @@ end
 
 --- Get intent by ID
 --- @param intentId IntentId The intent ID
---- @return Intent|ParentIntent|ChildIntent|nil intent The intent or nil if not found
+--- @return Intent|nil intent The intent or nil if not found
 function intents.getIntentById(intentId)
 	return Intents[intentId]
 end
 
 --- Create a send operation with intent tracking
---- Creates a child intent if a parent intent exists and updates parent status
+--- Adds intent ID to the send if it exists in the context
 --- @param sendParams table The send parameters (Target, Action, Tags, etc.)
 --- @param handledMsg Message The original message context
---- @param forwardedTags table<string, any> Optional tags to forward with the child intent
+--- @param forwardedTags table<string, any> Optional tags to forward (unused, kept for backwards compatibility)
 --- @return table sendParams The send parameters with intent tracking added
 function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
-	-- Extract parent intent from context
-	local parentIntentId = handledMsg.Tags and handledMsg.Tags['X-Intent-Id']
+	-- Extract intent from context
+	local intentId = handledMsg.Tags and handledMsg.Tags['X-Intent-Id']
 
-	if parentIntentId then
+	if intentId then
 		-- Validate intent ID format
 		local _utils = require('utils')
-		assert(_utils.isValidIntentId(parentIntentId), 'Invalid X-Intent-Id format: ' .. tostring(parentIntentId))
+		assert(_utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format: ' .. tostring(intentId))
 
-		-- Validate parent intent exists
-		local parent = intents.getIntentById(parentIntentId)
-		if parent then
-			-- Create child intent
-			local childIntent = intents.createChildIntent(
-				parentIntentId,
-				handledMsg,
-				sendParams.Target, -- process we expect response from
-				forwardedTags or {}
-			)
-
-			-- Add child intent ID to send params
+		-- Validate intent exists
+		local intent = intents.getIntentById(intentId)
+		if intent then
+			-- Add intent ID to send params for tracking
 			sendParams.Tags = sendParams.Tags or {}
-			sendParams.Tags['X-Intent-Id'] = childIntent.intentId
+			sendParams.Tags['X-Intent-Id'] = intentId
 
-		-- Update parent status to "settling" if currently active
-		if parent.status == constants.INTENT_STATUSES.ACTIVE then
-			intents.updateIntentStatus(parentIntentId, constants.INTENT_STATUSES.SETTLING, handledMsg)
-		end
+			-- Update intent status to "settling" if currently active
+			if intent.status == constants.INTENT_STATUSES.ACTIVE then
+				intents.updateIntentStatus(intentId, constants.INTENT_STATUSES.SETTLING, handledMsg)
+			end
 		end
 	end
 
 	return sendParams
 end
 
---- Get all pending parent intents
---- @return ParentIntent[] pending Array of pending parent intents
+--- Get all pending intents
+--- @return Intent[] pending Array of pending intents
 function intents.getPendingIntents()
 	local pending = {}
 	for _, intent in pairs(Intents) do
-		if intent.type == constants.INTENT_TYPES.PARENT and intent.status == constants.INTENT_STATUSES.PENDING then
+		if intent.status == constants.INTENT_STATUSES.PENDING then
 			table.insert(pending, intent)
 		end
 	end
@@ -378,25 +311,6 @@ function intents.getAllIntents()
 	return allIntents
 end
 
---- Check if all child intents are resolved
---- @param parentId IntentId The parent intent ID
---- @return boolean allResolved Boolean indicating if all children are resolved
-function intents.areAllChildrenIntentsResolved(parentId)
-	local parent = Intents[parentId]
-	if not parent or parent.type ~= constants.INTENT_TYPES.PARENT then
-		return false
-	end
-
-	for childId in pairs(parent.childIntentIds) do
-		local child = Intents[childId]
-		if not child or child.status ~= constants.INTENT_STATUSES.RESOLVED then
-			return false
-		end
-	end
-
-	return true
-end
-
 --- Schedule the next intents pruning if the given timestamp is sooner than the current scheduled time
 --- @param timestamp number The timestamp to schedule pruning for
 function intents.scheduleNextIntentsPruning(timestamp)
@@ -429,12 +343,11 @@ function intents.pruneIntents(now)
 
 	-- Iterate through all intents and fail expired ones
 	for intentId, intent in pairs(Intents) do
-		-- Only process parent intents (children are pruned with parents)
-		if intent.type == constants.INTENT_TYPES.PARENT and intent.ttl then
-		if now >= intent.ttl then
-			-- Intent has expired, fail it (no msg context for pruning)
-			intents.failIntent(intentId, 'Intent expired (24h TTL)', nil)
-		else
+		if intent.ttl then
+			if now >= intent.ttl then
+				-- Intent has expired, fail it (no msg context for pruning)
+				intents.failIntent(intentId, 'Intent expired (24h TTL)', nil)
+			else
 				-- Track the next expiration
 				if not nextTTL or intent.ttl < nextTTL then
 					nextTTL = intent.ttl
@@ -463,7 +376,7 @@ function intents.createIntentHandler(msg)
 		['Minimum-Price'] = msg.Tags['X-Intent-Minimum-Price'],
 		['Decrease-Interval'] = msg.Tags['X-Intent-Decrease-Interval'],
 		['Requested-Order-Id'] = msg.Tags['X-Intent-Requested-Order-Id'],
-		['Order-Id'] = msg.Tags['X-Intent-Order-Id'],
+		['Order-Id'] = msg.Tags['X-Intent-Order-Id'], -- Required for Cancel-Order and Settle-Auction
 		['Dominant-Token'] = msg.Tags['X-Intent-Dominant-Token'],
 	}
 
@@ -495,7 +408,7 @@ function intents.createIntentHandler(msg)
 	end
 
 	-- Create parent intent
-	local intent = intents.createParentIntent(msg, intentAction, intentParams)
+	local intent = intents.createIntent(msg, intentAction, intentParams)
 
 	-- Return intentId to user (handler wrapper will send as notice)
 	return json.encode({
@@ -518,7 +431,7 @@ function intents.getPaginatedIntentsHandler(msg)
 		page.limit,
 		page.sortBy,
 		page.sortOrder,
-		page.filters -- { initiator = "address", status = "pending", type = "parent" }
+		page.filters -- { initiator = "address", status = "pending" }
 	)
 
 	return json.encode(paginatedIntents)
@@ -532,20 +445,7 @@ function intents.getIntentByIdHandler(msg)
 	local intent = intents.getIntentById(intentId)
 	assert(intent, 'Intent not found')
 
-	-- If parent, include all child intents
-	---@type table
-	local _utils = require('utils')
-	local response = _utils.deepCopy(intent) or intent
-	if intent.type == constants.INTENT_TYPES.PARENT then
-		---@diagnostic disable-next-line: inject-field
-		response.children = {}
-		for childId in pairs(intent.childIntentIds) do
-			---@diagnostic disable-next-line: inject-field
-			response.children[childId] = intents.getIntentById(childId)
-		end
-	end
-
-	return json.encode(response)
+	return json.encode(intent)
 end
 
 function intents.pushANTIntentResolutionHandler(msg)
@@ -564,15 +464,8 @@ function intents.pushANTIntentResolutionHandler(msg)
 		'Intent is not in a pushable state. Current status: ' .. intent.status
 	)
 
-	-- For child intents, check against parent's initiator (the original user)
-	-- For parent intents, check against the intent's own initiator
+	-- Check against the intent's initiator
 	local expectedInitiator = intent.initiator
-	if intent.type == constants.INTENT_TYPES.CHILD and intent.parentIntentId then
-		local parent = Intents[intent.parentIntentId]
-		if parent then
-			expectedInitiator = parent.initiator
-		end
-	end
 	
 	-- Check if sender is authorized (3 authorities: initiator, Owner, or IntentPushingAuthority)
 	local isAuthorized = msg.From == expectedInitiator or 
@@ -582,7 +475,9 @@ function intents.pushANTIntentResolutionHandler(msg)
 	assert(isAuthorized, 
 		'Unauthorized to push intent resolution. Only intent initiator, process owner, or intent pushing authority can push.')
 
-	local antId = intent.expectedFrom
+	-- Get ANT process ID from intent (set during Credit-Notice)
+	local antId = intent.antProcessId
+	assert(antId, 'No ANT process ID associated with this intent')
 
 	_utils.Send(msg, {
 		Target = antId,
@@ -601,7 +496,7 @@ function intents.stateNoticeHandler(msg)
 	assert(_utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format')
 	local intent = intents.getIntentById(intentId)
 	assert(intent, 'Intent not found')
-	assert(msg.From == intent.expectedFrom, 'Sender does not match intent expected from')
+	assert(msg.From == intent.antProcessId, 'Sender does not match intent ANT process ID')
 
 	-- Whitelist check for ANT State-Notice
 	if not _utils.isWhitelisted(msg) then
@@ -614,22 +509,12 @@ function intents.stateNoticeHandler(msg)
 	local owner = antState.Owner
 	assert(owner == ao.id, 'Marketplace does not own this ANT')
 
-	-- Owner matches, resolve the intent (will auto-complete parent if all children resolved)
+	-- Owner matches, resolve the intent
 	intents.resolveIntent(intentId, msg.Timestamp, msg)
 
-	-- For child intents, send acknowledgment to the parent's initiator (the user)
-	-- For parent intents, send to the intent's own initiator
-	local targetUser = intent.initiator
-	if intent.type == constants.INTENT_TYPES.CHILD and intent.parentIntentId then
-		local parent = Intents[intent.parentIntentId]
-		if parent then
-			targetUser = parent.initiator
-		end
-	end
-
-	-- Send acknowledgment
+	-- Send acknowledgment to the intent initiator
 	_utils.Send(msg, {
-		Target = targetUser,
+		Target = intent.initiator,
 		Action = 'State-Notice-Processed',
 		['Intent-Id'] = intentId,
 		['ANT-Id'] = msg.From,

@@ -168,8 +168,8 @@ function utils.validateMessage(msg)
 		end
 	end
 
-	-- TODO: assert tags is a table
 	if msg.Tags then
+		assert(type(msg.Tags) == 'table', 'msg.Tags must be a table')
 		for k, v in pairs(msg.Tags) do
 			assert(type(k) == 'string', string.format('Key %s must be a string', k))
 			assert(type(v) == 'string', string.format('Value %s must be a string', v))
@@ -923,21 +923,22 @@ end
 --- - Custom response transformations
 ---
 --- @param msg Message The incoming message
---- @param tagValue string The action/tag value for the handler (e.g., "Create-Order")
+--- @param tagValue string The action/tag value for the handler (e.g., "Create-Order") - deprecated, extracted from msg.Tags['Action']
 --- @param handlerStatus boolean Whether handler executed successfully (from xpcall)
 --- @param handlerRes any The result from the handler (error message if failed, return value if succeeded)
 --- @return any handlerRes The handler result (passed through for potential chaining)
 function utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
 	local resultNotice = nil
-	-- TODO: extract action tag value from msg.Tags['Action'] instead of passing it as a parameter
+	-- Extract action from msg.Tags for consistency (tagValue parameter kept for backwards compatibility)
+	local action = msg.Tags and msg.Tags['Action'] or tagValue
 
 	if not handlerStatus then
 		-- Handler threw an error - handlerRes contains the error message with stack trace
 		-- Send an Invalid-{Action}-Notice with the error details
 		resultNotice = utils.addForwardedTags(msg, {
 			Target = msg.From,
-			Action = 'Invalid-' .. tagValue .. '-Notice',
-			Error = tagValue .. '-Error',
+			Action = 'Invalid-' .. action .. '-Notice',
+			Error = action .. '-Error',
 			['Message-Id'] = msg.Id,
 			Data = handlerRes, -- Error message from xpcall
 		})
@@ -946,7 +947,7 @@ function utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
 		-- Send a {Action}-Notice with the result data
 		resultNotice = utils.addForwardedTags(msg, {
 			Target = msg.From,
-			Action = tagValue .. '-Notice',
+			Action = action .. '-Notice',
 			Data = type(handlerRes) == 'string' and handlerRes or json.encode(handlerRes),
 		})
 	end
@@ -1023,7 +1024,11 @@ function utils.createHandler(tagName, tagValue, handler, position, critical)
 			-- CRITICAL: Dynamically require at execution time to allow hot-reloading
 			-- This pulls the LATEST version of onBeforeHandler/onAfterHandler each time
 			-- Use _utils to avoid shadowing the outer 'utils' variable
-			-- TODO: what is the resource cost of this?
+			-- 
+			-- Resource cost: Minimal. Lua's require() caches modules after first load,
+			-- so subsequent calls only perform a table lookup (O(1) operation).
+			-- The initial parse/load happens once per module, not per handler call.
+			-- This pattern enables hot-reloading which is the intended behavior.
 			local _utils = require('utils')
 
 			-- Pre-process: format addresses, normalize input

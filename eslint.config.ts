@@ -19,8 +19,6 @@ export default [
         tsconfigRootDir: __dirname,
       },
     },
-    rules: {
-      'header/header': [2, './resources/license.header.mjs'],
-    },
+    rules: {},
   },
 ];

@@ -53,7 +53,10 @@
         "missing-fields": "Error!",
         "need-check-nil": "Error!",
         "undefined-field": "Error!",
-        "duplicate-set-field": "Error!"
+        "duplicate-set-field": "Error!",
+        "assign-type-mismatch": "Error!",
+        "param-type-mismatch": "Error!",
+        "cast-type-mismatch": "Error!"
       }
     },
     "type": {

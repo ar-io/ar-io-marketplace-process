@@ -67,11 +67,11 @@ describe('Dutch Auction', function()
 				createdAt = '1735689600000',
 				blockheight = '123456789',
 				orderType = 'dutch',
-				expirationTime = '1736035200000',
-				minimumPrice = '100000000000',
-				decreaseInterval = '86400000',
-				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-			})
+			expirationTime = '1736035200000',
+			minimumPrice = '100000000000',
+			decreaseInterval = '86400000',
+			msg = { Id = 'test-msg-1', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+		})
 
 			-- Validate no transfers occurred (just adding to orderbook)
 			assert.are.equal(0, #transfers)
@@ -163,11 +163,11 @@ describe('Dutch Auction', function()
 				sender = 'ario-buyer',
 				quantity = 500000000000, -- Paying 500B ARIO (as number)
 				createdAt = '1735689600000', -- Same timestamp, so price hasn't decreased yet
-				blockheight = '123456790',
-				orderType = 'dutch',
-				requestedOrderId = 'ant-sell-order',
-				msg = { Tags = { Quantity = '500000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-			})
+			blockheight = '123456790',
+			orderType = 'dutch',
+			requestedOrderId = 'ant-sell-order',
+			msg = { Id = 'test-msg-2', Owner = 'buyer-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '500000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+		})
 
 			print('DEBUG: Orderbook after buy order')
 			local totalPairs = 0
@@ -263,11 +263,11 @@ describe('Dutch Auction', function()
 				sender = 'ario-buyer-2',
 				quantity = 400000000000, -- Paying reduced price (as number)
 				createdAt = '1735776000000', -- 1 day later (86400000ms)
-				blockheight = '123456791',
-				orderType = 'dutch',
-				requestedOrderId = 'ant-sell-order',
-				msg = { Tags = { Quantity = '400000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-			})
+			blockheight = '123456791',
+			orderType = 'dutch',
+			requestedOrderId = 'ant-sell-order',
+			msg = { Id = 'test-msg-3', Owner = 'buyer-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '400000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+		})
 
 		-- Validate transfers occurred (only ANT transfer, ARIO goes to internal balance)
 		assert.are.equal(1, #transfers)
@@ -295,11 +295,11 @@ describe('Dutch Auction', function()
 					createdAt = '1735689600000',
 					blockheight = '123456789',
 					orderType = 'dutch',
-					expirationTime = '1736035200000',
-					-- minimumPrice missing
-					decreaseInterval = '86400000',
-					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-				})
+				expirationTime = '1736035200000',
+				-- minimumPrice missing
+				decreaseInterval = '86400000',
+				msg = { Id = 'test-msg-4', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+			})
 			end)
 
 			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
@@ -321,11 +321,11 @@ describe('Dutch Auction', function()
 					createdAt = '1735689600000',
 					blockheight = '123456789',
 					orderType = 'dutch',
-					expirationTime = '1736035200000',
-					minimumPrice = '100000000000',
-					-- decreaseInterval missing
-					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-				})
+				expirationTime = '1736035200000',
+				minimumPrice = '100000000000',
+				-- decreaseInterval missing
+				msg = { Id = 'test-msg-5', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+			})
 			end)
 
 			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error

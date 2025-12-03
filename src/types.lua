@@ -14,10 +14,7 @@
 
 --- @class Intent
 --- @field intentId IntentId Unique intent identifier (msg.Id)
---- @field type "parent"|"child" Intent type
 --- @field initiator Address Address that created the intent (msg.From)
---- @field parentIntentId IntentId|nil Parent intent ID for child intents
---- @field childIntentIds table<IntentId, boolean> Map of child intent IDs (O(1) lookup)
 --- @field action string Action being performed (Create-Order, Cancel-Order, Settle-Auction, Transfer)
 --- @field status "pending"|"active"|"settling"|"completed"|"resolved"|"failed" Intent status
 --- @field createdAt number Creation timestamp
@@ -26,18 +23,7 @@
 --- @field completedAt number|nil Completion timestamp
 --- @field failureReason string|nil Failure reason if status is failed
 --- @field forwardedTags table<string, any> Tags forwarded with the intent
---- @field expectedMessage string|nil Expected message type for child intents (e.g., "Debit-Notice")
---- @field expectedFrom TokenId|nil Expected sender for child intents (token process ID)
-
---- @class ParentIntent : Intent
---- @field type "parent"
---- @field childIntentIds table<IntentId, boolean>
-
---- @class ChildIntent : Intent
---- @field type "child"
---- @field parentIntentId IntentId
---- @field expectedMessage string
---- @field expectedFrom TokenId
+--- @field antProcessId TokenId|nil ANT process ID (set during Credit-Notice for ANT transfers)
 
 --- @class PaginationTags
 --- @field cursor string|nil The cursor to paginate from
@@ -96,8 +82,6 @@
 --- @field receiver Address|nil Order receiver (set after execution)
 --- @field endedAt number|nil Timestamp when order ended
 --- @field bids table<Address, boolean>|nil Bidders for English auctions (bidder address -> true)
---- @field highestBid BalanceAmount|nil Highest bid amount for English auctions
---- @field highestBidder Address|nil Highest bidder address for English auctions
 
 --- @class Pair
 --- @field pair TokenId[] Token pair [dominantToken, swapToken] - directional
@@ -140,7 +124,6 @@
 --- @class IntentStats
 --- @field total number Total number of intents
 --- @field byStatus table<string, number> Intent counts by status
---- @field byType table<string, number> Intent counts by type
 --- @field byAction table<string, number> Intent counts by action
 
 --- @class ExecutedOrder
@@ -160,12 +143,6 @@
 --- @field amount BalanceAmount Bid amount
 --- @field timestamp number When bid was placed
 --- @field orderId OrderId Order being bid on
-
---- @class AuctionBidInfo
---- @field bids table<Address, BidInfo> Dictionary mapping user address to their bid
---- @field highestBid BalanceAmount|nil Current highest bid amount
---- @field highestBidder Address|nil Address of current highest bidder
---- @field settlement table|nil Settlement information if auction completed
 
 --- @class OrderIndexEntry
 --- @field dominantToken TokenId The dominant token in the pair

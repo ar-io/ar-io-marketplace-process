@@ -4,7 +4,11 @@
     "missing-fields": "Error!",
     // Nil safety checks
     "need-check-nil": "Error!",
-    "undefined-field": "Error!"
+    "undefined-field": "Error!",
+    // Type mismatch checks
+    "assign-type-mismatch": "Error!",
+    "param-type-mismatch": "Error!",
+    "cast-type-mismatch": "Error!"
   },
   "Lua.type.castNumberToInteger": true,
   "Lua.type.weakUnionCheck": true,

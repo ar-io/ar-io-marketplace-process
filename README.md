@@ -10,6 +10,7 @@ The AR.IO Marketplace is a decentralized protocol built on AO for trustless exch
 
 ### Key Architecture Features
 
+- **Unidirectional Orderbook** - Only ANT sell orders sit in the orderbook; ARIO buy orders match immediately (see [ADR-000](docs/adr/ADR-000-orderbook-architecture.md))
 - **ARIO Internal Ledger** - All ARIO operations use an internal balance system (deposit → trade → withdraw)
 - **ANT Intent-Based System** - ANT transfers are tracked through parent/child intent relationships
 - **Multiple Order Types** - Fixed price, Dutch auctions, and English auctions
@@ -28,20 +29,32 @@ import { message, result } from '@permaweb/aoconnect';
 
 ## How It Works
 
-### ARIO Trading Flow
+### Important: Two Types of Orders
 
-1. **Deposit** - Transfer ARIO to marketplace via `Credit-Notice` with `X-Action: Deposit`
-2. **Create Order** - Use internal balance to create buy orders
-3. **Trade** - Orders automatically match with compatible listings
-4. **Withdraw** - Withdraw remaining ARIO balance anytime
+The marketplace has an **asymmetric orderbook** (see [ADR-000](docs/adr/ADR-000-orderbook-architecture.md)):
 
-### ANT Listing Flow
+- **Selling ANT (ANT-dominant orders)**: Your ANT listing **sits in the orderbook** and waits for buyers
+- **Buying ANT (ARIO-dominant orders)**: Your buy order **matches immediately** against existing listings or fails
+
+This is similar to NFT marketplaces (OpenSea, Rarible) where only "listings" sit in the orderbook, and buyers execute instant purchases.
+
+### Selling ANT (Listing Flow)
 
 1. **Create Intent** - Create a listing intent (charges listing fee from ARIO balance)
 2. **Transfer ANT** - Send ANT to marketplace with `X-Intent-Id` tag
 3. **Marketplace Receives** - `Credit-Notice` activates the order
-4. **Trade Execution** - Buyer purchases using internal ARIO balance
-5. **Settlement** - Marketplace transfers ANT to buyer (tracked via child intent)
+4. **Order Added to Orderbook** - Your ANT listing appears for buyers to purchase
+5. **Wait for Buyer** - Order sits until matched, cancelled, or expired
+6. **Settlement** - When bought, marketplace transfers ANT to buyer (tracked via child intent)
+
+### Buying ANT (Instant Purchase Flow)
+
+1. **Deposit ARIO** - Transfer ARIO to marketplace via `Credit-Notice` with `X-Action: Deposit`
+2. **Browse Listings** - Use `Get-Orders` to find ANTs for sale
+3. **Create Buy Order** - Use internal balance with `Requested-Order-Id` specifying which ANT
+4. **Immediate Match** - Order fills instantly if listing still available
+5. **Receive ANT** - Marketplace transfers ANT to you immediately
+6. **Withdraw** - Withdraw remaining ARIO balance anytime
 
 ---
 
@@ -178,9 +191,9 @@ const order = JSON.parse(Messages[0].Data);
 
 #### `Create-Order`
 
-Create an ARIO buy order using internal balance.
+Create an ARIO buy order using internal balance. This order **matches immediately** against existing ANT listings.
 
-> **Note:** ANT sell orders must be created via the Intent system (see [Intent Management](#-intent-management-ant-listings))
+> **Important:** This handler is for **buying ANTs with ARIO** (ARIO-dominant orders). To **sell ANTs for ARIO** (ANT-dominant orders), use the Intent system (see [Intent Management](#-intent-management-ant-listings)). See [ADR-000](docs/adr/ADR-000-orderbook-architecture.md) for details on order directionality.
 
 **Parameters:**
 
@@ -254,7 +267,7 @@ const { Messages } = await result({
 
 ### 🎯 Intent Management (ANT Listings)
 
-ANT listings use an intent-based workflow to ensure atomic transfers.
+ANT listings use an intent-based workflow to ensure atomic transfers. ANT sell orders are **added to the orderbook** and wait for buyers, unlike ARIO buy orders which match immediately (see [ADR-000](docs/adr/ADR-000-orderbook-architecture.md)).
 
 #### `Create-Intent`
 
@@ -891,11 +904,11 @@ await message({
 
 Before running the tests, ensure you have the following installed:
 
-1. **Lua 5.4+**: Install Lua for your operating system
-   - **macOS**: `brew install lua`
+1. **Lua 5.3**: Install Lua for your operating system
+   - **macOS**: `brew install lua@5.3`
    - **Ubuntu/Debian**: `sudo apt-get install lua5.3`
    - **CentOS/RHEL**: `sudo yum install lua53`
-   - **Windows**: Download from [Lua.org](https://www.lua.org/download.html) or use [Chocolatey](https://chocolatey.org/): `choco install lua`
+   - **Windows**: Download from [Lua.org](https://www.lua.org/download.html) or use [Chocolatey](https://chocolatey.org/): `choco install lua53`
 
 ### Running Tests
 
@@ -995,7 +1008,11 @@ This project consists of several components organized into different directories
 ### Documentation (`docs/`)
 
 - **`adr/`** - Architecture Decision Records (ADRs) documenting key design decisions:
+  - **ADR-000: Orderbook Architecture** - Foundational design explaining unidirectional orderbook and order directionality
   - ADR-001: Module Whitelist for ANT Trading
   - ADR-002: Credit-Notice Pattern
   - ADR-003: ARIO Internal Ledger
   - ADR-004: Intent-Based Workflow
+  - ADR-005: Class Type Pattern
+  - ADR-006: Lazy Module Loading
+  - ADR-007: Handler Hooks Pattern

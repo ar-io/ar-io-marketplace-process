@@ -9,6 +9,40 @@ local english_auction = {}
 local ORDER_STATUSES = constants.ORDER_STATUSES
 local ORDER_TYPES = constants.ORDER_TYPES
 
+--- Get the highest bid for an English auction
+--- @param orderId OrderId The order ID
+--- @return table|nil {bidder: Address, amount: BalanceAmount} or nil if no bids
+function english_auction.getHighestBid(orderId)
+	local balances = require('balances')
+	
+	-- Get the order's locked balances - this contains all bids
+	local orderBalances = balances.getOrderBalances(orderId)
+	if not orderBalances then
+		return nil
+	end
+	
+	local highestBidder = nil
+	local highestAmount = bint(0)
+	
+	-- Scan all locked balances for this order to find the highest bid
+	for bidder, amount in pairs(orderBalances) do
+		local bidAmount = bint(amount)
+		if bidAmount > highestAmount then
+			highestAmount = bidAmount
+			highestBidder = bidder
+		end
+	end
+	
+	if not highestBidder then
+		return nil
+	end
+	
+	return {
+		bidder = highestBidder,
+		amount = tostring(highestAmount)
+	}
+end
+
 -- Helper function to validate auction is still active
 function english_auction.isAuctionActive(expirationTime, currentTimestamp)
 	return not utils.isExpired(expirationTime, currentTimestamp)
@@ -120,9 +154,13 @@ function english_auction.handleAntOrder(args)
 
 	-- Determine minimum starting price from the target order for first bid validation
 	local minimumStartingPrice = targetOrder.price
+	
+	-- Get current highest bid
+	local highestBidInfo = english_auction.getHighestBid(targetOrder.id)
+	local currentHighestBid = highestBidInfo and highestBidInfo.amount or nil
 
 	local isValidBid, bidError =
-		english_auction.validateBidAmount(bidAmount, targetOrder.highestBid, minimumStartingPrice)
+		english_auction.validateBidAmount(bidAmount, currentHighestBid, minimumStartingPrice)
 
 	if not isValidBid then
 		utils.refundAndError(args.msg, args.sender, bidError, 'Validation-Error')
@@ -136,10 +174,6 @@ function english_auction.handleAntOrder(args)
 		targetOrder.bids = {}
 	end
 	targetOrder.bids[args.sender] = true
-
-	-- Update highest bid
-	targetOrder.highestBid = tostring(bidAmount) -- Use the quantity sent by user
-	targetOrder.highestBidder = args.sender
 
 	-- Notify sender of successful bid placement
 	utils.Send(args.msg, {
@@ -166,7 +200,8 @@ end
 --- @param now number The current timestamp
 --- @param msg table The message context
 function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapToken, now, msg)
-	if order.highestBidder then
+	local highestBidInfo = english_auction.getHighestBid(order.id)
+	if highestBidInfo then
 		-- English auction with bids - auto-settle it
 		-- Wrap in pcall to handle any settlement errors gracefully
 		local success = pcall(function()
@@ -199,13 +234,20 @@ function english_auction.settleAuction(args)
 	local order = args.order
 	local pair = args.pair
 	local orderId = order.id
+	
+	-- Get highest bid info
+	local highestBidInfo = english_auction.getHighestBid(orderId)
+	assert(highestBidInfo, 'No bids found for auction')
+	
+	local winningBidder = highestBidInfo.bidder
+	local winningBid = highestBidInfo.amount
 
 	-- Execute the settlement
 	-- For English auction settlement: seller gets ARIO tokens, buyer gets ANT tokens
 	-- The Orderbook pair is [ANT_token_process, ARIO_token_process]
 	-- We need validPair to be [ARIO_token_process, ANT_token_process] for correct transfers
 	local validPair = { pair.Pair[2], pair.Pair[1] } -- Swap the order to get [ARIO, ANT]
-	local winningBidAmount = bint(order.highestBid)
+	local winningBidAmount = bint(winningBid)
 	local quantity = bint(order.quantity)
 
 	-- Calculate amounts after fees
@@ -217,22 +259,22 @@ function english_auction.settleAuction(args)
 	local feeAmount = winningBidAmount - calculatedSendAmount
 	
 	-- Transfer fee from winner's locked bid to treasury balance
-	balances.unlockBalanceFromOrder(orderId, order.highestBidder, TREASURY_ADDRESS, tostring(feeAmount))
+	balances.unlockBalanceFromOrder(orderId, winningBidder, TREASURY_ADDRESS, tostring(feeAmount))
 	
 	-- Transfer remaining bid ARIO to seller's balance
-	balances.unlockBalanceFromOrder(orderId, order.highestBidder, order.creator, tostring(calculatedSendAmount))
+	balances.unlockBalanceFromOrder(orderId, winningBidder, order.creator, tostring(calculatedSendAmount))
 	
 	-- Record the fee
 	utils.accrueFee(tostring(feeAmount))
 	
 	-- Transfer ANT to winner via Credit-Notice with intent tracking (ANT came via Credit-Notice)
 	local ucm = require('ucm')
-	ucm.transferWithIntent(order.highestBidder, tostring(calculatedFillAmount), order.token, args.msg)
+	ucm.transferWithIntent(winningBidder, tostring(calculatedFillAmount), order.token, args.msg)
 
 	-- Record the settlement directly on the order
 	order.settlement = {
-		winner = order.highestBidder,
-		winningBid = order.highestBid,
+		winner = winningBidder,
+		winningBid = winningBid,
 		quantity = tostring(quantity),
 		timestamp = args.timestamp,
 	}
@@ -241,13 +283,13 @@ function english_auction.settleAuction(args)
 	order.status = ORDER_STATUSES.EXECUTED
 	order.endedAt = args.timestamp
 	order.sender = order.creator
-	order.receiver = order.highestBidder
-	order.buyer = order.highestBidder
-	order.price = tostring(order.highestBid)
-	order.finalPrice = tostring(order.highestBid)
+	order.receiver = winningBidder
+	order.buyer = winningBidder
+	order.price = tostring(winningBid)
+	order.finalPrice = tostring(winningBid)
 
 	-- Return all losing bids to internal balances
-	english_auction.returnLosingBids(order, order.highestBidder, args.msg)
+	english_auction.returnLosingBids(order, winningBidder, args.msg)
 
 	-- Clean up auction data structure
 	-- Clear the bids field after settlement
@@ -264,12 +306,12 @@ function english_auction.settleAuction(args)
 
 	-- Notify winner
 	utils.Send(args.msg, {
-		Target = order.highestBidder,
+		Target = winningBidder,
 		Action = 'Auction-Won',
 		Tags = {
 			Status = 'Success',
 			['Order-Id'] = orderId,
-			['Winning-Bid'] = order.highestBid,
+			['Winning-Bid'] = winningBid,
 			Quantity = tostring(quantity),
 			Message = args.sender and 'You won the English auction!' or 'You won the English auction (auto-settled)!',
 			['Order-Type'] = ORDER_TYPES.ENGLISH,
@@ -284,8 +326,8 @@ function english_auction.settleAuction(args)
 			Tags = {
 				Status = 'Success',
 				['Order-Id'] = orderId,
-			Winner = order.highestBidder,
-			['Winning-Bid'] = order.highestBid,
+			Winner = winningBidder,
+			['Winning-Bid'] = winningBid,
 			Message = 'Auction settled successfully!',
 			},
 		})
@@ -323,8 +365,6 @@ function english_auction.handleArioOrder(args, validPair, pair)
 	status = ORDER_STATUSES.ACTIVE,
 	-- Initialize English auction specific fields
 	bids = {}, -- Track all bidders for this auction
-	highestBid = nil,
-	highestBidder = nil,
 	dominantToken = validPair[1],
 	swapToken = validPair[2],
 }
@@ -371,8 +411,8 @@ end
 --- - More robust: clients don't need to track intermediate bid states or handle failed/pending transactions.
 --- 
 --- Bid Storage:
---- - All bids are stored in EnglishAuctionBalances[orderId][bidder] and kept until auction settlement.
---- - Only the highest bid pointer (order.highestBid, order.highestBidder) is updated when outbid.
+--- - All bids are stored in ARIOBalances[bidder].orders[orderId] and kept until auction settlement.
+--- - The highest bid is determined by calling getHighestBid(orderId) which scans all bids.
 --- - Losing bids are returned to internal ARIO balance at settlement, not immediately when outbid.
 --- 
 --- Intended Use:
@@ -419,11 +459,15 @@ function english_auction.bidOnEnglishAuctionHandler(msg)
 	
 	assert(delta > bint(0), 'New bid must be higher than your current bid')
 	
+	-- Get current highest bid to validate new bid
+	local highestBidInfo = english_auction.getHighestBid(orderId)
+	local currentHighestBid = highestBidInfo and highestBidInfo.amount or nil
+	
 	-- Validate new bid amount meets requirements
 	local minimumStartingPrice = order.price
 	local isValidBid, bidError = english_auction.validateBidAmount(
 		tostring(newBidAmount),
-		order.highestBid,
+		currentHighestBid,
 		minimumStartingPrice
 	)
 	assert(isValidBid, bidError or 'Invalid bid amount')
@@ -443,12 +487,9 @@ function english_auction.bidOnEnglishAuctionHandler(msg)
 	end
 	order.bids[bidder] = true
 	
-	-- Keep all bids until auction ends - update highest bid pointer only
-	-- Update highest bid if this is now the highest
-	if not order.highestBid or newBidAmount > bint(order.highestBid) then
-		order.highestBid = tostring(newBidAmount)
-		order.highestBidder = bidder
-	end
+	-- Get updated highest bid after locking this bid
+	local updatedHighestBidInfo = english_auction.getHighestBid(orderId)
+	local isHighestBid = updatedHighestBidInfo and updatedHighestBidInfo.bidder == bidder
 	
 	-- Send success notice
 	local action = isNewBid and constants.ACTIONS.BID_PLACED or constants.ACTIONS.BID_UPDATED
@@ -458,7 +499,7 @@ function english_auction.bidOnEnglishAuctionHandler(msg)
 		['Order-Id'] = orderId,
 		['Bid-Amount'] = tostring(newBidAmount),
 		['Delta-Amount'] = tostring(delta),
-		['Is-Highest-Bid'] = (order.highestBidder == bidder),
+		['Is-Highest-Bid'] = isHighestBid,
 		Message = isNewBid and 'Bid placed successfully' or 'Bid updated successfully',
 	})
 end

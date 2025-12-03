@@ -244,7 +244,7 @@ function ucm.validateArioDominantOrder(args, _validPair)
 end
 
 --- Validate order parameters
---- @param args table Order arguments containing dominantToken, swapToken, quantity, orderType, sender
+--- @param args OrderArgs Order arguments containing dominantToken, swapToken, quantity, orderType, sender
 --- @return TokenId[]|nil validPair The validated pair [dominantToken, swapToken] or nil if validation fails
 function ucm.validateOrderParams(args)
 	-- 1. Check pair data
@@ -406,7 +406,7 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 end
 
 --- Create a new order in the orderbook
---- @param args table Order arguments containing all necessary fields for order creation
+--- @param args OrderArgs Order arguments containing all necessary fields for order creation
 function ucm.createOrder(args)
 	-- Validate order parameters
 	local validPair = ucm.validateOrderParams(args)
@@ -500,7 +500,7 @@ function ucm.createOrderHandler(msg)
 end
 
 --- Settle an expired English auction
---- @param args table Settlement arguments containing orderId, sender, timestamp, dominantToken, swapToken, msg
+--- @param args SettleArgs Settlement arguments containing orderId, sender, timestamp, dominantToken, swapToken, msg
 function ucm.settleAuction(args)
 	-- Find the auction order using O(1) lookup
 	local targetOrder, targetPair = ucm.getOrderById(args.orderId)
@@ -510,7 +510,8 @@ function ucm.settleAuction(args)
 	assert(targetOrder.orderType == constants.ORDER_TYPES.ENGLISH, 'Order is not an English auction')
 
 	-- Check if auction has bids
-	assert(targetOrder.highestBidder, 'No bids found for auction')
+	local highestBidInfo = english_auction.getHighestBid(targetOrder.id)
+	assert(highestBidInfo, 'No bids found for auction')
 
 	-- Check if auction has expired
 	assert(utils.isExpired(targetOrder.expirationTime, args.timestamp), 'Auction has not expired yet')
@@ -546,7 +547,7 @@ function ucm.cancelOrderHandler(msg)
 
 	-- Block cancellation of English auctions that have bids
 	assert(
-		not (currentOrderEntry.orderType == constants.ORDER_TYPES.ENGLISH and currentOrderEntry.highestBidder),
+		not (currentOrderEntry.orderType == constants.ORDER_TYPES.ENGLISH and english_auction.getHighestBid(currentOrderEntry.id)),
 		'You cannot cancel an English auction that has bids'
 	)
 
@@ -637,7 +638,6 @@ function ucm.infoHandler(_msg)
 	for _, intent in pairs(Intents) do
 		intentStats.total = intentStats.total + 1
 		intentStats.byStatus[intent.status] = (intentStats.byStatus[intent.status] or 0) + 1
-		intentStats.byType[intent.type] = (intentStats.byType[intent.type] or 0) + 1
 		intentStats.byAction[intent.action] = (intentStats.byAction[intent.action] or 0) + 1
 	end
 

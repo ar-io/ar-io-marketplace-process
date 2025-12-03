@@ -82,17 +82,12 @@ constants.INTENT_STATUSES = {
 	FAILED = 'failed', -- Intent has failed
 }
 
--- Intent type constants
-constants.INTENT_TYPES = {
-	PARENT = 'parent', -- Parent intent (user-initiated)
-	CHILD = 'child', -- Child intent (system-generated)
-}
-
 -- Intent TTL constant (24 hours in milliseconds)
 constants.INTENT_TTL_MS = constants.TIME.ONE_DAY_MS
 
 -- Listing expiration limits
 constants.LISTING = {
+	
 	MAX_EXPIRATION_MS = constants.TIME.THIRTY_DAYS_MS, -- 30 days in milliseconds
 }
 

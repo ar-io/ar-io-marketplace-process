@@ -261,6 +261,23 @@ function balances.getOrderLockedBalance(orderId, user)
 	return ARIOBalances[user].orders[orderId] or '0'
 end
 
+--- Get all locked balances for a specific order across all users
+--- @param orderId OrderId The order ID
+--- @return table<Address, BalanceAmount>|nil Map of user addresses to their locked amounts for this order
+function balances.getOrderBalances(orderId)
+	local orderBalances = {}
+	local hasBalances = false
+	
+	for user, userBalance in pairs(ARIOBalances) do
+		if userBalance.orders and userBalance.orders[orderId] then
+			orderBalances[user] = userBalance.orders[orderId]
+			hasBalances = true
+		end
+	end
+	
+	return hasBalances and orderBalances or nil
+end
+
 --- Get total locked balance across all orders for a user
 --- @param user Address The address of the user
 --- @return BalanceAmount The total locked amount (or '0' if none)

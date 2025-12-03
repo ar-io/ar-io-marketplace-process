@@ -1,6 +1,7 @@
 print('\n=== Loading english_auction module for testing ===')
 local testGlobals = require('test_globals')
 local ucm = require('ucm')
+local english_auction = require('english_auction')
 local json = require('json')
 print('✓ english_auction module loaded')
 
@@ -51,17 +52,17 @@ describe('English Auction', function()
 		it('should add ANT sell order to orderbook', function()
 			ucm.createOrder({
 				orderId = 'ant-sell-order',
-				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'ant-seller',
-				quantity = 1,
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'english',
-				expirationTime = '1736035200000',
-				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-			})
+			dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+			swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+			sender = 'ant-seller',
+			quantity = '1',
+			price = '500000000000',
+			createdAt = 1735689600000,
+			blockheight = 123456789,
+			orderType = 'english',
+		expirationTime = 1736035200000,
+			msg = { Id = 'test-msg-1', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+		})
 
 			-- No transfers should occur (just adding to orderbook)
 			assert.are.equal(0, #transfers)
@@ -81,14 +82,14 @@ describe('English Auction', function()
 				orderId = 'ant-sell-order',
 				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				sender = 'ant-seller',
-				quantity = 1,
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
-				orderType = 'english',
-				msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-			})
+		sender = 'ant-seller',
+		quantity = '1',
+		price = '500000000000',
+		createdAt = 1735689600000,
+		blockheight = 123456789,
+		orderType = 'english',
+		msg = { Id = 'test-msg-2', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+		})
 
 			assert.is_not_nil(Orderbook[ANT_TOKEN])
 			assert.is_not_nil(Orderbook[ANT_TOKEN][ARIO_TOKEN])
@@ -103,15 +104,15 @@ describe('English Auction', function()
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-					sender = 'ant-seller',
-					quantity = 1,
-					price = '500000000000',
-					createdAt = '1735689600000',
-					blockheight = '123456789',
-					orderType = 'english',
-					expirationTime = '-1000',
-					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-				})
+				sender = 'ant-seller',
+				quantity = '1',
+				price = '500000000000',
+				createdAt = 1735689600000,
+				blockheight = 123456789,
+				orderType = 'english',
+			expirationTime = -1000,
+			msg = { Id = 'test-msg-3', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+			})
 			end)
 
 			-- After pair validation, refund is sent first, then error
@@ -126,14 +127,14 @@ describe('English Auction', function()
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-					sender = 'ant-seller',
-					quantity = 1,
-					price = '500000000000',
-					createdAt = '1735689600000',
-					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-					blockheight = '123456789',
-					orderType = 'english',
-					expirationTime = '1735689500000', -- Before createdAt
+				sender = 'ant-seller',
+				quantity = '1',
+				price = '500000000000',
+			createdAt = 1735689600000,
+			msg = { Id = 'test-msg-4', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+			blockheight = 123456789,
+				orderType = 'english',
+				expirationTime = 1735689500000, -- Before createdAt
 				})
 			end)
 
@@ -148,15 +149,15 @@ describe('English Auction', function()
 				ucm.createOrder({
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-					sender = 'ant-seller',
-					quantity = 1,
-					createdAt = '1735689600000',
-					blockheight = '123456789',
-					orderType = 'english',
-					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-				})
-			end)
+			swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+			sender = 'ant-seller',
+			quantity = '1',
+			createdAt = 1735689600000,
+			blockheight = 123456789,
+			orderType = 'english',
+			msg = { Id = 'test-msg-5', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+			})
+		end)
 
 			-- After pair validation, refund is sent first, then error
 			assert.is_false(success)
@@ -170,15 +171,15 @@ describe('English Auction', function()
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-					sender = 'ant-seller',
-					quantity = 1,
-					price = '-500',
-					createdAt = '1735689600000',
-					blockheight = '123456789',
-					orderType = 'english',
-					msg = { Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-				})
-			end)
+			sender = 'ant-seller',
+			quantity = '1',
+			price = '-500',
+			createdAt = 1735689600000,
+			blockheight = 123456789,
+			orderType = 'english',
+			msg = { Id = 'test-msg-6', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+			})
+		end)
 
 			-- After pair validation, refund is sent first, then error
 			assert.is_false(success)
@@ -192,14 +193,14 @@ describe('English Auction', function()
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-					sender = 'ant-seller',
-					quantity = 2, -- Should be 1 for ANT
-					price = '500000000000',
-					createdAt = '1735689600000',
-					blockheight = '123456789',
-					orderType = 'english',
-					msg = { Tags = { Quantity = '2' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-				})
+				sender = 'ant-seller',
+				quantity = '2', -- Should be 1 for ANT
+				price = '500000000000',
+				createdAt = 1735689600000,
+				blockheight = 123456789,
+			orderType = 'english',
+			msg = { Id = 'test-msg-7', Owner = 'ant-seller-2', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '2' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
+			})
 			end)
 
 			-- After pair validation, refund is sent first, then error
@@ -211,28 +212,30 @@ describe('English Auction', function()
 
 	describe('Bidding validation', function()
 		it('should reject bid with negative amount', function()
-			-- Setup auction (Orders is a dictionary!)
-			_G.Orderbook = {
-				[ANT_TOKEN] = {
-					[ARIO_TOKEN] = {
-						pair = { ANT_TOKEN, ARIO_TOKEN },
-						orders = {
-							['auction-1'] = {
-								id = 'auction-1',
-								creator = 'seller-1',
-								token = ANT_TOKEN,
-								quantity = '1',
-								originalQuantity = '1',
-								price = '1000000000000',
-								orderType = 'english',
-								dateCreated = 1735689600000,
-								expirationTime = 1736035200000,
-								status = 'active',
-							},
+		-- Setup auction (Orders is a dictionary!)
+		_G.Orderbook = {
+			[ANT_TOKEN] = {
+				[ARIO_TOKEN] = {
+					pair = { ANT_TOKEN, ARIO_TOKEN },
+					orders = {
+						['auction-1'] = {
+							id = 'auction-1',
+							creator = 'seller-1',
+							token = ANT_TOKEN,
+							dominantToken = ANT_TOKEN,
+							swapToken = ARIO_TOKEN,
+							quantity = '1',
+							originalQuantity = '1',
+							price = '1000000000000',
+							orderType = 'english',
+							dateCreated = 1735689600000,
+							expirationTime = 1736035200000,
+							status = 'active',
 						},
 					},
 				},
-			}
+			},
+		}
 
 			-- Add to OrderIndex for O(1) lookup
 			_G.OrderIndex['auction-1'] = {
@@ -240,19 +243,20 @@ describe('English Auction', function()
 				swapToken = ARIO_TOKEN,
 			}
 
-			local success = pcall(function()
-				ucm.createOrder({
-					orderId = 'bid-1',
-					dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-					swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					sender = 'bidder-1',
-					quantity = '-100', -- Negative
-					createdAt = '1735689601000',
-					blockheight = '123456790',
-					requestedOrderId = 'auction-1',
-					msg = { Tags = { Quantity = '-100' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-				})
-			end)
+		local success = pcall(function()
+			ucm.createOrder({
+				orderId = 'bid-1',
+				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+			sender = 'bidder-1',
+			quantity = '-100', -- Negative
+			createdAt = 1735689601000,
+			blockheight = 123456790,
+		orderType = 'english',
+		requestedOrderId = 'auction-1',
+		msg = { Id = 'test-msg-8', Owner = 'bidder-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '-100' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+		})
+		end)
 
 			-- Negative quantity fails validation without refund
 			assert.is_false(success)
@@ -261,29 +265,31 @@ describe('English Auction', function()
 	end)
 
 	describe('Bidding logic', function()
-		it('should accept first bid on active auction', function()
-			-- Setup auction
-			_G.Orderbook = {
-				[ANT_TOKEN] = {
-					[ARIO_TOKEN] = {
-						pair = { ANT_TOKEN, ARIO_TOKEN },
-						orders = {
-							['auction-1'] = {
-								id = 'auction-1',
-								creator = 'seller-1',
-								token = ANT_TOKEN,
-								quantity = '1',
-								originalQuantity = '1',
-								price = '1000000000000',
-								orderType = 'english',
-								dateCreated = 1735689600000,
-								expirationTime = 1736035200000,
-								status = 'active',
-							},
+	it('should accept first bid on active auction', function()
+		-- Setup auction
+		_G.Orderbook = {
+			[ANT_TOKEN] = {
+				[ARIO_TOKEN] = {
+					pair = { ANT_TOKEN, ARIO_TOKEN },
+					orders = {
+						['auction-1'] = {
+							id = 'auction-1',
+							creator = 'seller-1',
+							token = ANT_TOKEN,
+							dominantToken = ANT_TOKEN,
+							swapToken = ARIO_TOKEN,
+							quantity = '1',
+							originalQuantity = '1',
+							price = '1000000000000',
+							orderType = 'english',
+							dateCreated = 1735689600000,
+							expirationTime = 1736035200000,
+							status = 'active',
 						},
 					},
 				},
-			}
+			},
+		}
 
 			-- Add to OrderIndex for O(1) lookup
 			_G.OrderIndex['auction-1'] = {
@@ -295,51 +301,55 @@ describe('English Auction', function()
 				orderId = 'bid-1',
 				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				sender = 'bidder-1',
-				quantity = '1100000000000',
-				createdAt = '1735689601000',
-				blockheight = '123456790',
-				orderType = 'english',
-				requestedOrderId = 'auction-1',
-				msg = { Tags = { Quantity = '1100000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-			})
+			sender = 'bidder-1',
+			quantity = '1100000000000',
+			createdAt = 1735689601000,
+			blockheight = 123456790,
+			orderType = 'english',
+		requestedOrderId = 'auction-1',
+		msg = { Id = 'test-msg-9', Owner = 'bidder-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '1100000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+		})
 
-		-- Bid should update auction highest bid and add to UserOrdersIndex
-		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-		-- Note: This test uses OLD Credit-Notice flow, not internal balance flow
-		-- Old flow doesn't use EnglishAuctionBalances (tokens came via Credit-Notice)
-		---@diagnostic disable-next-line: undefined-field
-		assert.are.equal('bidder-1', auction.highestBidder)
-		---@diagnostic disable-next-line: undefined-field
-		assert.are.equal('1100000000000', auction.highestBid)
+	-- Bid should update auction highest bid and add to UserOrdersIndex
+	local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
+	-- Note: This test uses OLD Credit-Notice flow, not internal balance flow
+	-- Old flow doesn't use EnglishAuctionBalances (tokens came via Credit-Notice)
+	local highestBid = english_auction.getHighestBid(auction.id)
+	assert.is_not_nil(highestBid)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('bidder-1', highestBid.bidder)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('1100000000000', highestBid.amount)
 	-- Should be added to order.bids
 	assert.is_not_nil(auction.bids)
 	assert.is_true(auction.bids['bidder-1'])
 	end)
 
 	it('should accept bid that meets minimum 1 ARIO increment', function()
-			-- Setup auction with existing bid
-			_G.Orderbook = {
-				[ANT_TOKEN] = {
-					[ARIO_TOKEN] = {
-						pair = { ANT_TOKEN, ARIO_TOKEN },
-						orders = {
-							['auction-1'] = {
-								id = 'auction-1',
-								creator = 'seller-1',
-								token = ANT_TOKEN,
-								quantity = '1',
-								originalQuantity = '1',
-								price = '1000000000000',
-								orderType = 'english',
-								dateCreated = 1735689600000,
-								expirationTime = 1736035200000,
-								status = 'active',
-							},
+		-- Setup auction with existing bid
+		_G.Orderbook = {
+			[ANT_TOKEN] = {
+				[ARIO_TOKEN] = {
+					pair = { ANT_TOKEN, ARIO_TOKEN },
+					orders = {
+						['auction-1'] = {
+							id = 'auction-1',
+							creator = 'seller-1',
+							token = ANT_TOKEN,
+							dominantToken = ANT_TOKEN,
+							swapToken = ARIO_TOKEN,
+							quantity = '1',
+							originalQuantity = '1',
+							price = '1000000000000',
+							orderType = 'english',
+							dateCreated = 1735689600000,
+							expirationTime = 1736035200000,
+							status = 'active',
 						},
 					},
 				},
-			}
+			},
+		}
 
 			-- Add to OrderIndex for O(1) lookup
 			OrderIndex['auction-1'] = {
@@ -347,39 +357,35 @@ describe('English Auction', function()
 				swapToken = ARIO_TOKEN,
 			}
 
-		-- Add bid directly to order
-		---@diagnostic disable-next-line: inject-field
-		Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].bids = {
-			['bidder-1'] = {
-				bidder = 'bidder-1',
-				amount = '1100000000000',
-				timestamp = 1735689601000,
+		-- Add bid directly to ARIOBalances (new architecture)
+		_G.ARIOBalances['bidder-1'] = {
+			balance = '0',
+			orders = {
+				['auction-1'] = '1100000000000',
 			},
 		}
-		---@diagnostic disable-next-line: inject-field
-		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBid = '1100000000000'
-		---@diagnostic disable-next-line: inject-field
-		_G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1'].highestBidder = 'bidder-1'
 
 		ucm.createOrder({
 			orderId = 'bid-2',
 			dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				sender = 'bidder-2',
-				quantity = '1101000000000', -- Exactly 1 ARIO more
-				createdAt = '1735689602000',
-				blockheight = '123456791',
-				orderType = 'english',
-				requestedOrderId = 'auction-1',
-				msg = { Tags = { Quantity = '1101000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-			})
+			swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+			sender = 'bidder-2',
+			quantity = '1101000000000', -- Exactly 1 ARIO more
+			createdAt = 1735689602000,
+			blockheight = 123456791,
+			orderType = 'english',
+		requestedOrderId = 'auction-1',
+		msg = { Id = 'test-msg-10', Owner = 'bidder-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '1101000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+		})
 
-		-- Bid should be accepted
-		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-		---@diagnostic disable-next-line: undefined-field
-		assert.are.equal('bidder-2', auction.highestBidder)
-		---@diagnostic disable-next-line: undefined-field
-		assert.are.equal('1101000000000', auction.highestBid)
+	-- Bid should be accepted
+	local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
+	local highestBid = english_auction.getHighestBid(auction.id)
+	assert.is_not_nil(highestBid)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('bidder-2', highestBid.bidder)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('1101000000000', highestBid.amount)
 		end)
 	end)
 
@@ -534,15 +540,15 @@ describe('English Auction', function()
 			ucm.createOrder({
 				orderId = 'auction-balance-1',
 				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-123',
-				quantity = 1,
-				price = '1000000000', -- 1 ARIO minimum
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '2000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-123',
+			quantity = '1',
+			price = '1000000000', -- 1 ARIO minimum
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 2000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
 			})
 
 			-- Setup bidder balance
@@ -567,28 +573,32 @@ describe('English Auction', function()
 		-- Balance should be reduced
 		assert.are.equal('8000000000', ARIOBalances['bidder-1'].balance)
 
-		-- Order should have bid
-		---@type Order
-		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-balance-1']
-		assert.are.equal('2000000000', order.highestBid)
-		assert.are.equal('bidder-1', order.highestBidder)
+	-- Order should have bid
+	---@type Order
+	local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-balance-1']
+	local highestBid = english_auction.getHighestBid(order.id)
+	assert.is_not_nil(highestBid)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('2000000000', highestBid.amount)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('bidder-1', highestBid.bidder)
 		end)
 
-		it('should increase existing bid with delta', function()
-			-- Setup: Create auction and place initial bid
-			ucm.createOrder({
-				orderId = 'auction-delta-1',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-123',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should increase existing bid with delta', function()
+		-- Setup: Create auction and place initial bid
+		ucm.createOrder({
+			orderId = 'auction-delta-1',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-123',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 			ARIOBalances['bidder-2'] = {balance = '20000000000', orders = {}} -- 20 ARIO
 
@@ -624,27 +634,30 @@ describe('English Auction', function()
 		-- Balance should be reduced by delta only
 		assert.are.equal('15000000000', ARIOBalances['bidder-2'].balance)
 
-		-- Order should have updated bid
-		---@type Order
-		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-delta-1']
-		assert.are.equal('5000000000', order.highestBid)
+	-- Order should have updated bid
+	---@type Order
+	local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-delta-1']
+	local highestBid = english_auction.getHighestBid(order.id)
+	assert.is_not_nil(highestBid)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('5000000000', highestBid.amount)
 		end)
 
-		it('should keep all bids until auction ends (no immediate returns)', function()
-			-- Setup auction
-			ucm.createOrder({
-				orderId = 'auction-refund-1',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-123',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should keep all bids until auction ends (no immediate returns)', function()
+		-- Setup auction
+		ucm.createOrder({
+			orderId = 'auction-refund-1',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-123',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 			ARIOBalances['bidder-a'] = {balance = '10000000000', orders = {}}
 			ARIOBalances['bidder-b'] = {balance = '10000000000', orders = {}}
@@ -681,27 +694,31 @@ describe('English Auction', function()
 		assert.are.equal('2000000000', ARIOBalances['bidder-a'].orders['auction-refund-1'])
 		assert.are.equal('4000000000', ARIOBalances['bidder-b'].orders['auction-refund-1'])
 
-		-- Order should have bidder B as highest
-		---@type Order
-		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-refund-1']
-		assert.are.equal('4000000000', order.highestBid)
-		assert.are.equal('bidder-b', order.highestBidder)
+	-- Order should have bidder B as highest
+	---@type Order
+	local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-refund-1']
+	local highestBid = english_auction.getHighestBid(order.id)
+	assert.is_not_nil(highestBid)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('4000000000', highestBid.amount)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('bidder-b', highestBid.bidder)
 		end)
 
-		it('should fail with insufficient balance', function()
-			ucm.createOrder({
-				orderId = 'auction-poor-1',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-123',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should fail with insufficient balance', function()
+		ucm.createOrder({
+			orderId = 'auction-poor-1',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-123',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 			ARIOBalances['poor-bidder'] = {balance = '500000000', orders = {}} -- Only 0.5 ARIO
 
@@ -744,20 +761,20 @@ describe('English Auction', function()
 		assert.is_not_nil(err:match('Order not found'))
 		end)
 
-		it('should fail if auction has expired', function()
-			ucm.createOrder({
-				orderId = 'auction-expired',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-123',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '2000000', -- Expires at 2000000
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should fail if auction has expired', function()
+		ucm.createOrder({
+			orderId = 'auction-expired',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-123',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 2000000, -- Expires at 2000000
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 			ARIOBalances['late-bidder'] = {balance = '10000000000', orders = {}}
 
@@ -779,20 +796,20 @@ describe('English Auction', function()
 		assert.is_not_nil(err:match('expired'))
 		end)
 
-		it('should fail if bid does not meet minimum increment', function()
-			ucm.createOrder({
-				orderId = 'auction-increment',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-123',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should fail if bid does not meet minimum increment', function()
+		ucm.createOrder({
+			orderId = 'auction-increment',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-123',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 			ARIOBalances['bidder-1'] = {balance = '10000000000', orders = {}}
 			ARIOBalances['bidder-2'] = {balance = '10000000000', orders = {}}
@@ -831,28 +848,29 @@ describe('English Auction', function()
 	describe('English Auction Cancellation', function()
 		local english_auction = require('english_auction')
 
-		it('should allow cancellation of English auction without bids', function()
-			-- Setup: Create an English auction with no bids
-			ucm.createOrder({
-				orderId = 'auction-no-bids',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-123',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should allow cancellation of English auction without bids', function()
+		-- Setup: Create an English auction with no bids
+		ucm.createOrder({
+			orderId = 'auction-no-bids',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-123',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 		-- Verify auction exists
 		---@type Order
 		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-no-bids']
 		assert.is_not_nil(order)
 		assert.are.equal('active', order.status)
-		assert.is_nil(order.highestBidder)
+		local highestBid = english_auction.getHighestBid(order.id)
+		assert.is_nil(highestBid)
 
 			-- Cancel the auction
 			local cancelMsg = testGlobals.mockMsg({
@@ -874,21 +892,21 @@ describe('English Auction', function()
 			assert.is_nil(OrderIndex['auction-no-bids'])
 		end)
 
-		it('should block cancellation of English auction with bids', function()
-			-- Setup: Create an English auction
-			ucm.createOrder({
-				orderId = 'auction-with-bids',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-456',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should block cancellation of English auction with bids', function()
+		-- Setup: Create an English auction
+		ucm.createOrder({
+			orderId = 'auction-with-bids',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-456',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 			-- Place a bid on the auction
 			ARIOBalances['bidder-xyz'] = {balance = '10000000000', orders = {}}
@@ -902,10 +920,13 @@ describe('English Auction', function()
 			}
 			english_auction.bidOnEnglishAuctionHandler(bidMsg)
 
-		-- Verify auction has a bid
-		---@type Order
-		local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids']
-		assert.are.equal('bidder-xyz', order.highestBidder)
+	-- Verify auction has a bid
+	---@type Order
+	local order = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids']
+	local highestBid = english_auction.getHighestBid(order.id)
+	assert.is_not_nil(highestBid)
+	---@diagnostic disable-next-line: need-check-nil
+	assert.are.equal('bidder-xyz', highestBid.bidder)
 
 			-- Try to cancel the auction (should fail)
 			local cancelMsg = testGlobals.mockMsg({
@@ -928,21 +949,21 @@ describe('English Auction', function()
 			assert.is_not_nil(Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-with-bids'])
 		end)
 
-		it('should only allow creator to cancel English auction', function()
-			-- Setup: Create an English auction
-			ucm.createOrder({
-				orderId = 'auction-creator-test',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'creator-789',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should only allow creator to cancel English auction', function()
+		-- Setup: Create an English auction
+		ucm.createOrder({
+			orderId = 'auction-creator-test',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'creator-789',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 			-- Try to cancel from different user (should fail)
 			local cancelMsg = testGlobals.mockMsg({
@@ -965,21 +986,21 @@ describe('English Auction', function()
 			assert.is_not_nil(Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-creator-test'])
 		end)
 
-		it('should return ANT to creator when cancelling auction without bids', function()
-			-- Setup: Create an English auction
-			ucm.createOrder({
-				orderId = 'auction-return-ant',
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-				sender = 'seller-999',
-				quantity = 1,
-				price = '1000000000',
-				createdAt = '1000000',
-				blockheight = '123456',
-				orderType = 'english',
-				expirationTime = '3000000',
-				msg = { Tags = {}, From = ANT_TOKEN },
-			})
+	it('should return ANT to creator when cancelling auction without bids', function()
+		-- Setup: Create an English auction
+		ucm.createOrder({
+			orderId = 'auction-return-ant',
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+			sender = 'seller-999',
+			quantity = '1',
+			price = '1000000000',
+			createdAt = 1000000,
+			blockheight = 123456,
+			orderType = 'english',
+			expirationTime = 3000000,
+			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
+		})
 
 		local transfersSent = {}
 		---@diagnostic disable-next-line: duplicate-set-field

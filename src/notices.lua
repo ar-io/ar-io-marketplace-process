@@ -73,7 +73,12 @@ function notices.creditNoticeHandler(msg)
 		return
 	end
 
-	-- Resolve parent intent (pending → active)
+	-- Store ANT process ID in intent for later State-Notice verification (if ANT transfer)
+	if not _utils.isArioToken(msg.From) then
+		intent.antProcessId = msg.From
+	end
+	
+	-- Resolve intent (pending → active)
 	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp, msg)
 
 	-- Whitelist check for ANT order creation
@@ -119,12 +124,12 @@ function notices.creditNoticeHandler(msg)
 		quantity = quantity,
 		createdAt = msg.Timestamp,
 		blockheight = msg['Block-Height'],
-			orderType = msg.Tags['X-Order-Type'] or 'fixed',
-			expirationTime = msg.Tags['X-Expiration-Time'] and tonumber(msg.Tags['X-Expiration-Time']),
-			minimumPrice = msg.Tags['X-Minimum-Price'],
-			decreaseInterval = msg.Tags['X-Decrease-Interval'],
-			requestedOrderId = msg.Tags['X-Requested-Order-Id'],
-			msg = msg, -- Pass msg context for intent tracking
+		orderType = msg.Tags['X-Order-Type'] or 'fixed',
+		expirationTime = msg.Tags['X-Expiration-Time'] and tonumber(msg.Tags['X-Expiration-Time']),
+		minimumPrice = msg.Tags['X-Minimum-Price'],
+		decreaseInterval = msg.Tags['X-Decrease-Interval'],
+		requestedOrderId = msg.Tags['X-Requested-Order-Id'],
+		msg = msg, -- Pass msg context for intent tracking
 		}
 
 		if msg.Tags['X-Price'] then
@@ -140,37 +145,18 @@ function notices.creditNoticeHandler(msg)
 			ucm.createOrder(orderArgs)
 		end)
 		if not ok then
-			-- Only refund if error wasn't already handled by refundAndError
-			-- (refundAndError throws errors containing the error message)
-			-- If it's a different type of error, refund it
-			if not string.find(tostring(err), 'required') and not string.find(tostring(err), 'must be') then
-				_utils.refundAndError(msg, sender, 'Order creation failed: ' .. tostring(err), 'Order-Error')
-			end
+			-- Error occurred - it was already handled by refundAndError which sends error notice
+			-- Just return without double-handling
 			return
 		end
 
-		-- Order created successfully - complete the intent if no child intents
+		-- Order created successfully - complete the intent
 		local intent = intents.getIntentById(msg.Tags['X-Intent-Id'])
 		local intentStatus = intent and intent.status or 'not-found'
 		
-		if intent and intent.type == 'parent' then
-			-- Count pending child intents
-			local hasPendingChildren = false
-			for childId in pairs(intent.childIntentIds) do
-				local child = intents.getIntentById(childId)
-				if child and child.status == 'pending' then
-					hasPendingChildren = true
-					break
-				end
-			end
-
-		-- If no pending children, complete the intent immediately
-		if not hasPendingChildren then
+		if intent then
 			intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed', msg)
 			intentStatus = 'completed'
-			else
-				intentStatus = 'active'
-			end
 		end
 
 		-- Send acknowledgment with intent and order status
@@ -181,47 +167,6 @@ function notices.creditNoticeHandler(msg)
 			['Intent-Id'] = msg.Tags['X-Intent-Id'],
 			['Intent-Status'] = intentStatus,
 			['Order-Status'] = 'listed',
-		})
-	end
-end
-
--- Handler: Debit-Notice - Resolves child intents when transfers complete
-function notices.debitNoticeHandler(msg)
-	local _utils = require('utils')
-	local intents = require('intents')
-
-	local intentId = msg.Tags['X-Intent-Id']
-	if not intentId then
-		return
-	end
-
-	-- Validate intent ID format
-	if not _utils.isValidIntentId(intentId) then
-		return
-	end
-
-	local intent = intents.getIntentById(intentId)
-	if not intent then
-		return
-	end
-
-	-- Validate this is expected Debit-Notice
-	if intent.type == constants.INTENT_TYPES.CHILD and intent.expectedFrom == msg.From then
-		-- Resolve child intent (will auto-complete parent if all children resolved)
-		intents.resolveIntent(intentId, msg.Timestamp, msg)
-
-		-- Get parent status for acknowledgment
-		local parent = intents.getIntentById(intent.parentIntentId)
-		local parentStatus = parent and parent.status or 'not-found'
-
-		-- Send acknowledgment with intent status
-		_utils.Send(msg, {
-			Target = intent.initiator,
-			Action = 'Debit-Notice-Processed',
-			['Intent-Id'] = intentId,
-			['Parent-Intent-Id'] = intent.parentIntentId,
-			['Parent-Intent-Status'] = parentStatus,
-			['Child-Intent-Status'] = 'resolved',
 		})
 	end
 end
@@ -243,23 +188,15 @@ function notices.transferErrorHandler(msg)
 	end
 
 	local intent = intents.getIntentById(intentId)
-	if not intent or intent.type ~= constants.INTENT_TYPES.CHILD then
+	if not intent then
 		return
 	end
 
 	-- Extract failure reason
 	local reason = msg.Tags.Message or msg.Tags.Error or msg.Data or 'Transfer failed'
 
-	-- Fail child intent with reason
+	-- Fail intent with reason
 	intents.failIntent(intentId, reason, msg)
-
-	-- Cascade failure to parent
-	if intent.parentIntentId then
-		local parent = intents.getIntentById(intent.parentIntentId)
-		if parent then
-			intents.failIntent(intent.parentIntentId, 'Child transfer failed: ' .. reason, msg)
-		end
-	end
 end
 
 return notices
