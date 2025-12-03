@@ -27,7 +27,6 @@ ActionMap = {
 	pushANTIntentResolution = 'Push-ANT-Intent-Resolution',
 	-- Notice handlers (incoming notices from external processes)
 	creditNotice = 'Credit-Notice',
-	transferError = 'Transfer-Error',
 	stateNotice = 'State-Notice',
 	-- Balances handlers
 	getPaginatedBalances = 'Get-Paginated-Balances',
@@ -38,8 +37,6 @@ ActionMap = {
 	-- Whitelist handlers
 	whitelistModule = 'Whitelist-Module',
 	unwhitelistModule = 'Unwhitelist-Module',
-	-- Admin recovery handlers
-	rebuildOrderIndex = 'Rebuild-Order-Index',
 }
 
 -- Intent handlers
@@ -59,8 +56,6 @@ utils.createHandler('Action', ActionMap.withdrawFees, ucm.withdrawFeesHandler, n
 
 -- Notice handlers (incoming notices from external processes)
 utils.createHandler('Action', ActionMap.creditNotice, notices.creditNoticeHandler, nil, true) -- Critical: deposits and creates orders
--- Transfer-Error is the token spec aligned error notice for failed transfers
-utils.createHandler('Action', ActionMap.transferError, notices.transferErrorHandler, nil, true) -- Critical: handles transfer failures
 utils.createHandler('Action', ActionMap.stateNotice, intents.stateNoticeHandler, nil, true) -- Critical: resolves ANT ownership intents
 
 -- Balances handlers for ARIOBalances global
@@ -75,6 +70,3 @@ utils.createHandler('Action', ActionMap.bidOnEnglishAuction, english_auction.bid
 -- Whitelist handlers
 utils.createHandler('Action', ActionMap.whitelistModule, ucm.whitelistModuleHandler, nil, true) -- Critical: whitelists a module
 utils.createHandler('Action', ActionMap.unwhitelistModule, ucm.unwhitelistModuleHandler, nil, true) -- Critical: unwhitelists a module
-
--- Admin recovery handlers
-utils.createHandler('Action', ActionMap.rebuildOrderIndex, ucm.rebuildOrderIndexHandler, nil, true) -- Critical: rebuilds OrderIndex

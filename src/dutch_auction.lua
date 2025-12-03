@@ -15,7 +15,7 @@ function dutch_auction.pruneExpiredAuction(order)
 end
 
 function dutch_auction.calculateDecreaseStep(args)
-	local intervalsCount = (bint(args.expirationTime) - bint(args.createdAt)) / bint(args.decreaseInterval)
+	local intervalsCount = (tonumber(args.expirationTime) - tonumber(args.createdAt)) / tonumber(args.decreaseInterval)
 	local priceDecreaseMax = bint(args.price) - bint(args.minimumPrice)
 	return math.floor(priceDecreaseMax / intervalsCount)
 end
@@ -107,8 +107,8 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 		end
 
 		-- Calculate current price based on time passed since order creation
-		local timePassed = bint(args.createdAt) - bint(currentOrderEntry.dateCreated)
-		local intervalsPassed = math.floor(timePassed / bint(currentOrderEntry.decreaseInterval))
+		local timePassed = tonumber(args.createdAt) - tonumber(currentOrderEntry.dateCreated)
+		local intervalsPassed = math.floor(timePassed / tonumber(currentOrderEntry.decreaseInterval))
 		local intervalsBint = bint(intervalsPassed)
 		local decreaseStepBint = bint(currentOrderEntry.decreaseStep)
 		local priceReduction = intervalsBint * decreaseStepBint
@@ -174,8 +174,8 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 			local balances = require('balances')
 			balances.increaseBalance(args.sender, tostring(refundAmount))
 		else
-			-- ANT: Refund via external transfer with intent tracking
-			ucm.transferWithIntent(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+			-- ANT: Refund via external transfer
+			ucm.transferExternal(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
 		end
 	end
 
@@ -275,12 +275,15 @@ function dutch_auction.validateDutchParams(args)
 		return false, decreaseIntervalError
 	end
 
-	if args.expirationTime and (bint(args.decreaseInterval) >= bint(args.expirationTime)) then
-		return false, 'Decrease interval must be less than expiration time'
+	-- Calculate auction duration and intervals (convert to numbers for timestamp arithmetic)
+	local auctionDuration = tonumber(args.expirationTime) - tonumber(args.createdAt)
+	local decreaseInterval = tonumber(args.decreaseInterval)
+	
+	if decreaseInterval >= auctionDuration then
+		return false, 'Decrease interval must be less than auction duration'
 	end
 
-	-- Calculate intervals and price decrease
-	local intervalsCount = (bint(args.expirationTime) - bint(args.createdAt)) / bint(args.decreaseInterval)
+	local intervalsCount = auctionDuration / decreaseInterval
 	local priceDecreaseMax = bint(args.price) - bint(args.minimumPrice)
 	
 	-- Ensure price decrease is evenly divisible by interval count

@@ -12,7 +12,7 @@ require('types')
 ---@alias IntentId string Unique identifier for an intent
 
 -- Global constants
----@type TokenId Process ID for ARIO token (CHANGEME in production)
+---@type TokenId Process ID for ARIO token (can be overridden before loading process)
 ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID or 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
 
 ---@type Address Treasury address for fee collection

@@ -40,31 +40,21 @@ export class MarketplaceProcess {
   }
 
   async createIntent({
-    action,
     orderType,
-    swapToken,
     quantity,
     price,
     expirationTime,
     minimumPrice,
     decreaseInterval,
-    requestedOrderId,
-    orderId,
-    dominantToken,
   }: CreateIntentParams): Promise<ReadResponse> {
     const tags: Array<{ name: string; value: string | undefined }> = [
       { name: 'Action', value: 'Create-Intent' },
-      { name: 'X-Intent-Action', value: action },
       { name: 'X-Intent-Order-Type', value: orderType },
-      { name: 'X-Intent-Swap-Token', value: swapToken },
       { name: 'X-Intent-Quantity', value: quantity },
       { name: 'X-Intent-Price', value: price },
       { name: 'X-Intent-Expiration-Time', value: expirationTime },
       { name: 'X-Intent-Minimum-Price', value: minimumPrice },
       { name: 'X-Intent-Decrease-Interval', value: decreaseInterval },
-      { name: 'X-Intent-Requested-Order-Id', value: requestedOrderId },
-      { name: 'X-Intent-Order-Id', value: orderId },
-      { name: 'X-Intent-Dominant-Token', value: dominantToken },
     ];
 
     const filteredTags = tags.filter(

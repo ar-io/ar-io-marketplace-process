@@ -99,7 +99,7 @@ constants.INTENT_TYPES = {
     resolvedAt = nil,            -- When transitioned to active/settling
     completedAt = nil,           -- When reached terminal state
     failureReason = nil,         -- Error message if failed
-    forwardedTags = { ... }      -- Tags to include in responses
+    orderParams = { ... }        -- Order parameters stored with intent
 }
 ```
 
@@ -117,7 +117,7 @@ constants.INTENT_TYPES = {
     createdAt = 1234567890,      -- Timestamp
     resolvedAt = nil,            -- When resolved
     failureReason = nil,         -- Error if failed
-    forwardedTags = { ... }      -- Context for this transfer
+    orderParams = { ... }        -- Context for this transfer
 }
 ```
 
@@ -153,22 +153,23 @@ Users create intents via `Create-Intent` message:
 
 ```lua
 -- Handler: Create-Intent
+-- This handler is only for ANT sell orders (Create-Order action is assumed)
 function intents.createIntentHandler(msg)
-    local intentAction = msg.Tags['X-Intent-Action']
-    assert(intentAction, 'X-Intent-Action required')
-    
-    local intentParams = {
-        Action = intentAction,
-        ['Order-Type'] = msg.Tags['X-Intent-Order-Type'],
-        ['Swap-Token'] = msg.Tags['X-Intent-Swap-Token'],
-        Quantity = msg.Tags['X-Intent-Quantity'],
-        Price = msg.Tags['X-Intent-Price'],
-        ['Expiration-Time'] = msg.Tags['X-Intent-Expiration-Time'],
-        -- ... more params
+    local orderParams = {
+        orderType = msg.Tags['X-Intent-Order-Type'], -- nil defaults to 'fixed'
+        quantity = msg.Tags['X-Intent-Quantity'],
+        price = msg.Tags['X-Intent-Price'],
+        expirationTime = msg.Tags['X-Intent-Expiration-Time'],
+        minimumPrice = msg.Tags['X-Intent-Minimum-Price'], -- dutch only
+        decreaseInterval = msg.Tags['X-Intent-Decrease-Interval'], -- dutch only
     }
     
-    -- Create parent intent (charges listing fee here)
-    local intent = intents.createParentIntent(msg, intentAction, intentParams)
+    -- Validate required parameters based on order type
+    -- (see implementation for full validation logic)
+    
+    -- Create intent (action='Create-Order' and swapToken=ARIO added internally)
+    -- Listing fee is charged during intent creation
+    local intent = intents.createIntent(msg, orderParams)
     
     return json.encode({
         ['Intent-Id'] = intent.intentId,
@@ -191,9 +192,9 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
     assert(listingDurationMs <= bint(constants.LISTING.MAX_EXPIRATION_MS), 
            'Expiration time cannot exceed 30 days')
     
-    -- Calculate fee based on duration (1 ARIO per day)
+    -- Calculate fee based on duration (1 ARIO per hour)
     local listingDurationHours = tonumber(tostring(listingDurationMs / bint(3600000)))
-    local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS * 24 -- 24 hours
+    local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS -- 1 hour
     local feeMultiplier = math.ceil(listingDurationHours / hoursPerFee)
     
     listingFee = listingFee * bint(feeMultiplier)
@@ -202,10 +203,11 @@ end
 ```
 
 **Fee Examples**:
-- 1-day listing: 1 ARIO
-- 7-day listing: 7 ARIO
-- 30-day listing: 30 ARIO
-- No expiration: 1 ARIO (base fee)
+- 1-hour listing: 1 ARIO
+- 24-hour listing: 24 ARIO
+- 7-day listing: 168 ARIO
+- 30-day listing: 720 ARIO
+- No expiration: 1 ARIO (base fee, 1 hour minimum)
 
 **Why charge upfront?**:
 - Prevents spam (free intents would enable DoS)
@@ -218,14 +220,12 @@ end
 ```
 User → Marketplace: Create-Intent
   Tags:
-    X-Intent-Action: Create-Order
     X-Intent-Order-Type: fixed
-    X-Intent-Swap-Token: ARIO-process-id
     X-Intent-Quantity: 1
     X-Intent-Price: 100000000000
     
 Marketplace deducts listing fee from user's internal ARIO balance
-Marketplace creates parent intent with status "pending"
+Marketplace creates intent (action='Create-Order' assumed) with status "pending"
 Marketplace → User: Intent-Created notice with Intent-Id
 ```
 
@@ -236,7 +236,6 @@ User → ANT Process: Transfer
   Quantity: 1
   X-Intent-Id: "1"
   X-Order-Action: Create-Order
-  (plus other order params)
 
 ANT Process → Marketplace: Credit-Notice
   Sender: user-address
@@ -253,7 +252,8 @@ Marketplace validates:
   ✓ ANT module is whitelisted
 
 Marketplace transitions intent: pending → active
-Marketplace creates order in orderbook
+Marketplace retrieves order params from intent.orderParams
+Marketplace creates order in orderbook using stored params
 Marketplace checks if any child intents were created
   If no children: complete intent immediately
   If children exist: transition to "settling"
@@ -299,13 +299,13 @@ Marketplace → User: Intent-Resolved notice
   Intent-Action: Create-Order
 ```
 
-### Child Intent Creation
+### External Transfers
 
-Child intents are created automatically when transfers are needed:
+External token transfers (for ANT and other non-ARIO tokens) forward the parent intent ID:
 
 ```lua
 -- In ucm.lua
-function ucm.transferWithIntent(recipient, quantity, token, handledMsg)
+function ucm.transferExternal(recipient, quantity, token, handledMsg)
     local intents = require('intents')
     
     -- Construct send parameters
@@ -318,7 +318,7 @@ function ucm.transferWithIntent(recipient, quantity, token, handledMsg)
         },
     }
     
-    -- Add intent tracking (creates child intent if parent exists)
+    -- Forward parent intent ID if present in message context
     sendParams = intents.createSendWithIntent(sendParams, handledMsg, {
         Recipient = recipient,
         Quantity = quantity,
@@ -329,12 +329,12 @@ function ucm.transferWithIntent(recipient, quantity, token, handledMsg)
 end
 ```
 
-**When child intents are created**:
+**When external transfers occur**:
 - ANT transfer to seller (order fills immediately)
 - ANT transfer to buyer (cancellation, settlement)
 - ANT transfer for any cross-process operation
 
-**Important**: ARIO withdrawals do NOT create child intents - they use `ucm.transfer()` instead of `ucm.transferWithIntent()` (see ADR-003).
+**Important**: ARIO withdrawals do NOT use intent tracking - they use `ucm.transfer()` instead of `ucm.transferExternal()` (see ADR-003).
 
 ### Debit-Notice Handler
 
@@ -460,42 +460,6 @@ Without these checks, malicious actors could:
 - Steal ANTs by completing buys without actual ownership transfer
 
 **Use case**: Users can manually trigger ANT ownership check via `Push-ANT-Intent-Resolution` to resolve stuck intents.
-
-### Transfer-Error Handler
-
-Failures cascade from child to parent:
-
-```lua
-function notices.transferErrorHandler(msg)
-    local intentId = msg.Tags['X-Intent-Id']
-    if not intentId then return end
-    
-    local intent = intents.getIntentById(intentId)
-    if not intent or intent.type ~= constants.INTENT_TYPES.CHILD then
-        return
-    end
-    
-    -- Extract failure reason
-    local reason = msg.Tags.Message or msg.Tags.Error or msg.Data or 'Transfer failed'
-    
-    -- Fail child intent
-    intents.failIntent(intentId, reason, msg)
-    
-    -- Cascade failure to parent
-    if intent.parentIntentId then
-        local parent = intents.getIntentById(intent.parentIntentId)
-        if parent then
-            intents.failIntent(intent.parentIntentId, 'Child transfer failed: ' .. reason, msg)
-        end
-    end
-end
-```
-
-**Failure scenarios**:
-- ANT process rejects transfer (insufficient balance, etc.)
-- Recipient address invalid
-- Token process error/bug
-- Network timeout (though AO guarantees eventual delivery)
 
 ### Intent Failure
 
@@ -925,7 +889,7 @@ end
 - ADR-003: ARIO Internal Ledger Pattern: `docs/ADR-003-ario-internal-ledger.md`
 - Source: `src/intents.lua` - Intent management and handlers
 - Source: `src/notices.lua` - Debit-Notice and Transfer-Error handlers
-- Source: `src/ucm.lua` - Child intent creation via `transferWithIntent()`
+- Source: `src/ucm.lua` - External transfers via `transferExternal()`
 - Source: `src/utils.lua` - Pruning trigger via `onBeforeHandler()`
 - Source: `src/globals.lua` - Intents global and pruning schedule
 

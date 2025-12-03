@@ -179,8 +179,8 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 				local balances = require('balances')
 				balances.increaseBalance(args.sender, tostring(refundAmount))
 			else
-				-- ANT: Refund via external transfer with intent tracking
-				ucm.transferWithIntent(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+				-- ANT: Refund via external transfer
+				ucm.transferExternal(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
 			end
 		end
 

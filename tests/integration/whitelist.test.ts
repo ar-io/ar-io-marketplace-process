@@ -226,10 +226,7 @@ describe('Module Whitelist Management', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        dominantToken: TEST_ANT_PROCESS,
-        swapToken: TEST_ARIO_PROCESS,
         price: '1000000000000',
         quantity: '1',
       });
@@ -246,10 +243,6 @@ describe('Module Whitelist Management', () => {
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
           { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: '1000000000000' },
-          { name: 'X-Swap-Token', value: TEST_ARIO_PROCESS },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Not whitelisted!
         ],
         data: '',
@@ -299,10 +292,7 @@ describe('Module Whitelist Management', () => {
 
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        dominantToken: TEST_ANT_PROCESS,
-        swapToken: TEST_ARIO_PROCESS,
         price: '1000000000000',
         quantity: '1',
       });
@@ -319,10 +309,6 @@ describe('Module Whitelist Management', () => {
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
           { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: '1000000000000' },
-          { name: 'X-Swap-Token', value: TEST_ARIO_PROCESS },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',
@@ -373,10 +359,7 @@ describe('Module Whitelist Management', () => {
 
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        dominantToken: TEST_ANT_PROCESS,
-        swapToken: TEST_ARIO_PROCESS,
         price: '1000000000000',
         quantity: '1',
       });
@@ -393,10 +376,6 @@ describe('Module Whitelist Management', () => {
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
           { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: '1000000000000' },
-          { name: 'X-Swap-Token', value: TEST_ARIO_PROCESS },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // No longer whitelisted!
         ],
         data: '',

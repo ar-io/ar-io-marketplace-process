@@ -53,7 +53,7 @@ describe('Auction Mechanisms', () => {
     });
 
     await marketplaceProcess.depositArio(
-      '100000000000',
+      '200000000000', // 200 ARIO for listing fees (7 days = 168 hours × 1 ARIO/hour)
       TEST_ARIO_TOKEN,
       TEST_SENDER,
     );
@@ -64,9 +64,7 @@ describe('Auction Mechanisms', () => {
       it('should validate required Dutch auction parameters', async () => {
         // Create intent without required Dutch auction params
         const result = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
           orderType: 'dutch',
-          swapToken: TEST_ARIO_TOKEN,
           quantity: '1000',
           price: '100',
           // Missing: minimumPrice, decreaseInterval
@@ -78,9 +76,7 @@ describe('Auction Mechanisms', () => {
 
       it('should validate minimum price is less than starting price', async () => {
         const result = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
           orderType: 'dutch',
-          swapToken: TEST_ARIO_TOKEN,
           quantity: '1000',
           price: '100',
           minimumPrice: '150', // Invalid: higher than price
@@ -93,9 +89,7 @@ describe('Auction Mechanisms', () => {
 
       it('should validate expiration time is required', async () => {
         const result = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
           orderType: 'dutch',
-          swapToken: TEST_ARIO_TOKEN,
           quantity: '1000',
           price: '100',
           minimumPrice: '50',
@@ -113,9 +107,7 @@ describe('Auction Mechanisms', () => {
         // For now, we validate that the order creation intent validates the parameters
         const futureTime = Date.now() + 3600000; // 1 hour from now
         const result = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
           orderType: 'dutch',
-          swapToken: TEST_ARIO_TOKEN,
           quantity: '1000',
           price: '1000',
           minimumPrice: '500',
@@ -132,9 +124,7 @@ describe('Auction Mechanisms', () => {
     describe('Order Creation', () => {
       it('should validate required English auction parameters', async () => {
         const result = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
           orderType: 'english',
-          swapToken: TEST_ARIO_TOKEN,
           quantity: '1000',
           price: '100', // Starting bid
           expirationTime: (Date.now() + 3600000).toString(),
@@ -145,9 +135,7 @@ describe('Auction Mechanisms', () => {
 
       it('should require expiration time for English auctions', async () => {
         const result = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
           orderType: 'english',
-          swapToken: TEST_ARIO_TOKEN,
           quantity: '1000',
           price: '100',
           // Missing: expirationTime
@@ -162,9 +150,7 @@ describe('Auction Mechanisms', () => {
         // In a real test, we'd create an auction and then try to bid below the minimum
         // For now, we test the intent validation
         const result = await marketplaceProcess.createIntent({
-          action: 'Create-Order',
           orderType: 'english',
-          swapToken: TEST_ARIO_TOKEN,
           quantity: '1000',
           price: '100',
           expirationTime: (Date.now() + 3600000).toString(),
@@ -221,9 +207,7 @@ describe('Auction Mechanisms', () => {
   describe('Fixed Price Orders', () => {
     it('should create valid fixed price order intent', async () => {
       const result = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1000',
         price: '100',
       });
@@ -236,9 +220,7 @@ describe('Auction Mechanisms', () => {
 
     it('should validate required parameters for fixed price', async () => {
       const result = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1000',
         // Missing: price
       });
@@ -250,9 +232,7 @@ describe('Auction Mechanisms', () => {
   describe('Order Type Validation', () => {
     it('should reject invalid order type', async () => {
       const result = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'invalid' as any,
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1000',
         price: '100',
       });
@@ -266,18 +246,14 @@ describe('Auction Mechanisms', () => {
 
       // Fixed
       const fixed = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1000',
         price: '100',
       });
 
       // Dutch
       const dutch = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'dutch',
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1000',
         price: '1000',
         minimumPrice: '500',
@@ -287,9 +263,7 @@ describe('Auction Mechanisms', () => {
 
       // English
       const english = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'english',
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1000',
         price: '100',
         expirationTime: futureTime.toString(),
@@ -305,10 +279,7 @@ describe('Auction Mechanisms', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        dominantToken: TEST_ANT_PROCESS,
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1',
         price: '1000000',
       });
@@ -325,10 +296,6 @@ describe('Auction Mechanisms', () => {
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
           { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: '1000000' },
-          { name: 'X-Swap-Token', value: TEST_ARIO_TOKEN },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Non-whitelisted!
         ],
         data: '',
@@ -370,10 +337,7 @@ describe('Auction Mechanisms', () => {
     it('should accept Credit-Notice from whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        dominantToken: TEST_ANT_PROCESS,
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1',
         price: '1000000',
       });
@@ -390,10 +354,6 @@ describe('Auction Mechanisms', () => {
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
           { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_PROCESS },
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: '1000000' },
-          { name: 'X-Swap-Token', value: TEST_ARIO_TOKEN },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',
@@ -433,15 +393,10 @@ describe('Auction Mechanisms', () => {
   describe('Auction Lifecycle', () => {
     it('should track auction from creation to settlement', async () => {
       // Create intent
-      // Using 7 days from now (7 * 24 * 60 * 60 * 1000 = 604800000 ms)
-      // Test environment starts at low timestamps, so use a relative future time
-      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-      const futureTimestamp = sevenDaysMs;
+      // Use a far future timestamp to ensure it's always in the future
+      const futureTimestamp = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days from now
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'english',
-        dominantToken: TEST_ANT_TOKEN,
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1000',
         price: '100',
         expirationTime: futureTimestamp.toString(),

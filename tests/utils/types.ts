@@ -63,20 +63,15 @@ export interface Message {
 }
 
 /**
- * Parameters for creating an intent
+ * Parameters for creating an intent (Create-Order action is assumed)
  */
 export interface CreateIntentParams {
-  action: string;
   orderType?: string;
-  swapToken?: string;
   quantity?: string;
   price?: string;
   expirationTime?: string;
   minimumPrice?: string;
   decreaseInterval?: string;
-  requestedOrderId?: string;
-  orderId?: string;
-  dominantToken?: string;
 }
 
 /**

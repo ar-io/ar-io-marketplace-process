@@ -14,7 +14,7 @@ The AR.IO Marketplace is a decentralized protocol built on AO for trustless exch
 - **ARIO Internal Ledger** - All ARIO operations use an internal balance system (deposit → trade → withdraw)
 - **ANT Intent-Based System** - ANT transfers are tracked through parent/child intent relationships
 - **Multiple Order Types** - Fixed price, Dutch auctions, and English auctions
-- **Listing Fees** - Duration-based fees (1 ARIO per 7 days) charged from internal balance
+- **Listing Fees** - Duration-based fees (1 ARIO per hour) charged from internal balance
 - **Transaction Fees** - 5% fee on all trades (0.5% treasury, 4.5% marketplace)
 
 ## Quick Start
@@ -199,30 +199,25 @@ Create an ARIO buy order using internal balance. This order **matches immediatel
 
 | Tag | Type | Required | Description |
 |-----|------|----------|-------------|
-| `Swap-Token` | string | Yes | Token address you want to receive (ANT) |
+| `Swap-Token` | string | Yes | ANT process ID you want to buy |
 | `Quantity` | string | Yes | Amount of ARIO to offer (in mARIO) |
-| `Order-Type` | string | No | `fixed`, `dutch`, or `english` (default: `fixed`) |
-| `Price` | string | No* | Price per unit (required for fixed/dutch) |
-| `Expiration-Time` | number | No | Unix timestamp (max 30 days, default: no expiration) |
-| `Minimum-Price` | string | No* | Minimum price (required for dutch auctions) |
-| `Decrease-Interval` | string | No* | Price decrease interval in ms (dutch auctions) |
-| `Requested-Order-Id` | string | No | Specific order ID to match against |
+| `Order-Type` | string | Yes | Type of the sell order you're buying (`fixed`, `dutch`, or `english`) |
+| `Requested-Order-Id` | string | Yes | The specific sell order ID you want to buy |
 
-*Required depending on order type
+> **Note:** When buying ANT, you do NOT specify a price - you accept the seller's asking price. You must know which specific ANT order you want to buy.
 
 **Example (aoconnect):**
 
 ```typescript
-// Create fixed price buy order for ANT
+// Buy a specific ANT listing
 const msgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
     { name: 'Action', value: 'Create-Order' },
     { name: 'Swap-Token', value: ANT_PROCESS_ID },
-    { name: 'Quantity', value: '5000000000' }, // 5 ARIO
+    { name: 'Quantity', value: '10000000000' }, // 10 ARIO (must be >= asking price)
     { name: 'Order-Type', value: 'fixed' },
-    { name: 'Price', value: '5000000000' }, // 5 ARIO per ANT
-    { name: 'Expiration-Time', value: String(Date.now() + 86400000) }, // 24 hours
+    { name: 'Requested-Order-Id', value: SELL_ORDER_ID }, // Must specify which order
   ],
   signer: createDataItemSigner(wallet),
 });
@@ -232,7 +227,7 @@ const { Messages } = await result({
   process: MARKETPLACE_PROCESS_ID,
 });
 
-console.log('Order created:', JSON.parse(Messages[0].Data));
+console.log('Purchase result:', JSON.parse(Messages[0].Data));
 ```
 
 #### `Cancel-Order`
@@ -273,24 +268,22 @@ ANT listings use an intent-based workflow to ensure atomic transfers. ANT sell o
 
 Create a listing intent for ANT orders. This charges a listing fee from your internal ARIO balance.
 
-**Listing Fee:** 1 ARIO per 7 days (calculated based on `X-Intent-Expiration-Time`)
+**Listing Fee:** 1 ARIO per hour (calculated based on `X-Intent-Expiration-Time`)
 
 **Parameters:**
 
 | Tag | Type | Required | Description |
 |-----|------|----------|-------------|
-| `X-Intent-Action` | string | Yes | `Create-Order`, `Cancel-Order`, or `Settle-Auction` |
-| `X-Intent-Swap-Token` | string | Yes* | Token to receive (ARIO process ID) |
-| `X-Intent-Quantity` | string | Yes* | Amount to trade (usually `1` for ANT) |
+| `X-Intent-Quantity` | string | Yes | Amount to trade (usually `1` for ANT) |
+| `X-Intent-Price` | string | Yes | Price per unit (for fixed/dutch), or starting bid (for english) |
 | `X-Intent-Order-Type` | string | No | `fixed`, `dutch`, or `english` (default: `fixed`) |
-| `X-Intent-Price` | string | No | Price per unit |
-| `X-Intent-Expiration-Time` | number | No | Unix timestamp (max 30 days) |
-| `X-Intent-Minimum-Price` | string | No | Minimum price (dutch auctions) |
-| `X-Intent-Decrease-Interval` | string | No | Price decrease interval (dutch auctions) |
-| `X-Intent-Order-Id` | string | Yes** | Order ID (for Cancel-Order/Settle-Auction) |
+| `X-Intent-Expiration-Time` | number | No | Unix timestamp (min 1 hour, max 30 days) |
+| `X-Intent-Minimum-Price` | string | No* | Minimum price floor (dutch auctions only) |
+| `X-Intent-Decrease-Interval` | string | No* | Price decrease interval in ms (dutch auctions only) |
 
-*Required for `Create-Order`  
-**Required for `Cancel-Order` and `Settle-Auction`
+*Required only for dutch auction orders
+
+> **Note:** This handler is only for ANT sell orders (`Create-Order` action is assumed, always swaps ANT for ARIO). ARIO buy orders don't use intents - they call `Create-Order` directly.
 
 **Response:**
 ```json
@@ -308,8 +301,6 @@ const intentMsgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
     { name: 'Action', value: 'Create-Intent' },
-    { name: 'X-Intent-Action', value: 'Create-Order' },
-    { name: 'X-Intent-Swap-Token', value: ARIO_PROCESS_ID },
     { name: 'X-Intent-Quantity', value: '1' }, // 1 ANT
     { name: 'X-Intent-Order-Type', value: 'fixed' },
     { name: 'X-Intent-Price', value: '10000000000' }, // 10 ARIO
@@ -328,6 +319,7 @@ const intentId = intentData['Intent-Id'];
 console.log('Intent created:', intentId);
 
 // Step 2: Transfer ANT to marketplace with intent ID
+// Order parameters come from the intent created in Step 1
 const transferMsgId = await message({
   process: ANT_PROCESS_ID,
   tags: [
@@ -335,6 +327,7 @@ const transferMsgId = await message({
     { name: 'Recipient', value: MARKETPLACE_PROCESS_ID },
     { name: 'Quantity', value: '1' },
     { name: 'X-Intent-Id', value: intentId },
+    { name: 'X-Order-Action', value: 'Create-Order' },
   ],
   signer: createDataItemSigner(wallet),
 });
@@ -763,7 +756,7 @@ await message({
   signer: createDataItemSigner(wallet),
 });
 
-// 2. Create buy order
+// 2. Create buy order (must specify which ANT to buy)
 const msgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
@@ -771,12 +764,12 @@ const msgId = await message({
     { name: 'Swap-Token', value: ANT_PROCESS_ID },
     { name: 'Quantity', value: '10000000000' }, // Offer 10 ARIO
     { name: 'Order-Type', value: 'fixed' },
-    { name: 'Price', value: '10000000000' }, // 10 ARIO per ANT
+    { name: 'Requested-Order-Id', value: SELL_ORDER_ID }, // Specific order to buy
   ],
   signer: createDataItemSigner(wallet),
 });
 
-// Order will match automatically if compatible sell order exists
+// Order matches immediately if the specified sell order is still available
 ```
 
 ### Example 2: Sell ANT for ARIO
@@ -799,8 +792,6 @@ const intentMsgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
     { name: 'Action', value: 'Create-Intent' },
-    { name: 'X-Intent-Action', value: 'Create-Order' },
-    { name: 'X-Intent-Swap-Token', value: ARIO_PROCESS_ID },
     { name: 'X-Intent-Quantity', value: '1' },
     { name: 'X-Intent-Order-Type', value: 'fixed' },
     { name: 'X-Intent-Price', value: '15000000000' }, // 15 ARIO
@@ -817,6 +808,7 @@ const { Messages } = await result({
 const intentId = JSON.parse(Messages[0].Data)['Intent-Id'];
 
 // 3. Transfer ANT with intent ID
+// Order parameters come from the intent created in Step 2
 await message({
   process: ANT_PROCESS_ID,
   tags: [
@@ -824,6 +816,7 @@ await message({
     { name: 'Recipient', value: MARKETPLACE_PROCESS_ID },
     { name: 'Quantity', value: '1' },
     { name: 'X-Intent-Id', value: intentId },
+    { name: 'X-Order-Action', value: 'Create-Order' },
   ],
   signer: createDataItemSigner(wallet),
 });
@@ -839,8 +832,6 @@ const intentMsgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
     { name: 'Action', value: 'Create-Intent' },
-    { name: 'X-Intent-Action', value: 'Create-Order' },
-    { name: 'X-Intent-Swap-Token', value: ARIO_PROCESS_ID },
     { name: 'X-Intent-Quantity', value: '1' },
     { name: 'X-Intent-Order-Type', value: 'dutch' },
     { name: 'X-Intent-Price', value: '50000000000' }, // Start: 50 ARIO
@@ -851,7 +842,8 @@ const intentMsgId = await message({
   signer: createDataItemSigner(wallet),
 });
 
-// ... get intent ID and transfer ANT as in Example 2
+// Then get intent ID and transfer ANT
+// (see Example 2 for complete ANT transfer code - only need X-Intent-Id and X-Order-Action)
 ```
 
 ### Example 4: English Auction
@@ -862,8 +854,6 @@ const intentMsgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
     { name: 'Action', value: 'Create-Intent' },
-    { name: 'X-Intent-Action', value: 'Create-Order' },
-    { name: 'X-Intent-Swap-Token', value: ARIO_PROCESS_ID },
     { name: 'X-Intent-Quantity', value: '1' },
     { name: 'X-Intent-Order-Type', value: 'english' },
     { name: 'X-Intent-Price', value: '10000000000' }, // Starting bid: 10 ARIO
@@ -872,7 +862,8 @@ const intentMsgId = await message({
   signer: createDataItemSigner(wallet),
 });
 
-// ... get intent ID and transfer ANT
+// Then get intent ID and transfer ANT
+// (see Example 2 for complete ANT transfer code - only need X-Intent-Id and X-Order-Action)
 
 // Bidders place bids (must increment by at least 1 ARIO)
 await message({
@@ -904,11 +895,11 @@ await message({
 
 Before running the tests, ensure you have the following installed:
 
-1. **Lua 5.3**: Install Lua for your operating system
-   - **macOS**: `brew install lua@5.3`
-   - **Ubuntu/Debian**: `sudo apt-get install lua5.3`
-   - **CentOS/RHEL**: `sudo yum install lua53`
-   - **Windows**: Download from [Lua.org](https://www.lua.org/download.html) or use [Chocolatey](https://chocolatey.org/): `choco install lua53`
+1. **Lua 5.3 and LuaRocks**: Use the provided installation script
+   ```bash
+   ./scripts/install-lua-deps.sh
+   ```
+   This script automatically installs Lua 5.3.1 and LuaRocks 3.9.1 for your operating system (macOS, Linux, or Windows via MSYS2).
 
 ### Running Tests
 
@@ -962,12 +953,6 @@ Before deploying, ensure you have:
    ```
 
 2. **Wallet file**: An Arweave wallet JSON file for deployment. You can generate one simply by running `aos` in terminal. It should be created in `~/.aos.json`.
-
-3. **Environment variables**: Look for `CHANGEME` in code to change required variables:
-```
-# This is the ARIO token process address.
-ARIO_TOKEN_PROCESS_ID=
-```
 
 ### Deployment Steps
 

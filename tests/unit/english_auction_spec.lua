@@ -291,35 +291,40 @@ describe('English Auction', function()
 			},
 		}
 
-			-- Add to OrderIndex for O(1) lookup
-			_G.OrderIndex['auction-1'] = {
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-			}
+		-- Add to OrderIndex for O(1) lookup
+		_G.OrderIndex['auction-1'] = {
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+		}
 
-			ucm.createOrder({
-				orderId = 'bid-1',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-			sender = 'bidder-1',
-			quantity = '1100000000000',
-			createdAt = 1735689601000,
-			blockheight = 123456790,
-			orderType = 'english',
-		requestedOrderId = 'auction-1',
-		msg = { Id = 'test-msg-9', Owner = 'bidder-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '1100000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-		})
+		-- Setup bidder's ARIO balance
+		_G.ARIOBalances['bidder-1'] = {
+			balance = '2000000000000', -- 2000 ARIO available
+			orders = {},
+		}
 
-	-- Bid should update auction highest bid and add to UserOrdersIndex
-	local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-	-- Note: This test uses OLD Credit-Notice flow, not internal balance flow
-	-- Old flow doesn't use EnglishAuctionBalances (tokens came via Credit-Notice)
-	local highestBid = english_auction.getHighestBid(auction.id)
-	assert.is_not_nil(highestBid)
-	---@diagnostic disable-next-line: need-check-nil
-	assert.are.equal('bidder-1', highestBid.bidder)
-	---@diagnostic disable-next-line: need-check-nil
-	assert.are.equal('1100000000000', highestBid.amount)
+		-- Use bidOnEnglishAuctionHandler (correct handler for English auction bids)
+		local bidMsg = {
+			Id = 'test-msg-9',
+			From = 'bidder-1',
+			Owner = 'bidder-1',
+			Timestamp = 1735689601000,
+			Tags = {
+				['Order-Id'] = 'auction-1',
+				['Bid-Amount'] = '1100000000000',
+			},
+		}
+
+		english_auction.bidOnEnglishAuctionHandler(bidMsg)
+
+		-- Bid should update auction highest bid in internal balances
+		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
+		local highestBid = english_auction.getHighestBid(auction.id)
+		assert.is_not_nil(highestBid)
+		---@diagnostic disable-next-line: need-check-nil
+		assert.are.equal('bidder-1', highestBid.bidder)
+		---@diagnostic disable-next-line: need-check-nil
+		assert.are.equal('1100000000000', highestBid.amount)
 	-- Should be added to order.bids
 	assert.is_not_nil(auction.bids)
 	assert.is_true(auction.bids['bidder-1'])
@@ -351,42 +356,49 @@ describe('English Auction', function()
 			},
 		}
 
-			-- Add to OrderIndex for O(1) lookup
-			OrderIndex['auction-1'] = {
-				dominantToken = ANT_TOKEN,
-				swapToken = ARIO_TOKEN,
-			}
+		-- Add to OrderIndex for O(1) lookup
+		OrderIndex['auction-1'] = {
+			dominantToken = ANT_TOKEN,
+			swapToken = ARIO_TOKEN,
+		}
 
-		-- Add bid directly to ARIOBalances (new architecture)
+		-- Setup first bidder's locked bid in ARIOBalances
 		_G.ARIOBalances['bidder-1'] = {
 			balance = '0',
 			orders = {
-				['auction-1'] = '1100000000000',
+				['auction-1'] = '1100000000000', -- First bid: 1100 ARIO
 			},
 		}
 
-		ucm.createOrder({
-			orderId = 'bid-2',
-			dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
-			swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-			sender = 'bidder-2',
-			quantity = '1101000000000', -- Exactly 1 ARIO more
-			createdAt = 1735689602000,
-			blockheight = 123456791,
-			orderType = 'english',
-		requestedOrderId = 'auction-1',
-		msg = { Id = 'test-msg-10', Owner = 'bidder-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '1101000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-		})
+		-- Setup second bidder's ARIO balance
+		_G.ARIOBalances['bidder-2'] = {
+			balance = '2000000000000', -- 2000 ARIO available
+			orders = {},
+		}
 
-	-- Bid should be accepted
-	local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
-	local highestBid = english_auction.getHighestBid(auction.id)
-	assert.is_not_nil(highestBid)
-	---@diagnostic disable-next-line: need-check-nil
-	assert.are.equal('bidder-2', highestBid.bidder)
-	---@diagnostic disable-next-line: need-check-nil
-	assert.are.equal('1101000000000', highestBid.amount)
-		end)
+		-- Place new bid using bidOnEnglishAuctionHandler
+		local bidMsg = {
+			Id = 'test-msg-10',
+			From = 'bidder-2',
+			Owner = 'bidder-2',
+			Timestamp = 1735689602000,
+			Tags = {
+				['Order-Id'] = 'auction-1',
+				['Bid-Amount'] = '1101000000000', -- Exactly 1 ARIO more
+			},
+		}
+
+		english_auction.bidOnEnglishAuctionHandler(bidMsg)
+
+		-- Bid should be accepted and become the new highest bid
+		local auction = Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['auction-1']
+		local highestBid = english_auction.getHighestBid(auction.id)
+		assert.is_not_nil(highestBid)
+		---@diagnostic disable-next-line: need-check-nil
+		assert.are.equal('bidder-2', highestBid.bidder)
+		---@diagnostic disable-next-line: need-check-nil
+		assert.are.equal('1101000000000', highestBid.amount)
+	end)
 	end)
 
 	describe('Helper functions', function()

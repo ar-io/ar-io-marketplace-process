@@ -33,7 +33,7 @@ constants.FEE = {
 	AMOUNT_NUMERATOR = 5, -- Fee amount = amount * 5 / 10000 (0.05%)
 	AMOUNT_DENOMINATOR = 10000,
 	LISTING_FEE_ARIO = '1000000000', -- 1 ARIO = 1000000000 mARIO
-	LISTING_FEE_MULTIPLIER_HOURS = 1, -- 1 day is one listing fee
+	LISTING_FEE_MULTIPLIER_HOURS = 1, -- 1 hour is one listing fee (1 ARIO per hour)
 }
 
 -- Pagination constants
@@ -69,7 +69,6 @@ constants.QUANTITY = {
 -- Auction and bidding constants
 constants.AUCTION = {
 	MINIMUM_BID_INCREMENT = '1000000000', -- Minimum bid increment in ARIO (1 ARIO = 1000000000 mARIO)
-	ANT_EXACT_QUANTITY = 1, -- ANT tokens must trade in exact units of 1 (deprecated, use constants.QUANTITY.ANT_EXACT_AMOUNT)
 }
 
 -- Intent status constants
@@ -87,85 +86,17 @@ constants.INTENT_TTL_MS = constants.TIME.ONE_DAY_MS
 
 -- Listing expiration limits
 constants.LISTING = {
-	
+	MIN_EXPIRATION_MS = constants.TIME.ONE_HOUR_MS, -- 1 hour minimum (used for clamping and base fee)
 	MAX_EXPIRATION_MS = constants.TIME.THIRTY_DAYS_MS, -- 30 days in milliseconds
 }
 
--- Expected message constants
-constants.EXPECTED_MESSAGES = {
-	DEBIT_NOTICE = 'Debit-Notice', -- Expected debit notice from token process
-}
-
--- Action name constants
+-- Action name constants (only actively used actions)
 constants.ACTIONS = {
-	-- Order actions
-	ORDER_SUCCESS = 'Order-Success',
-	ORDER_ERROR = 'Order-Error',
-	VALIDATION_ERROR = 'Validation-Error',
-	SETTLEMENT_ERROR = 'Settlement-Error',
-	INPUT_ERROR = 'Input-Error',
 	-- Auction actions
-	BID_SUCCESS = 'Bid-Success',
-	BID_RETURNED = 'Bid-Returned',
 	BID_PLACED = 'Bid-Placed',
 	BID_UPDATED = 'Bid-Updated',
-	BID_ON_ENGLISH_AUCTION = 'Bid-On-English-Auction',
-	AUCTION_WON = 'Auction-Won',
-	SETTLEMENT_SUCCESS = 'Settlement-Success',
-	-- Transfer actions
-	TRANSFER = 'Transfer',
-	CREDIT_NOTICE = 'Credit-Notice',
-	DEBIT_NOTICE = 'Debit-Notice',
-	TRANSFER_ERROR = 'Transfer-Error',
-	INVALID_TRANSFER_NOTICE = 'Invalid-Transfer-Notice',
 	-- Balance actions
-	WITHDRAW_ARIO = 'Withdraw-Ario',
-	-- Read actions
-	READ_SUCCESS = 'Read-Success',
-	ORDER_NOT_FOUND = 'Order-Not-Found',
-	-- Notice actions
-	VOLUME_NOTICE = 'Volume-Notice',
-	MOST_TRADED_TOKENS_RESULT = 'Most-Traded-Tokens-Result',
-	TABLE_LENGTHS_RESULT = 'Table-Lengths-Result',
-	INVALID_NOTICE = 'Invalid-{Action}-Notice', -- Template for invalid action notices
 	DEPOSIT = 'Deposit',
-}
-
--- Tag name constants
-constants.TAGS = {
-	-- Common tags
-	STATUS = 'Status',
-	MESSAGE = 'Message',
-	-- Intent tags
-	INTENT_ID = 'X-Intent-Id',
-	INTENT_ACTION = 'X-Intent-Action',
-	INTENT_ORDER_TYPE = 'X-Intent-Order-Type',
-	INTENT_SWAP_TOKEN = 'X-Intent-Swap-Token',
-	INTENT_QUANTITY = 'X-Intent-Quantity',
-	INTENT_PRICE = 'X-Intent-Price',
-	INTENT_EXPIRATION_TIME = 'X-Intent-Expiration-Time',
-	INTENT_MINIMUM_PRICE = 'X-Intent-Minimum-Price',
-	INTENT_DECREASE_INTERVAL = 'X-Intent-Decrease-Interval',
-	INTENT_REQUESTED_ORDER_ID = 'X-Intent-Requested-Order-Id',
-	INTENT_ORDER_ID = 'X-Intent-Order-Id',
-	INTENT_DOMINANT_TOKEN = 'X-Intent-Dominant-Token',
-	-- Order tags
-	ORDER_ACTION = 'X-Order-Action',
-	ORDER_ID = 'Order-Id',
-	ORDER_TYPE = 'X-Order-Type',
-	SWAP_TOKEN = 'X-Swap-Token',
-	DOMINANT_TOKEN = 'Dominant-Token',
-	EXPIRATION_TIME = 'X-Expiration-Time',
-	MINIMUM_PRICE = 'X-Minimum-Price',
-	DECREASE_INTERVAL = 'X-Decrease-Interval',
-	REQUESTED_ORDER_ID = 'X-Requested-Order-Id',
-	PRICE = 'X-Price',
-	TRANSFER_DENOMINATION = 'X-Transfer-Denomination',
-}
-
--- Token denomination constants
-constants.TOKEN = {
-	DENOMINATION_DIVISOR = 1000000000000, -- Divisor for token denomination (12 decimals)
 }
 
 return constants

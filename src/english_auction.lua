@@ -267,9 +267,9 @@ function english_auction.settleAuction(args)
 	-- Record the fee
 	utils.accrueFee(tostring(feeAmount))
 	
-	-- Transfer ANT to winner via Credit-Notice with intent tracking (ANT came via Credit-Notice)
+	-- Transfer ANT to winner via Credit-Notice (ANT came via Credit-Notice)
 	local ucm = require('ucm')
-	ucm.transferWithIntent(winningBidder, tostring(calculatedFillAmount), order.token, args.msg)
+	ucm.transferExternal(winningBidder, tostring(calculatedFillAmount), order.token, args.msg)
 
 	-- Record the settlement directly on the order
 	order.settlement = {

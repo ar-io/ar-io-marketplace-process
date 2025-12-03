@@ -133,7 +133,7 @@ end
 3. Marketplace sends `Transfer` to ARIO process
 4. ARIO process sends `Debit-Notice` to marketplace (informational only)
 
-**No intent tracking required** - withdrawals use `ucm.transfer()` (not `ucm.transferWithIntent()`) because ARIO withdrawals don't need completion tracking. The balance is deducted immediately and the transfer is fire-and-forget.
+**No intent tracking required** - withdrawals use `ucm.transfer()` (not `ucm.transferExternal()`) because ARIO withdrawals don't need completion tracking. The balance is deducted immediately and the transfer is fire-and-forget.
 
 **Rationale**: If ARIO transfer fails, it's an ARIO process issue, not a marketplace concern. Users can retry withdrawal.
 

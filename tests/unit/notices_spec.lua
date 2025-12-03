@@ -175,7 +175,7 @@ describe('Notices Module', function()
 		it('should validate sender matches intent initiator', function()
 			-- Create intent
 			local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intent = intents.createIntent(msg, {})
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({
@@ -198,7 +198,7 @@ describe('Notices Module', function()
 		it('should validate intent TTL not expired', function()
 			-- Create intent with TTL
 			local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intent = intents.createIntent(msg, {})
 			local intentId = intent.intentId
 			-- Manually set TTL
 			Intents[intentId].ttl = 2000
@@ -225,7 +225,7 @@ describe('Notices Module', function()
 			-- Create intent with valid sender for intent creation
 			ARIOBalances['short-12345678901234567890123456789012345678'] = { balance = '10000000000', orders = {} }
 			local msg = { From = 'short-12345678901234567890123456789012345678', Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intent = intents.createIntent(msg, {})
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({
@@ -248,7 +248,7 @@ describe('Notices Module', function()
 		it('should validate quantity is valid amount', function()
 			-- Create intent (long user already funded in before_each)
 			local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intent = intents.createIntent(msg, {})
 			local intentId = intent.intentId
 
 			local msg = createMockMsg({
@@ -280,34 +280,39 @@ describe('Notices Module', function()
 		end)
 
 		it('should create ANT order with valid Credit-Notice', function()
-			-- Create intent with valid 43-char address
-			local validUser = 'user-12345678901234567890123456789012345678'
-			local validAntToken = 'ant-token-123456789012345678901234567890ABC'
-			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
-			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
-			local intentId = intent.intentId
+		-- Create intent with valid 43-char address and order params
+		local validUser = 'user-12345678901234567890123456789012345678'
+		local validAntToken = 'ant-token-123456789012345678901234567890ABC'
+		ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
+		local msg = { From = validUser, Timestamp = 1000 }
+		
+		-- Order params go in the intent now
+		local orderParams = {
+			swapToken = 'ario-token-123456789012345678901234567890AB',
+			orderType = 'fixed',
+			price = '1000',
+			expirationTime = '2000',
+			quantity = '1',
+		}
+		local intent = intents.createIntent(msg, orderParams)
+		local intentId = intent.intentId
 
-			-- Add ARIO balance for matching
-			ARIOBalances['seller-123'] = {
-				balance = '10000',
-				orders = {}
-			}
+		-- Add ARIO balance for matching
+		ARIOBalances['seller-123'] = {
+			balance = '10000',
+			orders = {}
+		}
 
-			local creditMsg = createMockMsg({
-				From = validAntToken,
-				Tags = {
-					Sender = validUser,
-					Quantity = '1',
-					['X-Intent-Id'] = intentId,
-					['X-Order-Action'] = 'Create-Order',
-					['X-Swap-Token'] = 'ario-token-123456789012345678901234567890AB', -- Use the ARIO token ID
-					['X-Order-Type'] = 'fixed',
-					['X-Price'] = '1000',
-					['X-Expiration-Time'] = '2000',
-					['From-Module'] = TEST_MODULE_ID,
-				},
-			})
+		local creditMsg = createMockMsg({
+			From = validAntToken,
+			Tags = {
+				Sender = validUser,
+				Quantity = '1',
+				['X-Intent-Id'] = intentId,
+				['X-Order-Action'] = 'Create-Order',
+				['From-Module'] = TEST_MODULE_ID,
+			},
+		})
 			
 			notices.creditNoticeHandler(creditMsg)
 			
@@ -324,15 +329,17 @@ describe('Notices Module', function()
 			assert.is_true(creditNoticeProcessed)
 		end)
 
-		it('should validate ARIO in trade', function()
+		it('should always use ARIO as swap token for intent-based orders', function()
 			-- Create intent with valid 43-char address
 			local validUser = 'user-45678901234567890123456789012345678901'
 			local validAntToken = 'ant-token-4567890123456789012345678901234567'
 			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
 			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intent = intents.createIntent(msg, {})
 			local intentId = intent.intentId
 
+			-- Note: swapToken is always ARIO (hardcoded in Credit-Notice handler, not stored in orderParams)
+			
 			local creditMsg = createMockMsg({
 				From = validAntToken,
 				Tags = {
@@ -340,22 +347,20 @@ describe('Notices Module', function()
 					Quantity = '1',
 					['X-Intent-Id'] = intentId,
 					['X-Order-Action'] = 'Create-Order',
-					['X-Swap-Token'] = 'other-token-567890123456789012345678901234',  -- Not ARIO but valid length
 					['X-Order-Type'] = 'fixed',
 					['X-Price'] = '1000',
 					['From-Module'] = TEST_MODULE_ID,
 				},
 			})
 
-			-- Should throw error about ARIO requirement
+			-- Should succeed because swapToken is always ARIO
 			local success, err = pcall(function()
 				notices.creditNoticeHandler(creditMsg)
 			end)
 			
-			assert.is_false(success)
-			assert.is_not_nil(err)
+			assert.is_true(success)
 			
-			-- Check that error was about ARIO requirement
+			-- Verify no refund was sent (order creation succeeded)
 			local refundSent = false
 			for _, sentMsg in ipairs(testGlobals.sentMessages) do
 				if sentMsg.Action == 'Transfer' then
@@ -372,7 +377,7 @@ describe('Notices Module', function()
 			local validAntToken = 'ant-token-7890123456789012345678901234567890'
 			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
 			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intent = intents.createIntent(msg, {})
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({
@@ -396,238 +401,6 @@ describe('Notices Module', function()
 		end)
 	end)
 
-	describe('debitNoticeHandler', function()
-		it('should resolve child intent on Debit-Notice', function()
-			-- Create parent intent with valid 43-char address
-			local validUser = 'user-1234567890123456789012345678901234567'
-			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
-			local parentMsg = { From = validUser, Timestamp = 1000 }
-			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
-			local parentId = parentIntent.intentId
-
-			-- Create child intent
-			local childMsg = { From = validUser, Timestamp = 1000 }
-			local childIntent = intents.createChildIntent(parentId, childMsg, 'ant-token-123', {})
-			local childId = childIntent.intentId
-
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {
-					['X-Intent-Id'] = childId,
-				},
-			})
-
-			notices.debitNoticeHandler(msg)
-
-			-- Child should be resolved (and pruned, so it won't exist anymore)
-			local child = intents.getIntentById(childId)
-			-- Intent is pruned after resolution, so it should be nil
-			assert.is_nil(child)
-			
-			-- Should send acknowledgment
-			
-			local debitProcessed = false
-			for _, sentMsg in ipairs(testGlobals.sentMessages) do
-				if sentMsg.Action == 'Debit-Notice-Processed' then
-					debitProcessed = true
-					-- In our mock, Tags are stored directly on the message object, not in msg.Tags
-					assert.are.equal(childId, sentMsg['Intent-Id'])
-					assert.are.equal(parentId, sentMsg['Parent-Intent-Id'])
-					break
-				end
-			end
-			assert.is_true(debitProcessed)
-		end)
-
-		it('should return early if no X-Intent-Id', function()
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {},
-			})
-
-			-- Should not crash
-			notices.debitNoticeHandler(msg)
-		end)
-
-		it('should return early if invalid intent ID format', function()
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {
-					['X-Intent-Id'] = 'invalid',
-				},
-			})
-
-			-- Should not crash
-			notices.debitNoticeHandler(msg)
-		end)
-
-		it('should return early if intent not found', function()
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {
-					['X-Intent-Id'] = 'intent-nonexistent',
-				},
-			})
-
-			-- Should not crash
-			notices.debitNoticeHandler(msg)
-		end)
-
-		it('should validate expected sender matches', function()
-			-- Create parent intent with valid address
-			ARIOBalances['user-999-12345678901234567890123456789012345678901234567890'] = { balance = '10000000000', orders = {} }
-			local parentMsg = { From = 'user-999-12345678901234567890123456789012345678901234567890', Timestamp = 1000 }
-			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
-			local parentId = parentIntent.intentId
-
-			-- Create child intent
-			local childMsg = { From = 'user-123', Timestamp = 1000 }
-			local childIntent = intents.createChildIntent(parentId, childMsg, 'ant-token-123', {})
-			local childId = childIntent.intentId
-
-			local msg = createMockMsg({
-				From = 'wrong-token-456', -- Wrong sender
-				Tags = {
-					['X-Intent-Id'] = childId,
-				},
-			})
-
-			notices.debitNoticeHandler(msg)
-
-		-- Child should NOT be resolved
-		local child = intents.getIntentById(childId)
-		assert(child)
-		assert.are.equal('pending', child.status)
-		end)
-	end)
-
-	describe('transferErrorHandler', function()
-		before_each(function()
-			-- Fund users for listing fees
-			ARIOBalances['user-123'] = { balance = '10000000000', orders = {} }
-		end)
-
-		it('should fail child intent on Transfer-Error', function()
-			-- Fund user for listing fee (already done in before_each)
-			ARIOBalances['user-123'] = { balance = '10000000000', orders = {} }
-			
-			-- Create parent intent
-			local parentMsg = { From = 'user-123', Timestamp = 1000 }
-			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
-			local parentId = parentIntent.intentId
-
-			-- Create child intent
-			local childMsg = { From = 'user-123', Timestamp = 1000 }
-			local childIntent = intents.createChildIntent(parentId, childMsg, 'ant-token-123', {})
-			local childId = childIntent.intentId
-
-			-- Verify intents exist before error
-			assert.is_not_nil(intents.getIntentById(childId))
-			assert.is_not_nil(intents.getIntentById(parentId))
-
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {
-					['X-Intent-Id'] = childId,
-					Message = 'Transfer failed: insufficient balance',
-				},
-			})
-
-			notices.transferErrorHandler(msg)
-
-			-- After failing, intents are pruned (removed from Intents table)
-			-- Check that they were removed
-			assert.is_nil(intents.getIntentById(childId))
-			assert.is_nil(intents.getIntentById(parentId))
-		end)
-
-		it('should return early if no X-Intent-Id', function()
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {},
-			})
-
-			-- Should not crash
-			notices.transferErrorHandler(msg)
-		end)
-
-		it('should return early if invalid intent ID format', function()
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {
-					['X-Intent-Id'] = 'invalid',
-				},
-			})
-
-			-- Should not crash
-			notices.transferErrorHandler(msg)
-		end)
-
-		it('should return early if intent not found', function()
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {
-					['X-Intent-Id'] = 'intent-nonexistent',
-				},
-			})
-
-			-- Should not crash
-			notices.transferErrorHandler(msg)
-		end)
-
-		it('should return early if intent is not a child intent', function()
-			-- Create parent intent (not child)
-			local parentMsg = { From = 'user-123', Timestamp = 1000 }
-			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
-			local parentId = parentIntent.intentId
-
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Tags = {
-					['X-Intent-Id'] = parentId,
-					Message = 'Some error',
-				},
-			})
-
-			notices.transferErrorHandler(msg)
-
-		-- Parent should NOT be failed
-		local parent = intents.getIntentById(parentId)
-		assert(parent)
-		assert.are_not.equal('failed', parent.status)
-		end)
-
-		it('should use Data field if Message/Error tags not present', function()
-			-- Create parent intent
-			local parentMsg = { From = 'user-123', Timestamp = 1000 }
-			local parentIntent = intents.createParentIntent(parentMsg, 'Create-Order', {})
-			local parentId = parentIntent.intentId
-
-			-- Create child intent
-			local childMsg = { From = 'user-123', Timestamp = 1000 }
-			local childIntent = intents.createChildIntent(parentId, childMsg, 'ant-token-123', {})
-			local childId = childIntent.intentId
-
-			-- Verify child intent exists before error
-			local childBefore = intents.getIntentById(childId)
-			assert.is_not_nil(childBefore)
-
-			local msg = createMockMsg({
-				From = 'ant-token-123',
-				Data = 'Error in Data field',
-				Tags = {
-					['X-Intent-Id'] = childId,
-				},
-			})
-
-			notices.transferErrorHandler(msg)
-
-			-- After failing, intents are pruned
-			-- Just verify handler executed without crashing
-			assert.is_nil(intents.getIntentById(childId))
-		end)
-	end)
-
 	describe('creditNoticeHandler - Whitelist Enforcement', function()
 		local TEST_MODULE_WHITELISTED = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
 		local TEST_MODULE_NOT_WHITELISTED = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234'
@@ -641,27 +414,32 @@ describe('Notices Module', function()
 		end)
 
 		it('should create ANT order when module is whitelisted', function()
-			local validUser = 'user-whitelist-test123456789012345678901234'
-			local validAntToken = 'ant-token-whitelist-test1234567890123456789'
-			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
-			
-			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
-			local intentId = intent.intentId
+		local validUser = 'user-whitelist-test123456789012345678901234'
+		local validAntToken = 'ant-token-whitelist-test1234567890123456789'
+		ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
+		
+		local msg = { From = validUser, Timestamp = 1000 }
+		
+		-- Order params go in the intent now
+		local orderParams = {
+			swapToken = _G.ARIO_TOKEN_PROCESS_ID,
+			orderType = 'fixed',
+			price = '1000',
+			quantity = '1',
+		}
+		local intent = intents.createIntent(msg, orderParams)
+		local intentId = intent.intentId
 
-			local creditMsg = createMockMsg({
-				From = validAntToken,
-				Tags = {
-					Sender = validUser,
-					Quantity = '1',
-					['X-Intent-Id'] = intentId,
-					['X-Order-Action'] = 'Create-Order',
-					['X-Swap-Token'] = _G.ARIO_TOKEN_PROCESS_ID,
-					['X-Order-Type'] = 'fixed',
-					['X-Price'] = '1000',
-					['From-Module'] = TEST_MODULE_WHITELISTED,
-				},
-			})
+		local creditMsg = createMockMsg({
+			From = validAntToken,
+			Tags = {
+				Sender = validUser,
+				Quantity = '1',
+				['X-Intent-Id'] = intentId,
+				['X-Order-Action'] = 'Create-Order',
+				['From-Module'] = TEST_MODULE_WHITELISTED,
+			},
+		})
 			
 			notices.creditNoticeHandler(creditMsg)
 			
@@ -684,7 +462,7 @@ describe('Notices Module', function()
 			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
 			
 			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createParentIntent(msg, 'Create-Order', {})
+			local intent = intents.createIntent(msg, {})
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({

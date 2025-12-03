@@ -203,7 +203,7 @@ describe('Balance Management', function()
 			assert.are.equal('3000', resultData.Quantity)
 			assert.are.equal('user-withdraw', resultData.Recipient)
 
-			-- Should send Transfer message (ucm.transfer, not ucm.transferWithIntent)
+			-- Should send Transfer message (ucm.transfer, not ucm.transferExternal)
 			assert.are.equal(1, #sentMessages) -- Only Transfer (notice sent by wrapper)
 			
 			-- Message should be the Transfer (no X-Intent-Id tag)

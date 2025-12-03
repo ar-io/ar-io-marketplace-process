@@ -79,7 +79,7 @@ function notices.creditNoticeHandler(msg)
 	end
 	
 	-- Resolve intent (pending → active)
-	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp, msg)
+	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp)
 
 	-- Whitelist check for ANT order creation
 	if not _utils.isArioToken(msg.From) and msg.Tags['X-Order-Action'] == 'Create-Order' then
@@ -109,31 +109,39 @@ function notices.creditNoticeHandler(msg)
 
 	-- If Order-Action then create the order
 	if msg.Tags['X-Order-Action'] == 'Create-Order' then
+		-- Get order parameters from the intent (stored during Create-Intent)
+		local orderParams = intent.orderParams or {}
+		
+		-- Swap token is always ARIO for intent-based ANT sell orders
+		local swapToken = ARIO_TOKEN_PROCESS_ID
+		
 		-- Validate that at least one token in the trade is ARIO
-		local isArioValid, arioError = _utils.validateArioInTrade(msg.From, msg.Tags['X-Swap-Token'])
+		local isArioValid, arioError = _utils.validateArioInTrade(msg.From, swapToken)
 		if not isArioValid then
 			_utils.refundAndError(msg, sender, arioError or 'At least one token in the trade must be ARIO')
 			return
 		end
 
-	local orderArgs = {
-		orderId = msg.Id,
-		dominantToken = msg.From,
-		swapToken = msg.Tags['X-Swap-Token'],
-		sender = sender,
-		quantity = quantity,
-		createdAt = msg.Timestamp,
-		blockheight = msg['Block-Height'],
-		orderType = msg.Tags['X-Order-Type'] or 'fixed',
-		expirationTime = msg.Tags['X-Expiration-Time'] and tonumber(msg.Tags['X-Expiration-Time']),
-		minimumPrice = msg.Tags['X-Minimum-Price'],
-		decreaseInterval = msg.Tags['X-Decrease-Interval'],
-		requestedOrderId = msg.Tags['X-Requested-Order-Id'],
-		msg = msg, -- Pass msg context for intent tracking
+		-- Build order arguments from intent parameters and ANT transfer context
+		local orderArgs = {
+			orderId = msg.Id,
+			dominantToken = msg.From, -- ANT process ID from Credit-Notice
+			swapToken = swapToken, -- From intent.orderParams
+			sender = sender,
+			quantity = quantity, -- From ANT transfer
+			createdAt = msg.Timestamp,
+			blockheight = msg['Block-Height'],
+			orderType = orderParams.orderType or 'fixed',
+			expirationTime = orderParams.expirationTime and tonumber(orderParams.expirationTime),
+			minimumPrice = orderParams.minimumPrice,
+			decreaseInterval = orderParams.decreaseInterval,
+			requestedOrderId = msg.Tags['X-Requested-Order-Id'], -- Only for ARIO buy orders (not ANT sells)
+			price = orderParams.price,
+			msg = msg, -- Pass msg context for intent tracking
 		}
 
-		if msg.Tags['X-Price'] then
-			orderArgs.price = msg.Tags['X-Price']
+		if orderParams.price then
+			orderArgs.price = orderParams.price
 		end
 		if msg.Tags['X-Transfer-Denomination'] then
 			orderArgs.transferDenomination = msg.Tags['X-Transfer-Denomination']
@@ -169,34 +177,6 @@ function notices.creditNoticeHandler(msg)
 			['Order-Status'] = 'listed',
 		})
 	end
-end
-
--- Handler: Transfer-Error - Handles transfer failures
--- Transfer-Error is the token spec aligned error notice sent when a transfer fails
-function notices.transferErrorHandler(msg)
-	local _utils = require('utils')
-	local intents = require('intents')
-
-	local intentId = msg.Tags['X-Intent-Id']
-	if not intentId then
-		return
-	end
-
-	-- Validate intent ID format
-	if not _utils.isValidIntentId(intentId) then
-		return
-	end
-
-	local intent = intents.getIntentById(intentId)
-	if not intent then
-		return
-	end
-
-	-- Extract failure reason
-	local reason = msg.Tags.Message or msg.Tags.Error or msg.Data or 'Transfer failed'
-
-	-- Fail intent with reason
-	intents.failIntent(intentId, reason, msg)
 end
 
 return notices

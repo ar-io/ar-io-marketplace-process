@@ -308,7 +308,7 @@ end
 --- Send wrapper for ao.send/msg.reply
 --- @param msg Message The original message context
 --- @param sendParams SendParams The parameters to pass to ao.send
---- Note: For ANT transfers with intent tracking, use ucm.transferWithIntent instead
+--- Note: For ANT transfers, use ucm.transferExternal instead
 function utils.Send(msg, sendParams)
 	-- Validate message structure
 	utils.validateMessage(sendParams)
@@ -341,7 +341,7 @@ function utils.checkValidExpirationTime(expirationTime, timestamp)
 
 	-- Check if expiration time is greater than current timestamp
 	local status, result = pcall(function()
-		return bint(expirationTime) <= bint(timestamp)
+		return tonumber(expirationTime) <= tonumber(timestamp)
 	end)
 
 	if not status then
@@ -391,7 +391,7 @@ function utils.refundAndError(msg, sender, message, action)
 	-- Refund the tokens if there's a valid quantity (ANT tokens via Credit-Notice with intent tracking)
 	if msg.Tags.Quantity and msg.From and utils.checkValidAmount(msg.Tags.Quantity) then
 		local ucm = require('ucm')
-		ucm.transferWithIntent(sender, tostring(msg.Tags.Quantity), msg.From, msg)
+		ucm.transferExternal(sender, tostring(msg.Tags.Quantity), msg.From, msg)
 	end
 	
 	-- Send error notice
@@ -843,10 +843,10 @@ function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg
 			local balances = require('balances')
 			balances.increaseBalance(TREASURY_ADDRESS, tostring(feeAmount))
 		else
-			-- For non-ARIO tokens (ANTs), use external transfer with intent tracking
+			-- For non-ARIO tokens (ANTs), use external transfer
 			local msgContext = msg or { Tags = {} }
 			local ucm = require('ucm')
-			ucm.transferWithIntent(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
+			ucm.transferExternal(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
 		end
 		
 		-- Track the accrued fee

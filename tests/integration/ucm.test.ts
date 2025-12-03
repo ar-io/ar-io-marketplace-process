@@ -83,18 +83,13 @@ describe('UCM (Universal Content Marketplace)', () => {
     });
 
     it('should support filtering by trading pair', async () => {
-      const result = await marketplaceProcess.getOrders({
-        dominantToken: TEST_ANT_TOKEN,
-        swapToken: TEST_ARIO_TOKEN,
-      });
+      const result = await marketplaceProcess.getOrders({});
 
       assert(result !== undefined, 'Result should exist');
     });
 
     it('should support combined filters (pair + status)', async () => {
       const result = await marketplaceProcess.getOrders({
-        dominantToken: TEST_ANT_TOKEN,
-        swapToken: TEST_ARIO_TOKEN,
         status: 'listed',
       });
 
@@ -151,7 +146,6 @@ describe('UCM (Universal Content Marketplace)', () => {
           { name: 'Action', value: 'Credit-Notice' },
           { name: 'Sender', value: PROCESS_OWNER },
           { name: 'Quantity', value: '1000' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_TOKEN },
           { name: 'From', value: wrongToken }, // From doesn't match dominant token
         ],
       });
@@ -168,10 +162,7 @@ describe('UCM (Universal Content Marketplace)', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       // Create intent first
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        dominantToken: TEST_ANT_TOKEN,
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1',
         price: '1000000',
       });
@@ -188,10 +179,6 @@ describe('UCM (Universal Content Marketplace)', () => {
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
           { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_TOKEN },
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: '1000000' },
-          { name: 'X-Swap-Token', value: TEST_ARIO_TOKEN },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Non-whitelisted!
         ],
         data: '',
@@ -233,10 +220,7 @@ describe('UCM (Universal Content Marketplace)', () => {
     it('should accept Credit-Notice from whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
         orderType: 'fixed',
-        dominantToken: TEST_ANT_TOKEN,
-        swapToken: TEST_ARIO_TOKEN,
         quantity: '1',
         price: '1000000',
       });
@@ -253,10 +237,6 @@ describe('UCM (Universal Content Marketplace)', () => {
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
           { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'X-Dominant-Token', value: TEST_ANT_TOKEN },
-          { name: 'X-Order-Type', value: 'fixed' },
-          { name: 'X-Price', value: '1000000' },
-          { name: 'X-Swap-Token', value: TEST_ARIO_TOKEN },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',
@@ -322,22 +302,6 @@ describe('UCM (Universal Content Marketplace)', () => {
             result.Data.includes('not found')),
         'Error should mention order not found',
       );
-    });
-  });
-
-  describe('Order Validation', () => {
-    it('should validate ARIO requirement in trades', async () => {
-      // Create intent without ARIO should fail
-      const result = await marketplaceProcess.createIntent({
-        action: 'Create-Order',
-        orderType: 'fixed',
-        swapToken: 'non-ario-token-'.padEnd(43, 'x'),
-        quantity: '1000',
-        price: '100',
-      });
-
-      // Intent creation validation might catch this
-      assert(result, 'Result should be defined');
     });
   });
 

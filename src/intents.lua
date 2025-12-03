@@ -3,11 +3,6 @@ local bint = require('.bint')(256)
 local json = require('json')
 local constants = require('constants')
 
--- Lazy load utils to avoid circular dependency (utils → intents → utils)
-local function getUtils()
-	return require('utils')
-end
-
 --- Increment the global intent counter and return the new ID
 --- @return IntentId intentId The new intent ID
 function intents.incrementIntentCounter()
@@ -25,7 +20,7 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 	local listingFee = bint(constants.FEE.LISTING_FEE_ARIO)
 	
 	if not expirationTime then
-		-- No expiration time, use base fee (1 day minimum)
+		-- No expiration time, use base fee (1 hour minimum)
 		return tostring(listingFee), nil
 	end
 	
@@ -35,28 +30,27 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 		return nil, 'Expiration time must be a valid number'
 	end
 	
-	-- Calculate listing duration
-	local listingDurationMs = bint(expTime) - bint(currentTimestamp)
+	-- Calculate listing duration (using regular numbers for timestamps)
+	local listingDurationMs = expTime - currentTimestamp
 	
 	-- Validate duration is positive
-	if listingDurationMs <= bint(0) then
+	if listingDurationMs <= 0 then
 		return nil, 'Expiration time must be in the future'
 	end
 	
 	-- Validate duration doesn't exceed maximum (30 days)
-	if listingDurationMs > bint(constants.LISTING.MAX_EXPIRATION_MS) then
+	if listingDurationMs > constants.LISTING.MAX_EXPIRATION_MS then
 		return nil, 'Expiration time cannot exceed 30 days'
 	end
 	
 	-- Clamp minimum duration to 1 hour
-	local minimumDurationMs = bint(constants.TIME.ONE_HOUR_MS)
-	if listingDurationMs < minimumDurationMs then
-		listingDurationMs = minimumDurationMs
+	if listingDurationMs < constants.LISTING.MIN_EXPIRATION_MS then
+		listingDurationMs = constants.LISTING.MIN_EXPIRATION_MS
 	end
 	
-	-- Calculate fee based on duration
-	local listingDurationHours = tonumber(tostring(listingDurationMs / bint(constants.TIME.ONE_HOUR_MS))) -- Convert ms to hours
-	local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS * 24 -- 24 hours per day
+	-- Calculate fee based on duration (1 ARIO per hour)
+	local listingDurationHours = listingDurationMs / constants.LISTING.MIN_EXPIRATION_MS -- Convert ms to hours
+	local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS -- 1 hour per fee (1 ARIO per hour)
 	
 	-- Calculate multiplier: ceiling of (hours / hoursPerFee)
 	local feeMultiplier = math.ceil(listingDurationHours / hoursPerFee)
@@ -71,42 +65,38 @@ end
 
 --- Create an intent
 --- @param msg Message The incoming message
---- @param action string The action being performed (Create-Order, Cancel-Order, etc.)
---- @param forwardedTags table<string, any> Table of tags to forward with the intent
+--- @param orderParams OrderIntentParams User-provided order parameters (stored as-is; action in intent.action, swapToken always ARIO)
 --- @return Intent intent The created intent
-function intents.createIntent(msg, action, forwardedTags)
+function intents.createIntent(msg, orderParams)
 	local balances = require('balances')
 	
 	-- Calculate TTL (24 hours from creation)
 	local ttl = msg.Timestamp + constants.TIME.ONE_DAY_MS
 	
-	-- For Create-Order actions, calculate and charge listing fee
-	if action == 'Create-Order' then
-		local expirationTime = forwardedTags and forwardedTags['Expiration-Time']
-		
-		-- Calculate listing fee
-		local listingFee, feeError = intents.calculateListingFee(expirationTime, msg.Timestamp)
-		assert(not feeError, feeError)
-		
-		-- Validate and charge fee
-		assert(
-			balances.walletHasSufficientBalance(msg.From, listingFee),
-			'Insufficient ARIO balance for listing fee. Required: ' .. listingFee
-		)
-		balances.transfer(TREASURY_ADDRESS, msg.From, listingFee, true)
-	end
+	-- Calculate and charge listing fee
+	local expirationTime = orderParams.expirationTime
+	
+	local listingFee, feeError = intents.calculateListingFee(expirationTime, msg.Timestamp)
+	assert(not feeError, feeError)
+	
+	-- Validate and charge fee
+	assert(
+		balances.walletHasSufficientBalance(msg.From, listingFee),
+		'Insufficient ARIO balance for listing fee. Required: ' .. listingFee
+	)
+	balances.transfer(TREASURY_ADDRESS, msg.From, listingFee, true)
 	
 	local intent = {
 		intentId = intents.incrementIntentCounter(),
 		initiator = msg.From,
-		action = action,
+		action = 'Create-Order', -- Only Create-Order is supported
 		status = constants.INTENT_STATUSES.PENDING,
 		createdAt = msg.Timestamp,
 		ttl = ttl,
 		resolvedAt = nil,
 		completedAt = nil,
 		failureReason = nil,
-		forwardedTags = forwardedTags or {},
+		orderParams = orderParams, -- Always a table from createIntentHandler
 	}
 
 	Intents[intent.intentId] = intent
@@ -121,10 +111,9 @@ end
 --- Handles status transitions and pruning of intents in terminal states
 --- @param intentId IntentId The intent ID to resolve
 --- @param timestamp number The timestamp of resolution
---- @param msg table|nil Optional message context for completion notices
 --- @return boolean success Whether the resolution was successful
 --- @return table|nil resolvedIntent The resolved intent data if pruned, nil otherwise
-function intents.resolveIntent(intentId, timestamp, msg)
+function intents.resolveIntent(intentId, timestamp)
 	local intent = Intents[intentId]
 	if not intent then
 		return false
@@ -173,11 +162,10 @@ function intents.failIntent(intentId, reason, msg)
 	intent.failureReason = reason
 
 	-- Use resolveIntent to handle pruning logic centrally
-	local success, resolvedIntent = intents.resolveIntent(intentId, os.time(), msg)
+	local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
 
 	-- Send Intent-Resolved notice AFTER pruning succeeds
 	if success and resolvedIntent and msg then
-		local _utils = require('utils')
 		_utils.Send(msg, {
 			Target = resolvedIntent.initiator,
 			Action = 'Intent-Resolved',
@@ -193,8 +181,8 @@ end
 
 --- Update intent status
 --- @param intentId IntentId The intent ID
---- @param status string The new status
---- @param msg table|nil The message context (optional, for sending notices)
+--- @param status "pending"|"active"|"settling"|"completed"|"resolved"|"failed" The new status
+--- @param msg Message The message context for sending notices
 --- @return boolean success Whether the update was successful
 function intents.updateIntentStatus(intentId, status, msg)
 	local _utils = require('utils')
@@ -207,22 +195,22 @@ function intents.updateIntentStatus(intentId, status, msg)
 
 	-- Set completedAt timestamp if moving to completed
 	if status == constants.INTENT_STATUSES.COMPLETED then
-		intent.completedAt = os.time()
+		intent.completedAt = msg.Timestamp
 	end
 
 	-- Use resolveIntent to handle pruning logic centrally for terminal states
 	if status == constants.INTENT_STATUSES.COMPLETED or status == constants.INTENT_STATUSES.FAILED then
-		local success, resolvedIntent = intents.resolveIntent(intentId, os.time(), msg)
+		local success, resolvedIntent = intents.resolveIntent(intentId, msg.Timestamp)
 
 		-- Send Intent-Resolved notice AFTER pruning succeeds
-		if success and resolvedIntent and msg then
-			getUtils().Send(msg, {
+		if success and resolvedIntent then
+			_utils.Send(msg, {
 				Target = resolvedIntent.initiator,
 				Action = 'Intent-Resolved',
 				['Intent-Id'] = tostring(resolvedIntent.intentId),
 				Status = resolvedIntent.status,
 				['Intent-Action'] = resolvedIntent.action,
-				['Failure-Reason'] = resolvedIntent.failureReason or '',
+				['Failure-Reason'] = resolvedIntent.failureReason or 'unknown',
 			})
 		end
 	end
@@ -235,38 +223,6 @@ end
 --- @return Intent|nil intent The intent or nil if not found
 function intents.getIntentById(intentId)
 	return Intents[intentId]
-end
-
---- Create a send operation with intent tracking
---- Adds intent ID to the send if it exists in the context
---- @param sendParams table The send parameters (Target, Action, Tags, etc.)
---- @param handledMsg Message The original message context
---- @param forwardedTags table<string, any> Optional tags to forward (unused, kept for backwards compatibility)
---- @return table sendParams The send parameters with intent tracking added
-function intents.createSendWithIntent(sendParams, handledMsg, forwardedTags)
-	-- Extract intent from context
-	local intentId = handledMsg.Tags and handledMsg.Tags['X-Intent-Id']
-
-	if intentId then
-		-- Validate intent ID format
-		local _utils = require('utils')
-		assert(_utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format: ' .. tostring(intentId))
-
-		-- Validate intent exists
-		local intent = intents.getIntentById(intentId)
-		if intent then
-			-- Add intent ID to send params for tracking
-			sendParams.Tags = sendParams.Tags or {}
-			sendParams.Tags['X-Intent-Id'] = intentId
-
-			-- Update intent status to "settling" if currently active
-			if intent.status == constants.INTENT_STATUSES.ACTIVE then
-				intents.updateIntentStatus(intentId, constants.INTENT_STATUSES.SETTLING, handledMsg)
-			end
-		end
-	end
-
-	return sendParams
 end
 
 --- Get all pending intents
@@ -361,54 +317,61 @@ function intents.pruneIntents(now)
 end
 
 -- Handler: Create-Intent
+-- This handler is only for ANT sell orders (Create-Order only)
+-- ARIO buy orders don't use intents - they use Create-Order handler directly
+-- Action is always 'Create-Order' (assumed, not required as parameter)
 function intents.createIntentHandler(msg)
-	-- Extract X-Intent-* tags (Train-Case)
-	local intentAction = msg.Tags['X-Intent-Action']
-	assert(intentAction, 'X-Intent-Action required')
-
-	local intentParams = {
-		Action = intentAction,
-		['Order-Type'] = msg.Tags['X-Intent-Order-Type'],
-		['Swap-Token'] = msg.Tags['X-Intent-Swap-Token'],
-		Quantity = msg.Tags['X-Intent-Quantity'],
-		Price = msg.Tags['X-Intent-Price'],
-		['Expiration-Time'] = msg.Tags['X-Intent-Expiration-Time'],
-		['Minimum-Price'] = msg.Tags['X-Intent-Minimum-Price'],
-		['Decrease-Interval'] = msg.Tags['X-Intent-Decrease-Interval'],
-		['Requested-Order-Id'] = msg.Tags['X-Intent-Requested-Order-Id'],
-		['Order-Id'] = msg.Tags['X-Intent-Order-Id'], -- Required for Cancel-Order and Settle-Auction
-		['Dominant-Token'] = msg.Tags['X-Intent-Dominant-Token'],
+	-- Extract order parameters from X-Intent-* tags (Train-Case)
+	---@type OrderIntentParams
+	local orderParams = {
+		-- Order configuration
+		orderType = msg.Tags['X-Intent-Order-Type'], -- nil = defaults to 'fixed', or 'dutch'/'english'
+		quantity = msg.Tags['X-Intent-Quantity'], -- Required: amount to trade (usually '1' for ANT)
+		price = msg.Tags['X-Intent-Price'], -- Required: asking price or starting bid
+		expirationTime = msg.Tags['X-Intent-Expiration-Time'], -- Optional: Unix timestamp (min 1h, max 30 days)
+		
+		-- Dutch auction only: price decay parameters
+		minimumPrice = msg.Tags['X-Intent-Minimum-Price'], -- nil unless order-type is 'dutch'
+		decreaseInterval = msg.Tags['X-Intent-Decrease-Interval'], -- nil unless order-type is 'dutch'
 	}
+	
+	-- Determine order type (default to 'fixed')
+	local orderType = orderParams.orderType or 'fixed'
+	
+	-- Validate common required parameters (all order types)
+	assert(orderParams.quantity, 'X-Intent-Quantity required')
+	assert(orderParams.price, 'X-Intent-Price required')
 
-	-- Validate based on action type
-	if intentAction == 'Create-Order' then
-		-- Validate required parameters for Create-Order
-		assert(intentParams['Swap-Token'], 'X-Intent-Swap-Token required for Create-Order')
-		assert(intentParams.Quantity, 'X-Intent-Quantity required for Create-Order')
-
-		-- Validate expiration time format and range
-		if intentParams['Expiration-Time'] then
-			local expTime = tonumber(intentParams['Expiration-Time'])
-			assert(expTime, 'X-Intent-Expiration-Time must be a valid number')
-			assert(expTime > msg.Timestamp, 'X-Intent-Expiration-Time must be in the future')
-			
-			local maxExpiration = msg.Timestamp + constants.LISTING.MAX_EXPIRATION_MS
-			assert(expTime <= maxExpiration, 
-				'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration))
-		end
-
-		-- Note: Full validation will happen in Credit-Notice handler
-		-- This is just basic parameter presence check
-	elseif intentAction == 'Cancel-Order' then
-		assert(intentParams['Order-Id'], 'X-Intent-Order-Id required for Cancel-Order')
-	elseif intentAction == 'Settle-Auction' then
-		assert(intentParams['Order-Id'], 'X-Intent-Order-Id required for Settle-Auction')
+	-- Validate expiration time format and range (if provided)
+	if orderParams.expirationTime then
+		local expTime = tonumber(orderParams.expirationTime)
+		assert(expTime, 'X-Intent-Expiration-Time must be a valid number')
+		assert(expTime > msg.Timestamp, 'X-Intent-Expiration-Time must be in the future')
+		
+		local maxExpiration = msg.Timestamp + constants.LISTING.MAX_EXPIRATION_MS
+		assert(expTime <= maxExpiration, 
+			'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration))
+	end
+	
+	-- Validate order type-specific parameters
+	if orderType == 'dutch' then
+		assert(orderParams.minimumPrice, 'X-Intent-Minimum-Price required for dutch auction')
+		assert(orderParams.decreaseInterval, 'X-Intent-Decrease-Interval required for dutch auction')
+	elseif orderType == 'english' then
+		-- English auctions only need the common parameters (price is starting bid)
+		-- No additional validation needed here
+	elseif orderType == 'fixed' then
+		-- Fixed price orders only need the common parameters
+		-- No additional validation needed here
 	else
-		error('Invalid action: ' .. tostring(intentAction))
+		error('Invalid order type: ' .. tostring(orderType) .. '. Must be fixed, dutch, or english')
 	end
 
-	-- Create parent intent
-	local intent = intents.createIntent(msg, intentAction, intentParams)
+	-- Note: Full validation will happen in Credit-Notice handler
+	-- This is just basic parameter presence check
+
+	-- Create intent for Create-Order (action='Create-Order' and swapToken=ARIO added internally)
+	local intent = intents.createIntent(msg, orderParams)
 
 	-- Return intentId to user (handler wrapper will send as notice)
 	return json.encode({
@@ -510,7 +473,7 @@ function intents.stateNoticeHandler(msg)
 	assert(owner == ao.id, 'Marketplace does not own this ANT')
 
 	-- Owner matches, resolve the intent
-	intents.resolveIntent(intentId, msg.Timestamp, msg)
+	intents.resolveIntent(intentId, msg.Timestamp)
 
 	-- Send acknowledgment to the intent initiator
 	_utils.Send(msg, {

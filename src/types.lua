@@ -12,6 +12,16 @@
 --- @field ['Block-Height'] number Block height
 --- @field reply function|nil Optional reply function for sending responses
 
+--- User-provided order parameters for intent-based order creation (stored in intent.orderParams)
+--- These are the user-configurable fields when creating an order via the intent workflow
+--- @class OrderIntentParams
+--- @field orderType "fixed"|"dutch"|"english"|nil Order type (nil defaults to 'fixed')
+--- @field quantity BalanceAmount|nil Amount to trade (string integer)
+--- @field price BalanceAmount|nil Asking price or starting bid
+--- @field expirationTime number|nil Unix timestamp when order expires (min 1h, max 30 days)
+--- @field minimumPrice BalanceAmount|nil Minimum price floor (dutch auction only, required for dutch)
+--- @field decreaseInterval number|nil Price decrease interval in ms (dutch auction only, required for dutch)
+
 --- @class Intent
 --- @field intentId IntentId Unique intent identifier (msg.Id)
 --- @field initiator Address Address that created the intent (msg.From)
@@ -22,7 +32,7 @@
 --- @field resolvedAt number|nil Resolution timestamp
 --- @field completedAt number|nil Completion timestamp
 --- @field failureReason string|nil Failure reason if status is failed
---- @field forwardedTags table<string, any> Tags forwarded with the intent
+--- @field orderParams OrderIntentParams Order parameters stored with the intent
 --- @field antProcessId TokenId|nil ANT process ID (set during Credit-Notice for ANT transfers)
 
 --- @class PaginationTags
@@ -41,22 +51,19 @@
 --- @field nextCursor string|nil Cursor for the next page (nil if no more pages)
 --- @field hasMore boolean Whether there are more pages available
 
---- @class OrderArgs
---- @field orderId OrderId Order identifier
---- @field dominantToken TokenId Token being deposited
---- @field swapToken TokenId Token being requested
---- @field sender Address Order creator address
---- @field quantity BalanceAmount Quantity of tokens
---- @field createdAt number Creation timestamp
---- @field blockheight number Block height at creation
---- @field orderType "fixed"|"dutch"|"english" Order type
---- @field price BalanceAmount|nil Price for the order
---- @field expirationTime number|nil Expiration timestamp
---- @field minimumPrice BalanceAmount|nil Minimum price (dutch auction)
---- @field decreaseInterval BalanceAmount|nil Decrease interval (dutch auction)
---- @field requestedOrderId OrderId|nil Requested order ID (for buying)
---- @field transferDenomination string|nil Transfer denomination
---- @field executionPrice BalanceAmount|nil Execution price (dutch auction)
+--- Full order creation arguments (extends OrderIntentParams with system context)
+--- Constructed from OrderIntentParams + message context (msg.Id, msg.From, msg.Timestamp, etc.)
+--- @class OrderArgs : OrderIntentParams
+--- @field orderId OrderId Order identifier (from msg.Id)
+--- @field dominantToken TokenId Token being deposited (from msg.From for ANT, ARIO for buys)
+--- @field swapToken TokenId Token being requested (always ARIO for ANT sells)
+--- @field sender Address Order creator address (from Credit-Notice Sender tag)
+--- @field createdAt number Creation timestamp (from msg.Timestamp)
+--- @field blockheight number Block height at creation (from msg['Block-Height'])
+--- @field expirationTime number|nil Expiration timestamp (converted to number from OrderIntentParams string)
+--- @field requestedOrderId OrderId|nil Requested order ID (for ARIO buy orders targeting specific sell order)
+--- @field transferDenomination string|nil Transfer denomination (optional)
+--- @field executionPrice BalanceAmount|nil Execution price (dutch auction, calculated at execution time)
 --- @field msg Message|nil Message context for intent tracking
 
 --- @class EnglishAuctionBidArgs : OrderArgs

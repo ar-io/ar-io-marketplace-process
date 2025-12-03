@@ -101,35 +101,21 @@ function ucm.pruneOrderbook(now, msg)
 	Pruning.nextScheduledOrderbookPruning = nextExpiration
 end
 
---- Transfer wrapper that handles intent tracking for ANT and non-ARIO token transfers
---- Creates child intents for tracking transfer completion
---- NOTE: This function creates child intents. Use ONLY for ANT and other non-ARIO tokens.
---- For ARIO withdrawals, use ucm.transfer() (without intent tracking).
+--- External token transfer (for ANT and other non-ARIO tokens)
+--- NOTE: Use ONLY for ANT and other non-ARIO tokens. For ARIO withdrawals, use ucm.transfer().
 --- @param recipient Address The recipient address
 --- @param quantity BalanceAmount The amount to transfer
 --- @param token TokenId The token process ID
 --- @param handledMsg Message The original message context
-function ucm.transferWithIntent(recipient, quantity, token, handledMsg)
-	local intents = require('intents')
-
-	-- Construct send parameters for transfer
-	local sendParams = {
+function ucm.transferExternal(recipient, quantity, token, handledMsg)
+	utils.Send(handledMsg, {
 		Target = token,
 		Action = 'Transfer',
 		Tags = {
 			Recipient = recipient,
 			Quantity = quantity,
 		},
-	}
-	-- Add intent tracking
-	sendParams = intents.createSendWithIntent(sendParams, handledMsg, {
-		Recipient = recipient,
-		Quantity = quantity,
-		Token = token,
 	})
-
-	-- Use utils.Send to actually send the message
-	utils.Send(handledMsg, sendParams)
 end
 
 --- Direct transfer without intent tracking (for ARIO withdrawals)
@@ -164,9 +150,9 @@ function ucm.executeTokenTransfers(args)
 		balances.reduceBalance(args.sender, tostring(fullAmount))
 		balances.increaseBalance(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount))
 	else
-		-- ANT: External transfer via Credit-Notice with intent tracking
+		-- ANT: External transfer via Credit-Notice
 		-- (ANT came via Credit-Notice, now goes to seller)
-		ucm.transferWithIntent(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
+		ucm.transferExternal(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
 	end
 
 	-- Transfer swap token (what buyer is receiving) from seller to buyer
@@ -174,9 +160,9 @@ function ucm.executeTokenTransfers(args)
 		-- ARIO: seller's internal balance → buyer's internal balance
 		balances.transfer(args.sender, args.currentOrderEntry.creator, tostring(args.calculatedFillAmount), true)
 	else
-		-- ANT: External transfer via Credit-Notice with intent tracking
+		-- ANT: External transfer via Credit-Notice
 		-- (ANT from seller's Credit-Notice, now goes to buyer)
-		ucm.transferWithIntent(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
+		ucm.transferExternal(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
 	end
 end
 
@@ -572,8 +558,8 @@ function ucm.cancelOrderHandler(msg)
 		-- Internal balance order: Unlock and return to creator
 		balances.unlockBalanceFromOrder(orderId, currentOrderEntry.creator, currentOrderEntry.creator, lockedBalance)
 	else
-		-- External transfer order (ANT via Credit-Notice): Transfer back with intent tracking
-		ucm.transferWithIntent(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
+		-- External transfer order (ANT via Credit-Notice): Transfer back to creator
+		ucm.transferExternal(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
 	end
 
 	-- Remove the order from the orderbook and index
@@ -923,25 +909,5 @@ function ucm.rebuildOrderIndex()
 		orphanedIds = orphanedIndex,
 	}
 end
-
---- Handler: Rebuild-Order-Index
---- Rebuilds the OrderIndex from Orderbook (admin recovery function)
---- @param msg Message The message from the process owner
---- @return string jsonResponse JSON-encoded rebuild statistics
-function ucm.rebuildOrderIndexHandler(msg)
-	assert(msg.From == Owner, 'Unauthorized: only process owner can rebuild index')
-	
-	local result = ucm.rebuildOrderIndex()
-	
-	return json.encode({
-		Status = 'Success',
-		Message = 'OrderIndex rebuilt from Orderbook',
-		RebuiltCount = result.rebuiltCount,
-		OrphanedCount = result.orphanedCount,
-		OrphanedIds = result.orphanedIds,
-	})
-end
-
-
 
 return ucm
