@@ -127,11 +127,6 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 			goto continue
 		end
 
-		-- Check if this is the specific order we're looking for
-		if currentOrderEntry.id ~= args.requestedOrderId then
-			goto continue
-		end
-
 		-- Check if we can still fill and the order has remaining quantity
 		if bint(args.quantity) > bint(0) and bint(currentOrderEntry.quantity) > bint(0) then
 			-- For ANT tokens, only allow complete trades - no partial amounts

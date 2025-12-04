@@ -61,7 +61,6 @@
 --- @field createdAt number Creation timestamp (from msg.Timestamp)
 --- @field blockheight number Block height at creation (from msg['Block-Height'])
 --- @field expirationTime number|nil Expiration timestamp (converted to number from OrderIntentParams string)
---- @field requestedOrderId OrderId|nil Requested order ID (for ARIO buy orders targeting specific sell order)
 --- @field transferDenomination string|nil Transfer denomination (optional)
 --- @field executionPrice BalanceAmount|nil Execution price (dutch auction, calculated at execution time)
 --- @field msg Message|nil Message context for intent tracking

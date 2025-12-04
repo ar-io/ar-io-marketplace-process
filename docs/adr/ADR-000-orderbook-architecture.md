@@ -560,32 +560,6 @@ function ucm.ensurePairExists(validPair)
 end
 ```
 
-### Index Rebuild (Recovery Function)
-
-If OrderIndex becomes corrupted, it can be rebuilt from the orderbook:
-
-```lua
-function ucm.rebuildOrderIndex()
-  local rebuilt = {}
-  
-  for dominantToken, swapTokens in pairs(Orderbook) do
-    for swapToken, pair in pairs(swapTokens) do
-      for orderId, order in pairs(pair.orders) do
-        rebuilt[orderId] = {
-          dominantToken = order.dominantToken or dominantToken,
-          swapToken = order.swapToken or swapToken,
-        }
-      end
-    end
-  end
-  
-  OrderIndex = rebuilt
-  return { rebuiltCount = #utils.keys(rebuilt) }
-end
-```
-
-Available via admin handler: `Rebuild-Order-Index`
-
 ## User Experience Implications
 
 ### For Sellers (ANT Owners)
@@ -606,7 +580,7 @@ Available via admin handler: `Rebuild-Order-Index`
 1. Deposit ARIO to internal balance
 2. Browse orderbook (via `Get-Orders`)
 3. Find desired ANT order
-4. Send `Create-Order` with `Requested-Order-Id`
+4. Send `Create-Order` with `Swap-Token` (ANT process ID)
 5. If available: instantly receive ANT
 6. If gone: get refund and error
 

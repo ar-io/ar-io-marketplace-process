@@ -51,7 +51,7 @@ This is similar to NFT marketplaces (OpenSea, Rarible) where only "listings" sit
 
 1. **Deposit ARIO** - Transfer ARIO to marketplace via `Credit-Notice` with `X-Action: Deposit`
 2. **Browse Listings** - Use `Get-Orders` to find ANTs for sale
-3. **Create Buy Order** - Use internal balance with `Requested-Order-Id` specifying which ANT
+3. **Create Buy Order** - Specify which ANT to buy via `Swap-Token` (ANT process ID)
 4. **Immediate Match** - Order fills instantly if listing still available
 5. **Receive ANT** - Marketplace transfers ANT to you immediately
 6. **Withdraw** - Withdraw remaining ARIO balance anytime
@@ -202,9 +202,8 @@ Create an ARIO buy order using internal balance. This order **matches immediatel
 | `Swap-Token` | string | Yes | ANT process ID you want to buy |
 | `Quantity` | string | Yes | Amount of ARIO to offer (in mARIO) |
 | `Order-Type` | string | Yes | Type of the sell order you're buying (`fixed`, `dutch`, or `english`) |
-| `Requested-Order-Id` | string | Yes | The specific sell order ID you want to buy |
 
-> **Note:** When buying ANT, you do NOT specify a price - you accept the seller's asking price. You must know which specific ANT order you want to buy.
+> **Note:** When buying ANT, you do NOT specify a price - you accept the seller's asking price. The `Swap-Token` (ANT process ID) uniquely identifies which ANT to buy, as each ANT can only have one active sell order at a time.
 
 **Example (aoconnect):**
 
@@ -214,10 +213,9 @@ const msgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
     { name: 'Action', value: 'Create-Order' },
-    { name: 'Swap-Token', value: ANT_PROCESS_ID },
+    { name: 'Swap-Token', value: ANT_PROCESS_ID }, // Which ANT to buy
     { name: 'Quantity', value: '10000000000' }, // 10 ARIO (must be >= asking price)
     { name: 'Order-Type', value: 'fixed' },
-    { name: 'Requested-Order-Id', value: SELL_ORDER_ID }, // Must specify which order
   ],
   signer: createDataItemSigner(wallet),
 });
@@ -761,10 +759,9 @@ const msgId = await message({
   process: MARKETPLACE_PROCESS_ID,
   tags: [
     { name: 'Action', value: 'Create-Order' },
-    { name: 'Swap-Token', value: ANT_PROCESS_ID },
+    { name: 'Swap-Token', value: ANT_PROCESS_ID }, // Which ANT to buy
     { name: 'Quantity', value: '10000000000' }, // Offer 10 ARIO
     { name: 'Order-Type', value: 'fixed' },
-    { name: 'Requested-Order-Id', value: SELL_ORDER_ID }, // Specific order to buy
   ],
   signer: createDataItemSigner(wallet),
 });

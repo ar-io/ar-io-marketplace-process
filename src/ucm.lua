@@ -199,16 +199,12 @@ end
 
 --- Validate ARIO dominant token orders (buying ANT with ARIO)
 --- Throws error if validation fails
---- @param args table Order arguments containing requestedOrderId, sender, quantity
+--- @param args table Order arguments containing sender, quantity
 --- @param _validPair TokenId[] The validated pair [ARIO, ANT]
 function ucm.validateArioDominantOrder(args, _validPair)
 	-- Currently no specific validation rules for ARIO dominant orders
 	-- All general validations (quantity, pair, etc.) are handled in validateOrderParams
 	-- This function is a placeholder for future ARIO-specific validation rules
-	if not args.requestedOrderId then
-		utils.refundAndError(args.msg, args.sender, 'Requested order ID is required')
-		return
-	end
 	return true
 end
 
@@ -413,9 +409,7 @@ end
 --- ANT orders must come via Credit-Notice
 --- @param msg Message The message containing order parameters
 --- @return string jsonResponse JSON-encoded response with status and order ID
-function ucm.createOrderHandler(msg)
-	local json = require('json')
-	
+function ucm.createOrderHandler(msg)	
 	-- Parse order parameters
 	local swapToken = msg.Tags['Swap-Token']
 	local quantity = msg.Tags.Quantity
@@ -447,7 +441,6 @@ function ucm.createOrderHandler(msg)
 		expirationTime = expirationTime,
 		minimumPrice = msg.Tags['Minimum-Price'],
 		decreaseInterval = msg.Tags['Decrease-Interval'],
-		requestedOrderId = msg.Tags['Requested-Order-Id'],
 		msg = msg,
 	}
 	
@@ -840,57 +833,6 @@ function ucm.unwhitelistModuleHandler(msg)
 	assert(moduleId, 'Module-Id is required')
 	ucm.unwhitelistModule(moduleId)
 	return json.encode(WhitelistedModules)
-end
-
---- Rebuild OrderIndex from Orderbook
---- This is a recovery function that rebuilds the index from scratch
---- @return table Statistics about the rebuild operation
-function ucm.rebuildOrderIndex()
-	local rebuilt = {}
-	local orphanedIndex = {}
-	
-	-- Build new index from orderbook
-	for dominantToken, swapTokens in pairs(Orderbook) do
-		for swapToken, pair in pairs(swapTokens) do
-			for orderId, order in pairs(pair.orders) do
-				-- Use order's stored tokens if available, otherwise use pair location
-				local orderDominantToken = dominantToken
-				local orderSwapToken = swapToken
-				
-				---@diagnostic disable-next-line: undefined-field
-				if order.dominantToken then
-					---@diagnostic disable-next-line: undefined-field
-					orderDominantToken = order.dominantToken
-				end
-				---@diagnostic disable-next-line: undefined-field
-				if order.swapToken then
-					---@diagnostic disable-next-line: undefined-field
-					orderSwapToken = order.swapToken
-				end
-				
-				rebuilt[orderId] = {
-					dominantToken = orderDominantToken,
-					swapToken = orderSwapToken,
-				}
-			end
-		end
-	end
-	
-	-- Find orphaned index entries (exist in index but not in orderbook)
-	for orderId in pairs(OrderIndex) do
-		if not rebuilt[orderId] then
-			table.insert(orphanedIndex, orderId)
-		end
-	end
-	
-	-- Replace index
-	OrderIndex = rebuilt
-	
-	return {
-		rebuiltCount = #utils.keys(rebuilt),
-		orphanedCount = #orphanedIndex,
-		orphanedIds = orphanedIndex,
-	}
 end
 
 return ucm

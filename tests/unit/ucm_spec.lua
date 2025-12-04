@@ -192,26 +192,9 @@ describe('ucm helpers', function()
 			end
 		end)
 
-		it('should reject missing requestedOrderId', function()
-			local args = {
-				sender = 'test-sender',
-				msg = { Tags = { Quantity = '1000' }, From = 'token-process-id' },
-			}
-
-			local success, err = pcall(function()
-				ucm.validateArioDominantOrder(args, validPair)
-			end)
-			assert.is_false(success)
-			assert.is_string(err)
-			assert.are.equal(2, #sentMessages)
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
-		end)
-
-		it('should accept valid ARIO order', function()
-			local args = {
-				requestedOrderId = 'order-123',
-				sender = 'test-sender',
+	it('should accept valid ARIO order', function()
+		local args = {
+			sender = 'test-sender',
 				msg = { Tags = { Quantity = '1000' }, From = 'token-process-id' },
 			}
 
@@ -411,18 +394,17 @@ describe('ucm helpers', function()
 				swapToken = _G.ARIO_TOKEN_PROCESS_ID,
 			}
 
-			local msg = {
-				Id = 'buy-order-123',
-				From = 'test-user',
-				Timestamp = 2000,
-				['Block-Height'] = 100,
-				Tags = {
-					['Swap-Token'] = antToken,
-					Quantity = '1000000000', -- 1 ARIO
-					['Order-Type'] = 'fixed',
-					['Requested-Order-Id'] = 'ant-sell-order',
-				},
-			}
+		local msg = {
+			Id = 'buy-order-123',
+			From = 'test-user',
+			Timestamp = 2000,
+			['Block-Height'] = 100,
+			Tags = {
+				['Swap-Token'] = antToken,
+				Quantity = '1000000000', -- 1 ARIO
+				['Order-Type'] = 'fixed',
+			},
+		}
 
 			-- Act: User buys ANT using internal ARIO balance
 			local result = ucm.createOrderHandler(msg)
@@ -464,18 +446,17 @@ describe('ucm helpers', function()
 				},
 			}
 
-			local msg = {
-				Id = 'buy-order-fail',
-				From = 'test-user',
-				Timestamp = 2000,
-				['Block-Height'] = 100,
-				Tags = {
-					['Swap-Token'] = antToken,
-					Quantity = '20000000000', -- 20 ARIO (more than user has)
-					['Order-Type'] = 'fixed',
-					['Requested-Order-Id'] = 'expensive-ant',
-				},
-			}
+		local msg = {
+			Id = 'buy-order-fail',
+			From = 'test-user',
+			Timestamp = 2000,
+			['Block-Height'] = 100,
+			Tags = {
+				['Swap-Token'] = antToken,
+				Quantity = '20000000000', -- 20 ARIO (more than user has)
+				['Order-Type'] = 'fixed',
+			},
+		}
 
 			local success, err = pcall(function()
 				ucm.createOrderHandler(msg)
@@ -514,18 +495,17 @@ describe('ucm helpers', function()
 				},
 			}
 
-			local msg = {
-				Id = 'buy-order-no-intent',
-				From = 'test-user',
-				Timestamp = 2000,
-				['Block-Height'] = 100,
-				Tags = {
-					['Swap-Token'] = antToken,
-					Quantity = '500000000', -- 0.5 ARIO
-					['Order-Type'] = 'fixed',
-					['Requested-Order-Id'] = 'simple-ant',
-				},
-			}
+		local msg = {
+			Id = 'buy-order-no-intent',
+			From = 'test-user',
+			Timestamp = 2000,
+			['Block-Height'] = 100,
+			Tags = {
+				['Swap-Token'] = antToken,
+				Quantity = '500000000', -- 0.5 ARIO
+				['Order-Type'] = 'fixed',
+			},
+		}
 
 			-- Initialize empty Intents table
 			_G.Intents = {}

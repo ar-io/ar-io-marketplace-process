@@ -101,11 +101,6 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 			goto continue
 		end
 
-		-- Check if this is the specific order we're looking for
-		if currentOrderEntry.id ~= args.requestedOrderId then
-			goto continue
-		end
-
 		-- Calculate current price based on time passed since order creation
 		local timePassed = tonumber(args.createdAt) - tonumber(currentOrderEntry.dateCreated)
 		local intervalsPassed = math.floor(timePassed / tonumber(currentOrderEntry.decreaseInterval))

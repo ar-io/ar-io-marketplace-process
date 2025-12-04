@@ -126,7 +126,7 @@ function notices.creditNoticeHandler(msg)
 		local orderArgs = {
 			orderId = msg.Id,
 			dominantToken = msg.From, -- ANT process ID from Credit-Notice
-			swapToken = swapToken, -- From intent.orderParams
+			swapToken = swapToken, -- Always ARIO for ANT sell orders
 			sender = sender,
 			quantity = quantity, -- From ANT transfer
 			createdAt = msg.Timestamp,
@@ -135,7 +135,6 @@ function notices.creditNoticeHandler(msg)
 			expirationTime = orderParams.expirationTime and tonumber(orderParams.expirationTime),
 			minimumPrice = orderParams.minimumPrice,
 			decreaseInterval = orderParams.decreaseInterval,
-			requestedOrderId = msg.Tags['X-Requested-Order-Id'], -- Only for ARIO buy orders (not ANT sells)
 			price = orderParams.price,
 			msg = msg, -- Pass msg context for intent tracking
 		}

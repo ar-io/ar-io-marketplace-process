@@ -125,7 +125,7 @@ function english_auction.handleAntOrder(args)
 
 	-- Find the English auction order to bid on
 	for _, order in pairs(currentOrders) do
-		if order.orderType == ORDER_TYPES.ENGLISH and order.id == (args.requestedOrderId or args.orderId) then
+		if order.orderType == ORDER_TYPES.ENGLISH and order.id == args.orderId then
 			targetOrder = order
 			break
 		end
