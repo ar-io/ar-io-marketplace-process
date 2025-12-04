@@ -394,7 +394,7 @@ describe('Auction Mechanisms', () => {
     it('should track auction from creation to settlement', async () => {
       // Create intent
       // Use a far future timestamp to ensure it's always in the future
-      const futureTimestamp = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days from now
+      const futureTimestamp = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days from now
       const intentResult = await marketplaceProcess.createIntent({
         orderType: 'english',
         quantity: '1000',

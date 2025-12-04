@@ -86,8 +86,7 @@ describe('Intent Workflow Tracking', () => {
     });
 
     it('should fail to create intent without X-Intent-Quantity', async () => {
-      const result = await marketplaceProcess.createIntent({
-      });
+      const result = await marketplaceProcess.createIntent({});
 
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
@@ -113,7 +112,6 @@ describe('Intent Workflow Tracking', () => {
         'First intent should have ID 1',
       );
     });
-
   });
 
   describe('Get-Paginated-Intents', () => {
@@ -311,11 +309,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
 
   describe('Positive Cases - Happy Path', () => {
     it('should complete intent after successful fixed-price order creation via Credit-Notice', async () => {
-      // Debug: Check marketplace info to see ARIO token
-      const initialInfo = await marketplaceProcess.info();
-      console.log('Marketplace ARIO token:', initialInfo.ucm.arioTokenProcess);
-      console.log('Expected ARIO token:', TEST_ARIO_PROCESS);
-
       // Step 1: Create intent
       const intentResult = await marketplaceProcess.createIntent({
         orderType: 'fixed',
@@ -335,90 +328,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
         'Intent should start as pending',
       );
 
-      // Step 2: Simulate Credit-Notice from ANT process with all required tags
-      // Call ao.message directly instead of through AOProcess.send
-      const creditNoticeResult = await marketplaceProcess.process.ao.message({
-        process: marketplaceProcess.process.processId,
-        tags: [
-          { name: 'Action', value: 'Credit-Notice' },
-          { name: 'Sender', value: TEST_SENDER },
-          { name: 'Quantity', value: '1' },
-          { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
-        ],
-        data: '',
-        signer: TEST_SIGNER,
-        From: TEST_ANT_PROCESS, // Simulate message coming from ANT process
-      } as any);
-
-      // Debug: Check Credit-Notice result and get the actual result
-      console.log('Credit-Notice message ID:', creditNoticeResult);
-      const result = await marketplaceProcess.process.ao.result({
-        message: creditNoticeResult,
-        process: marketplaceProcess.process.processId,
-      });
-      console.log(
-        'Credit-Notice result Messages:',
-        result.Messages?.length || 0,
-      );
-      console.log('Credit-Notice result Error:', result.Error);
-      if (result.Messages && result.Messages.length > 0) {
-        // Log ALL messages, not just the first one
-        result.Messages.forEach((msg: any, idx: number) => {
-          console.log(`\n[Message ${idx + 1}/${result.Messages.length}]`);
-          console.log(
-            '  Action:',
-            msg.Tags?.find((t: any) => t.name === 'Action')?.value,
-          );
-          console.log(
-            '  Error:',
-            msg.Tags?.find((t: any) => t.name === 'Error')?.value,
-          );
-          console.log(
-            '  Status:',
-            msg.Tags?.find((t: any) => t.name === 'Status')?.value,
-          );
-          console.log(
-            '  Message:',
-            msg.Tags?.find((t: any) => t.name === 'Message')?.value,
-          );
-          console.log(
-            '  Quantity:',
-            msg.Tags?.find((t: any) => t.name === 'Quantity')?.value,
-          );
-          console.log('  Data:', msg.Data);
-        });
-      }
-
-      // Debug: Check marketplace state immediately after Credit-Notice
-      const infoAfterCreditNotice = await marketplaceProcess.info();
-      console.log(
-        'Orders after Credit-Notice:',
-        infoAfterCreditNotice.activity.totalOrders,
-      );
-      console.log(
-        'Intents after Credit-Notice:',
-        infoAfterCreditNotice.intents.total,
-      );
-
-      // Debug: Try to get the intent
-      try {
-        const intentCheck = await marketplaceProcess.getIntentById(intentId);
-        const intentCheckData = JSON.parse(intentCheck.Data);
-        console.log(
-          'Intent after Credit-Notice - exists: true, status:',
-          intentCheckData.status,
-        );
-      } catch (e: any) {
-        console.log(
-          'Intent after Credit-Notice - exists: false, error:',
-          e.message || e.Data,
-        );
-      }
-
-      // Step 3: Verify intent is completed and pruned
-      // Completed intents are removed from the Intents table, so querying them returns an error
       intent = await marketplaceProcess.getIntentById(intentId);
 
       // Check if it's an error response (intent not found - which is expected)
@@ -782,13 +691,13 @@ describe('ANT Intent Resolution', () => {
       } as any);
 
       // Now push resolution as the initiator (PROCESS_OWNER)
-      const { id: messageId } = await marketplaceProcess.process.send({
+      const { id: messageId } = (await marketplaceProcess.process.send({
         tags: [
           { name: 'Action', value: 'Push-ANT-Intent-Resolution' },
           { name: 'X-Intent-Id', value: intentId },
         ],
         signer: TEST_SIGNER,
-      }) as any;
+      })) as any;
 
       // Get the actual execution result
       const result = await marketplaceProcess.process.ao.result({
@@ -1124,7 +1033,6 @@ describe('ANT Intent Resolution', () => {
         );
       }
     });
-
   });
 
   // NOTE: State-Notice Handler tests removed
