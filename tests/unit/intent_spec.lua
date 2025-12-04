@@ -182,7 +182,7 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-			local intent = intents.createIntent(msg, {quantity = '1'})
+			local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
 			assert.are.equal('pending', intent.status)
 
 			intents.resolveIntent(intent.intentId, 1000500)
@@ -206,7 +206,7 @@ describe('Intent Management', function()
 			Timestamp = 1000000,
 		}
 
-		local intent = intents.createIntent(msg, {quantity = '1'})
+		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
 		
 		intents.updateIntentStatus(intent.intentId, 'completed', msg)
 
@@ -230,7 +230,7 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-			local intent = intents.createIntent(msg, {quantity = '1'})
+			local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
 			
 			intents.failIntent(intent.intentId, 'Test failure reason')
 
@@ -253,7 +253,7 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-		local intent = intents.createIntent(msg, {quantity = '1'})
+		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
 		
 		local retrieved = intents.getIntentById(intent.intentId)
 		assert.is_not_nil(retrieved)
@@ -278,9 +278,9 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-			intents.createIntent(msg, {quantity = '1'})
-			intents.createIntent(msg, {quantity = '2'})
-			intents.createIntent(msg, {quantity = '3'})
+			intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
+			intents.createIntent(msg, {quantity = '2', expirationTime = 4600000})
+			intents.createIntent(msg, {quantity = '3', expirationTime = 4600000})
 
 			local allIntents = intents.getAllIntents()
 			assert.are.equal(3, #allIntents)

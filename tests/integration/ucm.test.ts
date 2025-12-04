@@ -5,6 +5,7 @@ import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
+  STUB_TIMESTAMP,
   PROCESS_OWNER,
   TEST_ANT_MODULE_NOT_WHITELISTED,
   TEST_ANT_MODULE_WHITELISTED,
@@ -26,12 +27,12 @@ describe('UCM (Universal Content Marketplace)', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
       lua: luaWithTestConfig,
-    });
+      });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-    });
+      });
   });
 
   beforeEach(async () => {
@@ -42,14 +43,14 @@ describe('UCM (Universal Content Marketplace)', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"`,
       signer: TEST_SIGNER,
-    });
+      });
 
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-    });
+      });
 
     await marketplaceProcess.depositArio(
       '100000000000',
@@ -165,6 +166,7 @@ describe('UCM (Universal Content Marketplace)', () => {
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -223,6 +225,7 @@ describe('UCM (Universal Content Marketplace)', () => {
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);

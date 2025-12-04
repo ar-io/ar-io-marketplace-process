@@ -277,7 +277,7 @@ Create a listing intent for ANT orders. This charges a listing fee from your int
 | `X-Intent-Quantity` | string | Yes | Amount to trade (usually `1` for ANT) |
 | `X-Intent-Price` | string | Yes | Price per unit (for fixed/dutch), or starting bid (for english) |
 | `X-Intent-Order-Type` | string | No | `fixed`, `dutch`, or `english` (default: `fixed`) |
-| `X-Intent-Expiration-Time` | number | No | Unix timestamp (min 1 hour, max 30 days) |
+| `X-Intent-Expiration-Time` | number | Yes | Unix timestamp (min 1 hour, max 30 days, fee rounded up to nearest hour) |
 | `X-Intent-Minimum-Price` | string | No* | Minimum price floor (dutch auctions only) |
 | `X-Intent-Decrease-Interval` | string | No* | Price decrease interval in ms (dutch auctions only) |
 

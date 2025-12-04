@@ -69,7 +69,7 @@ export interface CreateIntentParams {
   orderType?: string;
   quantity?: string;
   price?: string;
-  expirationTime?: string;
+  expirationTime: string; // Required: Unix timestamp (min 1h, max 30 days, fee rounded up to nearest hour)
   minimumPrice?: string;
   decreaseInterval?: string;
 }

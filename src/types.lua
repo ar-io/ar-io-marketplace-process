@@ -18,7 +18,7 @@
 --- @field orderType "fixed"|"dutch"|"english"|nil Order type (nil defaults to 'fixed')
 --- @field quantity BalanceAmount|nil Amount to trade (string integer)
 --- @field price BalanceAmount|nil Asking price or starting bid
---- @field expirationTime number|nil Unix timestamp when order expires (min 1h, max 30 days)
+--- @field expirationTime number Unix timestamp when order expires (min 1h, max 30 days, fee rounded up to nearest hour)
 --- @field minimumPrice BalanceAmount|nil Minimum price floor (dutch auction only, required for dutch)
 --- @field decreaseInterval number|nil Price decrease interval in ms (dutch auction only, required for dutch)
 

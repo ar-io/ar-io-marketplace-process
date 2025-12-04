@@ -5,6 +5,7 @@ import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
+  STUB_TIMESTAMP,
   PROCESS_OWNER,
   TEST_ANT_MODULE_NOT_WHITELISTED,
   TEST_ANT_MODULE_WHITELISTED,
@@ -26,12 +27,12 @@ describe('Module Whitelist Management', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
       lua: luaWithTestConfig,
-    });
+      });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-    });
+      });
 
     // Deposit ARIO for listing fees (intents cost 1 ARIO)
     await marketplaceProcess.depositArio(
@@ -51,7 +52,7 @@ describe('Module Whitelist Management', () => {
         { name: 'From', value: PROCESS_OWNER },
         { name: 'Owner', value: PROCESS_OWNER },
       ],
-    });
+      });
   });
 
   describe('Whitelist-Module Action', () => {
@@ -94,7 +95,7 @@ describe('Module Whitelist Management', () => {
             { name: 'Module-Id', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for duplicate module');
       } catch (error: any) {
         assert.ok(
@@ -112,7 +113,7 @@ describe('Module Whitelist Management', () => {
             { name: 'Module-Id', value: 'invalid-id' },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for invalid module ID');
       } catch (error: any) {
         assert.ok(
@@ -127,7 +128,7 @@ describe('Module Whitelist Management', () => {
         await marketplaceProcess.process.send({
           tags: [{ name: 'Action', value: 'Whitelist-Module' }],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for missing Module-Id');
       } catch (error: any) {
         assert.ok(
@@ -178,7 +179,7 @@ describe('Module Whitelist Management', () => {
             { name: 'Module-Id', value: TEST_ANT_MODULE_WHITELISTED },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for non-whitelisted module');
       } catch (error: any) {
         assert.ok(
@@ -196,7 +197,7 @@ describe('Module Whitelist Management', () => {
             { name: 'Module-Id', value: 'invalid-id' },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for invalid module ID');
       } catch (error: any) {
         assert.ok(
@@ -211,7 +212,7 @@ describe('Module Whitelist Management', () => {
         await marketplaceProcess.process.send({
           tags: [{ name: 'Action', value: 'Unwhitelist-Module' }],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for missing Module-Id');
       } catch (error: any) {
         assert.ok(
@@ -229,6 +230,7 @@ describe('Module Whitelist Management', () => {
         orderType: 'fixed',
         price: '1000000000000',
         quantity: '1',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentId = JSON.parse(intentResult.Data)['Intent-Id'];
@@ -295,6 +297,7 @@ describe('Module Whitelist Management', () => {
         orderType: 'fixed',
         price: '1000000000000',
         quantity: '1',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentId = JSON.parse(intentResult.Data)['Intent-Id'];
@@ -362,6 +365,7 @@ describe('Module Whitelist Management', () => {
         orderType: 'fixed',
         price: '1000000000000',
         quantity: '1',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentId = JSON.parse(intentResult.Data)['Intent-Id'];

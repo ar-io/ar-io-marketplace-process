@@ -5,6 +5,7 @@ import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
+  STUB_TIMESTAMP,
   TEST_ANT_MODULE_NOT_WHITELISTED,
   TEST_ANT_MODULE_WHITELISTED,
   TEST_ANT_PROCESS,
@@ -26,12 +27,12 @@ describe('Intent Workflow Tracking', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
       lua: luaWithTestConfig,
-    });
+      });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-    });
+      });
   });
 
   beforeEach(async () => {
@@ -43,14 +44,14 @@ describe('Intent Workflow Tracking', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
       signer: TEST_SIGNER,
-    });
+      });
 
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-    });
+      });
 
     // Deposit ARIO for listing fees (intents cost 1 ARIO)
     // Use PROCESS_OWNER address (all 1s) which is the default From in test environment
@@ -67,6 +68,7 @@ describe('Intent Workflow Tracking', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       assert(result, 'Create intent result should be defined');
@@ -78,7 +80,7 @@ describe('Intent Workflow Tracking', () => {
     it('should fail to create intent without required parameters for Create-Order', async () => {
       const result = await marketplaceProcess.createIntent({
         // Missing orderType, swapToken, quantity
-      });
+      } as any);
 
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
@@ -86,7 +88,7 @@ describe('Intent Workflow Tracking', () => {
     });
 
     it('should fail to create intent without X-Intent-Quantity', async () => {
-      const result = await marketplaceProcess.createIntent({});
+      const result = await marketplaceProcess.createIntent({} as any);
 
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
@@ -100,6 +102,7 @@ describe('Intent Workflow Tracking', () => {
       const result = await marketplaceProcess.createIntent({
         quantity: '1',
         price: '1000000000', // Now required
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       assert(result, 'Result should be defined');
@@ -131,6 +134,7 @@ describe('Intent Workflow Tracking', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500', // Now required
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const result = await marketplaceProcess.getPaginatedIntents();
@@ -148,12 +152,14 @@ describe('Intent Workflow Tracking', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500', // Now required
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       await marketplaceProcess.createIntent({
         orderType: 'fixed',
         quantity: '2000',
         price: '600', // Now required
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const result = await marketplaceProcess.getPaginatedIntents({
@@ -176,6 +182,7 @@ describe('Intent Workflow Tracking', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500', // Now required
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const createData = JSON.parse(createResult.Data);
@@ -202,7 +209,7 @@ describe('Intent Workflow Tracking', () => {
       try {
         await marketplaceProcess.process.read({
           tags: [{ name: 'Action', value: 'Get-Intent-By-Id' }],
-        });
+      });
         assert.fail('Should have thrown an error for missing Intent-Id');
       } catch (error: any) {
         assert(
@@ -219,15 +226,17 @@ describe('Intent Workflow Tracking', () => {
       await marketplaceProcess.createIntent({
         orderType: 'fixed',
         quantity: '1000',
-        price: '500', // Now required
+        price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       await marketplaceProcess.createIntent({
         orderType: 'dutch',
         quantity: '2000',
-        price: '1000', // Now required
-        minimumPrice: '500', // Required for dutch
-        decreaseInterval: '3600000', // Required for dutch
+        price: '1000',
+        minimumPrice: '500',
+        decreaseInterval: '3600000',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const info = await marketplaceProcess.info();
@@ -274,12 +283,12 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-cn-'.padEnd(43, '2'),
       lua: luaWithTestConfig,
-    });
+      });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-    });
+      });
   });
 
   beforeEach(async () => {
@@ -290,14 +299,14 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
       signer: TEST_SIGNER,
-    });
+      });
 
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-    });
+      });
 
     // Deposit ARIO for listing fees
     await marketplaceProcess.depositArio(
@@ -314,6 +323,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -328,6 +338,29 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
         'Intent should start as pending',
       );
 
+      // Step 2: Send Credit-Notice to complete the intent
+      const creditMsg = await marketplaceProcess.process.ao.message({
+        process: marketplaceProcess.process.processId,
+        tags: [
+          { name: 'Action', value: 'Credit-Notice' },
+          { name: 'Sender', value: TEST_SENDER },
+          { name: 'Quantity', value: '1' },
+          { name: 'X-Intent-Id', value: intentId },
+          { name: 'X-Order-Action', value: 'Create-Order' },
+          { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
+        ],
+        data: '',
+        signer: TEST_SIGNER,
+        From: TEST_ANT_PROCESS,
+      } as any);
+
+      // Get the result of the Credit-Notice
+      await marketplaceProcess.process.ao.result({
+        message: creditMsg,
+        process: marketplaceProcess.process.processId,
+      });
+
+      // Step 3: Check intent is completed
       intent = await marketplaceProcess.getIntentById(intentId);
 
       // Check if it's an error response (intent not found - which is expected)
@@ -466,6 +499,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -512,6 +546,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -570,6 +605,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -633,12 +669,12 @@ describe('ANT Intent Resolution', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-ant-res-'.padEnd(43, '3'),
       lua: luaWithTestConfig,
-    });
+      });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-    });
+      });
   });
 
   beforeEach(async () => {
@@ -648,13 +684,13 @@ describe('ANT Intent Resolution', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
       signer: TEST_SIGNER,
-    });
+      });
 
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-    });
+      });
 
     await marketplaceProcess.depositArio(
       '100000000000',
@@ -669,6 +705,7 @@ describe('ANT Intent Resolution', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -736,6 +773,7 @@ describe('ANT Intent Resolution', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -778,6 +816,7 @@ describe('ANT Intent Resolution', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -804,7 +843,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: intentId },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for completed intent');
       } catch (error: any) {
         assert(
@@ -820,6 +859,7 @@ describe('ANT Intent Resolution', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -846,7 +886,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: intentId },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for failed intent');
       } catch (error: any) {
         assert(
@@ -862,6 +902,7 @@ describe('ANT Intent Resolution', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -888,7 +929,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: intentId },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for expired intent');
       } catch (error: any) {
         assert(
@@ -904,6 +945,7 @@ describe('ANT Intent Resolution', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -955,6 +997,7 @@ describe('ANT Intent Resolution', () => {
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
+        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
       const intentData = JSON.parse(intentResult.Data);
@@ -1006,7 +1049,7 @@ describe('ANT Intent Resolution', () => {
         await marketplaceProcess.process.send({
           tags: [{ name: 'Action', value: 'Push-ANT-Intent-Resolution' }],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for missing X-Intent-Id');
       } catch (error: any) {
         assert(
@@ -1024,7 +1067,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: '999999' },
           ],
           signer: TEST_SIGNER,
-        });
+      });
         assert.fail('Should have thrown an error for non-existent intent');
       } catch (error: any) {
         assert(

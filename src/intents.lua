@@ -328,7 +328,7 @@ function intents.createIntentHandler(msg)
 		orderType = msg.Tags['X-Intent-Order-Type'], -- nil = defaults to 'fixed', or 'dutch'/'english'
 		quantity = msg.Tags['X-Intent-Quantity'], -- Required: amount to trade (usually '1' for ANT)
 		price = msg.Tags['X-Intent-Price'], -- Required: asking price or starting bid
-		expirationTime = msg.Tags['X-Intent-Expiration-Time'], -- Optional: Unix timestamp (min 1h, max 30 days)
+		expirationTime = msg.Tags['X-Intent-Expiration-Time'], -- Required: Unix timestamp (min 1h, max 30 days, rounded up to nearest hour)
 		
 		-- Dutch auction only: price decay parameters
 		minimumPrice = msg.Tags['X-Intent-Minimum-Price'], -- nil unless order-type is 'dutch'
@@ -341,17 +341,16 @@ function intents.createIntentHandler(msg)
 	-- Validate common required parameters (all order types)
 	assert(orderParams.quantity, 'X-Intent-Quantity required')
 	assert(orderParams.price, 'X-Intent-Price required')
+	assert(orderParams.expirationTime, 'X-Intent-Expiration-Time required')
 
-	-- Validate expiration time format and range (if provided)
-	if orderParams.expirationTime then
-		local expTime = tonumber(orderParams.expirationTime)
-		assert(expTime, 'X-Intent-Expiration-Time must be a valid number')
-		assert(expTime > msg.Timestamp, 'X-Intent-Expiration-Time must be in the future')
-		
-		local maxExpiration = msg.Timestamp + constants.LISTING.MAX_EXPIRATION_MS
-		assert(expTime <= maxExpiration, 
-			'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration))
-	end
+	-- Validate expiration time format and range
+	local expTime = tonumber(orderParams.expirationTime)
+	assert(expTime, 'X-Intent-Expiration-Time must be a valid number')
+	assert(expTime > msg.Timestamp, 'X-Intent-Expiration-Time must be in the future')
+	
+	local maxExpiration = msg.Timestamp + constants.LISTING.MAX_EXPIRATION_MS
+	assert(expTime <= maxExpiration, 
+		'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration))
 	
 	-- Validate order type-specific parameters
 	if orderType == 'dutch' then
