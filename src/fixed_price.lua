@@ -180,7 +180,7 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 				balances.increaseBalance(args.sender, tostring(refundAmount))
 			else
 				-- ANT: Refund via external transfer
-				ucm.transferExternal(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
+				ucm.transfer(args.sender, tostring(refundAmount), args.dominantToken, args.msg)
 			end
 		end
 

@@ -388,10 +388,10 @@ end
 --- @param message string The error message
 --- @param action string|nil The action type (defaults to 'Validation-Error')
 function utils.refundAndError(msg, sender, message, action)
-	-- Refund the tokens if there's a valid quantity (ANT tokens via Credit-Notice with intent tracking)
+	-- Refund the tokens if there's a valid quantity (ANT tokens via Credit-Notice)
 	if msg.Tags.Quantity and msg.From and utils.checkValidAmount(msg.Tags.Quantity) then
 		local ucm = require('ucm')
-		ucm.transferExternal(sender, tostring(msg.Tags.Quantity), msg.From, msg)
+		ucm.transfer(sender, tostring(msg.Tags.Quantity), msg.From, msg)
 	end
 	
 	-- Send error notice
@@ -843,10 +843,10 @@ function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg
 			local balances = require('balances')
 			balances.increaseBalance(TREASURY_ADDRESS, tostring(feeAmount))
 		else
-			-- For non-ARIO tokens (ANTs), use external transfer
-			local msgContext = msg or { Tags = {} }
-			local ucm = require('ucm')
-			ucm.transferExternal(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
+		-- For non-ARIO tokens (ANTs), use external transfer
+		local msgContext = msg or { Tags = {} }
+		local ucm = require('ucm')
+		ucm.transfer(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
 		end
 		
 		-- Track the accrued fee

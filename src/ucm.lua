@@ -101,24 +101,7 @@ function ucm.pruneOrderbook(now, msg)
 	Pruning.nextScheduledOrderbookPruning = nextExpiration
 end
 
---- External token transfer (for ANT and other non-ARIO tokens)
---- NOTE: Use ONLY for ANT and other non-ARIO tokens. For ARIO withdrawals, use ucm.transfer().
---- @param recipient Address The recipient address
---- @param quantity BalanceAmount The amount to transfer
---- @param token TokenId The token process ID
---- @param handledMsg Message The original message context
-function ucm.transferExternal(recipient, quantity, token, handledMsg)
-	utils.Send(handledMsg, {
-		Target = token,
-		Action = 'Transfer',
-		Tags = {
-			Recipient = recipient,
-			Quantity = quantity,
-		},
-	})
-end
-
---- Direct transfer without intent tracking (for ARIO withdrawals)
+--- External token transfer (for ANT and other non-ARIO tokens, and ARIO withdrawals)
 --- @param recipient Address The recipient address
 --- @param quantity BalanceAmount The amount to transfer
 --- @param token TokenId The token process ID
@@ -152,7 +135,7 @@ function ucm.executeTokenTransfers(args)
 	else
 		-- ANT: External transfer via Credit-Notice
 		-- (ANT came via Credit-Notice, now goes to seller)
-		ucm.transferExternal(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
+		ucm.transfer(args.currentOrderEntry.creator, tostring(args.calculatedSendAmount), args.dominantToken, msg)
 	end
 
 	-- Transfer swap token (what buyer is receiving) from seller to buyer
@@ -162,7 +145,7 @@ function ucm.executeTokenTransfers(args)
 	else
 		-- ANT: External transfer via Credit-Notice
 		-- (ANT from seller's Credit-Notice, now goes to buyer)
-		ucm.transferExternal(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
+		ucm.transfer(args.sender, tostring(args.calculatedFillAmount), args.swapToken, msg)
 	end
 end
 
@@ -559,7 +542,7 @@ function ucm.cancelOrderHandler(msg)
 		balances.unlockBalanceFromOrder(orderId, currentOrderEntry.creator, currentOrderEntry.creator, lockedBalance)
 	else
 		-- External transfer order (ANT via Credit-Notice): Transfer back to creator
-		ucm.transferExternal(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
+		ucm.transfer(currentOrderEntry.creator, currentOrderEntry.quantity, currentOrderEntry.token, msg)
 	end
 
 	-- Remove the order from the orderbook and index

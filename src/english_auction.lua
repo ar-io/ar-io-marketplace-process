@@ -269,7 +269,7 @@ function english_auction.settleAuction(args)
 	
 	-- Transfer ANT to winner via Credit-Notice (ANT came via Credit-Notice)
 	local ucm = require('ucm')
-	ucm.transferExternal(winningBidder, tostring(calculatedFillAmount), order.token, args.msg)
+	ucm.transfer(winningBidder, tostring(calculatedFillAmount), order.token, args.msg)
 
 	-- Record the settlement directly on the order
 	order.settlement = {
