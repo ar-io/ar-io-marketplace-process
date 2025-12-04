@@ -10,6 +10,7 @@ function intents.incrementIntentCounter()
 	return tostring(IntentCounter)
 end
 
+-- TODO: expirationTime should be required and asserted
 --- Calculate the listing fee based on duration
 --- Minimum duration is 1 hour - shorter durations are charged the 1-hour rate
 --- @param expirationTime BalanceAmount|number|nil The expiration timestamp (nil for no expiration)
@@ -26,6 +27,7 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 	
 	-- Validate expiration time is a number
 	local expTime = tonumber(expirationTime)
+	-- TODO: should be an assertion
 	if not expTime then
 		return nil, 'Expiration time must be a valid number'
 	end
@@ -43,6 +45,7 @@ function intents.calculateListingFee(expirationTime, currentTimestamp)
 		return nil, 'Expiration time cannot exceed 30 days'
 	end
 	
+	-- TODO: if less than 1 hour, assert error. This
 	-- Clamp minimum duration to 1 hour
 	if listingDurationMs < constants.LISTING.MIN_EXPIRATION_MS then
 		listingDurationMs = constants.LISTING.MIN_EXPIRATION_MS
@@ -270,6 +273,7 @@ end
 --- Schedule the next intents pruning if the given timestamp is sooner than the current scheduled time
 --- @param timestamp number The timestamp to schedule pruning for
 function intents.scheduleNextIntentsPruning(timestamp)
+	-- TODO: should be an assertion
 	if not timestamp then
 		return
 	end
@@ -450,6 +454,8 @@ function intents.pushANTIntentResolutionHandler(msg)
 	})
 end
 
+
+-- TODO: ensure order is created in this handler before resolving the intent
 -- Handler: State-Notice - Resolves intents based on ANT state
 function intents.stateNoticeHandler(msg)
 	local _utils = require('utils')
