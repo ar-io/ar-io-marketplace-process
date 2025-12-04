@@ -118,7 +118,7 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 		local fillAmount = bint(constants.QUANTITY.ANT_EXACT_AMOUNT) -- 1 ANT token (always 1 for ANT orders)
 		-- Validate we have a valid fill amount
 		if fillAmount <= bint(0) then
-			utils.refundAndError(args.msg, args.sender, 'No amount to fill', 'Order-Error')
+			utils.refundAndNotifyError(args.msg, args.sender, 'No amount to fill', 'Order-Error')
 			return
 		end
 
@@ -127,7 +127,7 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 		local sentAmount = bint(args.quantity) -- User pays the current Dutch auction price
 
 		if sentAmount < requiredAmount then
-			utils.refundAndError(
+			utils.refundAndNotifyError(
 				args.msg,
 				args.sender,
 				'Insufficient payment for current Dutch auction price. Required: '
@@ -237,7 +237,7 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 		})
 	else
 		-- No matches found for ANT token - return error
-		utils.refundAndError(
+		utils.refundAndNotifyError(
 			args.msg,
 			args.sender,
 			'No matching Dutch auction order found for immediate ANT trade',

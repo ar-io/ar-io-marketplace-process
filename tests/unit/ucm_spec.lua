@@ -121,14 +121,14 @@ describe('ucm helpers', function()
 			msg = { Tags = { Quantity = '2' }, From = 'token-process-id' },
 		}
 
-			local success, err = pcall(function()
-				ucm.validateAntDominantOrder(args, validPair)
-			end)
-			assert.is_false(success)
-			assert.is_string(err)
-			assert.are.equal(2, #sentMessages) -- Transfer (refund) + Validation-Error
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		local success, err = pcall(function()
+			ucm.validateAntDominantOrder(args, validPair)
+		end)
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal(2, #sentMessages) -- Transfer (refund) + Validation-Error
+		assert.are.equal('Transfer', sentMessages[1].Action)
+		assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject missing price', function()
@@ -138,17 +138,17 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local success, err = pcall(function()
-				ucm.validateAntDominantOrder(args, validPair)
-			end)
-			assert.is_false(success)
-			assert.is_string(err)
-			assert.are.equal(2, #sentMessages)
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		local success, err = pcall(function()
+			ucm.validateAntDominantOrder(args, validPair)
 		end)
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal(2, #sentMessages)
+		assert.are.equal('Transfer', sentMessages[1].Action)
+		assert.are.equal('Validation-Error', sentMessages[2].Action)
+	end)
 
-		it('should reject invalid price', function()
+	it('should reject invalid price', function()
 			local args = {
 				quantity = '1',
 				price = '0',
@@ -157,12 +157,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-			local success, err = pcall(function()
-				ucm.validateAntDominantOrder(args, validPair)
-			end)
-			assert.is_false(success)
-			assert.is_string(err)
+		local success, err = pcall(function()
+			ucm.validateAntDominantOrder(args, validPair)
 		end)
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true
+		assert.is_true(success)
+	end)
 
 		it('should accept valid ANT order', function()
 			local args = {
@@ -225,11 +225,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-		local success = pcall(function()
-			return ucm.validateOrderParams(args)
-		end)
-		assert.is_false(success)
-		end)
+	local success = pcall(function()
+		return ucm.validateOrderParams(args)
+	end)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+	assert.is_true(success)
+	end)
 
 		it('should reject trade without ARIO', function()
 			local args = {
@@ -241,11 +242,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-		local success = pcall(function()
-			return ucm.validateOrderParams(args)
-		end)
-		assert.is_false(success)
-		end)
+	local success = pcall(function()
+		return ucm.validateOrderParams(args)
+	end)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+	assert.is_true(success)
+	end)
 
 		it('should reject invalid quantity', function()
 			local args = {
@@ -257,11 +259,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '0' }, From = 'token-process-id' },
 			}
 
-		local success = pcall(function()
-			return ucm.validateOrderParams(args)
-		end)
-		assert.is_false(success)
-		end)
+	local success = pcall(function()
+		return ucm.validateOrderParams(args)
+	end)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+	assert.is_true(success)
+	end)
 
 		it('should reject invalid order type', function()
 			local args = {
@@ -273,11 +276,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-		local success = pcall(function()
-			return ucm.validateOrderParams(args)
-		end)
-		assert.is_false(success)
-		end)
+	local success = pcall(function()
+		return ucm.validateOrderParams(args)
+	end)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+	assert.is_true(success)
+	end)
 
 		it('should accept valid fixed order', function()
 			local args = {

@@ -27,12 +27,12 @@ describe('UCM (Universal Content Marketplace)', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
       lua: luaWithTestConfig,
-      });
+    });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-      });
+    });
   });
 
   beforeEach(async () => {
@@ -43,14 +43,14 @@ describe('UCM (Universal Content Marketplace)', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"`,
       signer: TEST_SIGNER,
-      });
+    });
 
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-      });
+    });
 
     await marketplaceProcess.depositArio(
       '100000000000',

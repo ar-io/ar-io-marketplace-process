@@ -121,7 +121,7 @@ local function handleInvalidTransfer(errorMessage)
         end
     else
         -- Refund non-ARIO tokens (like ANT)
-        _utils.refundAndError(msg, sender, errorMessage)
+        _utils.refundAndNotifyError(msg, sender, errorMessage)
     end
 end
 ```
@@ -288,7 +288,7 @@ local function handleInvalidTransfer(errorMessage)
         end
     else
         -- ANT: Refund
-        _utils.refundAndError(msg, sender, errorMessage)
+        _utils.refundAndNotifyError(msg, sender, errorMessage)
     end
 end
 ```
@@ -326,7 +326,7 @@ end)
 if not ok then
     -- Only refund if error wasn't already handled
     if not string.find(tostring(err), 'required') and not string.find(tostring(err), 'must be') then
-        _utils.refundAndError(msg, sender, 'Order creation failed: ' .. tostring(err), 'Order-Error')
+        _utils.refundAndNotifyError(msg, sender, 'Order creation failed: ' .. tostring(err), 'Order-Error')
     end
     return
 end

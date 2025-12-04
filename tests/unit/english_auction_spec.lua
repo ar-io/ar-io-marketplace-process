@@ -115,10 +115,11 @@ describe('English Auction', function()
 			})
 			end)
 
-			-- After pair validation, refund is sent first, then error
-			assert.is_false(success)
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		-- After pair validation, refund is sent first, then error
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal('Transfer', sentMessages[1].Action)
+		assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order with expired time', function()
@@ -138,10 +139,11 @@ describe('English Auction', function()
 				})
 			end)
 
-			-- After pair validation, refund is sent first, then error
-			assert.is_false(success)
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		-- After pair validation, refund is sent first, then error
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal('Transfer', sentMessages[1].Action)
+		assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order without price', function()
@@ -159,10 +161,11 @@ describe('English Auction', function()
 			})
 		end)
 
-			-- After pair validation, refund is sent first, then error
-			assert.is_false(success)
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		-- After pair validation, refund is sent first, then error
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal('Transfer', sentMessages[1].Action)
+		assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order with negative price', function()
@@ -181,10 +184,11 @@ describe('English Auction', function()
 			})
 		end)
 
-			-- After pair validation, refund is sent first, then error
-			assert.is_false(success)
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		-- After pair validation, refund is sent first, then error
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal('Transfer', sentMessages[1].Action)
+		assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject order with quantity not equal to 1', function()
@@ -203,10 +207,11 @@ describe('English Auction', function()
 			})
 			end)
 
-			-- After pair validation, refund is sent first, then error
-			assert.is_false(success)
-			assert.are.equal('Transfer', sentMessages[1].Action)
-			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		-- After pair validation, refund is sent first, then error
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal('Transfer', sentMessages[1].Action)
+		assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 	end)
 
@@ -258,9 +263,10 @@ describe('English Auction', function()
 		})
 		end)
 
-			-- Negative quantity fails validation without refund
-			assert.is_false(success)
-			assert.are.equal('Validation-Error', sentMessages[1].Action)
+		-- Negative quantity fails validation without refund
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
+		assert.are.equal('Validation-Error', sentMessages[1].Action)
 		end)
 	end)
 

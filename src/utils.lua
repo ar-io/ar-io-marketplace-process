@@ -378,7 +378,18 @@ function utils.handleError(args)
 	})
 end
 
---- Refunds tokens on validation failures, sends error notice, and throws error to stop execution
+--- Refunds tokens on validation failures and sends error notice
+--- CRITICAL: This function does NOT throw an error to prevent transaction rollback in critical handlers.
+--- In AO, if a critical handler throws an error, the entire transaction is rolled back including
+--- all queued messages (refunds and error notices), leaving users with lost tokens and no feedback.
+--- 
+--- Instead, this function:
+--- 1. Queues refund message (if applicable)
+--- 2. Queues error notice
+--- 3. Returns false to indicate failure
+--- 
+--- Callers must check the return value and handle the failure appropriately (return early, etc.)
+--- 
 --- NOTE: We always transfer on errors because the marketplace received these tokens
 --- via Credit-Notice. Balance increases should ONLY happen for:
 --- 1. Deposits (X-Action: Deposit in balances.handleDeposit)
@@ -387,7 +398,8 @@ end
 --- @param sender Address The sender address to refund to
 --- @param message string The error message
 --- @param action string|nil The action type (defaults to 'Validation-Error')
-function utils.refundAndError(msg, sender, message, action)
+--- @return boolean success Always returns false to indicate error occurred
+function utils.refundAndNotifyError(msg, sender, message, action)
 	-- Refund the tokens if there's a valid quantity (ANT tokens via Credit-Notice)
 	if msg.Tags.Quantity and msg.From and utils.checkValidAmount(msg.Tags.Quantity) then
 		local ucm = require('ucm')
@@ -402,8 +414,8 @@ function utils.refundAndError(msg, sender, message, action)
 		msg = msg,
 	})
 	
-	-- Throw error to stop execution (will be caught by pcall wrapper)
-	error(message)
+	-- Return false to indicate error (do NOT throw to avoid transaction rollback)
+	return false
 end
 
 --- Parses the pagination tags from a message

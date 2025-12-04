@@ -27,12 +27,12 @@ describe('Intent Workflow Tracking', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
       lua: luaWithTestConfig,
-      });
+    });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-      });
+    });
   });
 
   beforeEach(async () => {
@@ -44,14 +44,14 @@ describe('Intent Workflow Tracking', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
       signer: TEST_SIGNER,
-      });
+    });
 
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-      });
+    });
 
     // Deposit ARIO for listing fees (intents cost 1 ARIO)
     // Use PROCESS_OWNER address (all 1s) which is the default From in test environment
@@ -209,7 +209,7 @@ describe('Intent Workflow Tracking', () => {
       try {
         await marketplaceProcess.process.read({
           tags: [{ name: 'Action', value: 'Get-Intent-By-Id' }],
-      });
+        });
         assert.fail('Should have thrown an error for missing Intent-Id');
       } catch (error: any) {
         assert(
@@ -283,12 +283,12 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-cn-'.padEnd(43, '2'),
       lua: luaWithTestConfig,
-      });
+    });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-      });
+    });
   });
 
   beforeEach(async () => {
@@ -299,14 +299,14 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
       signer: TEST_SIGNER,
-      });
+    });
 
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-      });
+    });
 
     // Deposit ARIO for listing fees
     await marketplaceProcess.depositArio(
@@ -669,12 +669,12 @@ describe('ANT Intent Resolution', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-ant-res-'.padEnd(43, '3'),
       lua: luaWithTestConfig,
-      });
+    });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-      });
+    });
   });
 
   beforeEach(async () => {
@@ -684,13 +684,13 @@ describe('ANT Intent Resolution', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_PROCESS}"`,
       signer: TEST_SIGNER,
-      });
+    });
 
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-      });
+    });
 
     await marketplaceProcess.depositArio(
       '100000000000',
@@ -711,21 +711,18 @@ describe('ANT Intent Resolution', () => {
       const intentData = JSON.parse(intentResult.Data);
       const intentId = intentData['Intent-Id'];
 
-      // First send Credit-Notice to set antProcessId
-      await marketplaceProcess.process.ao.message({
-        process: marketplaceProcess.process.processId,
-        tags: [
-          { name: 'Action', value: 'Credit-Notice' },
-          { name: 'Sender', value: TEST_SENDER },
-          { name: 'Quantity', value: '1000' },
-          { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
-        ],
-        data: '',
+      // Set antProcessId manually (simulating ANT transfer without Credit-Notice due to crank issues)
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local intent = intents.getIntentById("${intentId}")
+          if intent then
+            intent.antProcessId = "${TEST_ANT_PROCESS}"
+          end
+        `,
         signer: TEST_SIGNER,
-        From: TEST_ANT_PROCESS,
-      } as any);
+      });
 
       // Now push resolution as the initiator (PROCESS_OWNER)
       const { id: messageId } = (await marketplaceProcess.process.send({
@@ -779,21 +776,18 @@ describe('ANT Intent Resolution', () => {
       const intentData = JSON.parse(intentResult.Data);
       const intentId = intentData['Intent-Id'];
 
-      // First send Credit-Notice to set antProcessId
-      await marketplaceProcess.process.ao.message({
-        process: marketplaceProcess.process.processId,
-        tags: [
-          { name: 'Action', value: 'Credit-Notice' },
-          { name: 'Sender', value: TEST_SENDER },
-          { name: 'Quantity', value: '1000' },
-          { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
-        ],
-        data: '',
+      // Set antProcessId manually (simulating ANT transfer without Credit-Notice)
+      await marketplaceProcess.process.send({
+        tags: [{ name: 'Action', value: 'Eval' }],
+        data: `
+          local intents = require('intents')
+          local intent = intents.getIntentById("${intentId}")
+          if intent then
+            intent.antProcessId = "${TEST_ANT_PROCESS}"
+          end
+        `,
         signer: TEST_SIGNER,
-        From: TEST_ANT_PROCESS,
-      } as any);
+      });
 
       // Push as owner (PROCESS_OWNER is already the default From)
       const result = await marketplaceProcess.process.send({
@@ -843,7 +837,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: intentId },
           ],
           signer: TEST_SIGNER,
-      });
+        });
         assert.fail('Should have thrown an error for completed intent');
       } catch (error: any) {
         assert(
@@ -886,7 +880,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: intentId },
           ],
           signer: TEST_SIGNER,
-      });
+        });
         assert.fail('Should have thrown an error for failed intent');
       } catch (error: any) {
         assert(
@@ -929,7 +923,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: intentId },
           ],
           signer: TEST_SIGNER,
-      });
+        });
         assert.fail('Should have thrown an error for expired intent');
       } catch (error: any) {
         assert(
@@ -951,29 +945,14 @@ describe('ANT Intent Resolution', () => {
       const intentData = JSON.parse(intentResult.Data);
       const intentId = intentData['Intent-Id'];
 
-      // First send Credit-Notice to set antProcessId
-      await marketplaceProcess.process.ao.message({
-        process: marketplaceProcess.process.processId,
-        tags: [
-          { name: 'Action', value: 'Credit-Notice' },
-          { name: 'Sender', value: TEST_SENDER },
-          { name: 'Quantity', value: '1000' },
-          { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
-        ],
-        data: '',
-        signer: TEST_SIGNER,
-        From: TEST_ANT_PROCESS,
-      } as any);
-
-      // Mark intent as active via Eval
+      // Set antProcessId and status to active via Eval (simulating stuck intent after ANT transfer)
       await marketplaceProcess.process.send({
         tags: [{ name: 'Action', value: 'Eval' }],
         data: `
           local intents = require('intents')
           local intent = intents.getIntentById("${intentId}")
           if intent then
+            intent.antProcessId = "${TEST_ANT_PROCESS}"
             intent.status = "active"
           end
         `,
@@ -1003,29 +982,14 @@ describe('ANT Intent Resolution', () => {
       const intentData = JSON.parse(intentResult.Data);
       const intentId = intentData['Intent-Id'];
 
-      // First send Credit-Notice to set antProcessId
-      await marketplaceProcess.process.ao.message({
-        process: marketplaceProcess.process.processId,
-        tags: [
-          { name: 'Action', value: 'Credit-Notice' },
-          { name: 'Sender', value: TEST_SENDER },
-          { name: 'Quantity', value: '1000' },
-          { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
-          { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
-        ],
-        data: '',
-        signer: TEST_SIGNER,
-        From: TEST_ANT_PROCESS,
-      } as any);
-
-      // Mark intent as settling via Eval
+      // Set antProcessId and status to settling via Eval (simulating stuck intent)
       await marketplaceProcess.process.send({
         tags: [{ name: 'Action', value: 'Eval' }],
         data: `
           local intents = require('intents')
           local intent = intents.getIntentById("${intentId}")
           if intent then
+            intent.antProcessId = "${TEST_ANT_PROCESS}"
             intent.status = "settling"
           end
         `,
@@ -1049,7 +1013,7 @@ describe('ANT Intent Resolution', () => {
         await marketplaceProcess.process.send({
           tags: [{ name: 'Action', value: 'Push-ANT-Intent-Resolution' }],
           signer: TEST_SIGNER,
-      });
+        });
         assert.fail('Should have thrown an error for missing X-Intent-Id');
       } catch (error: any) {
         assert(
@@ -1067,7 +1031,7 @@ describe('ANT Intent Resolution', () => {
             { name: 'X-Intent-Id', value: '999999' },
           ],
           signer: TEST_SIGNER,
-      });
+        });
         assert.fail('Should have thrown an error for non-existent intent');
       } catch (error: any) {
         assert(

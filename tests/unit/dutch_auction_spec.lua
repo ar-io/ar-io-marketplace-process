@@ -302,8 +302,9 @@ describe('Dutch Auction', function()
 			})
 			end)
 
-			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
-			assert.is_false(success)
+		-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
 			assert.is_true(#sentMessages >= 2, 'Should have at least two messages (refund + error)')
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
@@ -328,8 +329,9 @@ describe('Dutch Auction', function()
 			})
 			end)
 
-			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
-			assert.is_false(success)
+		-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+		assert.is_true(success)
 			assert.is_true(#sentMessages >= 2, 'Should have at least two messages (refund + error)')
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)

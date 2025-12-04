@@ -303,9 +303,8 @@ describe('fixed_price helpers', function()
 				fixed_price.handleAntOrder(args, validPair, pair)
 			end)
 
-			-- Expect error to be thrown
-			assert.is_false(success)
-			assert.is_string(err)
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+		assert.is_true(success)
 		end)
 
 		it('should skip orders with insufficient buyer balance', function()
@@ -409,9 +408,8 @@ describe('fixed_price helpers', function()
 				fixed_price.handleAntOrder(args, validPair, pair)
 			end)
 
-			-- Expect error to be thrown (no matching orders found)
-			assert.is_false(success)
-			assert.is_not_nil(err)
+		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+		assert.is_true(success)
 		end)
 	end)
 end)

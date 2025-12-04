@@ -116,7 +116,7 @@ end
 function english_auction.handleAntOrder(args)
 	-- Check if orderId is provided (required for bid identification)
 	if not args.orderId then
-		utils.refundAndError(args.msg, args.sender, 'Order ID is required for bidding', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Order ID is required for bidding', 'Order-Error')
 		return
 	end
 
@@ -133,19 +133,19 @@ function english_auction.handleAntOrder(args)
 
 	-- Check if the auction exists
 	if not targetOrder then
-		utils.refundAndError(args.msg, args.sender, 'English auction not found', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, 'English auction not found', 'Order-Error')
 		return
 	end
 
 	-- Ensure bidding is allowed only on active orders
 	if targetOrder.status ~= ORDER_STATUSES.ACTIVE then
-		utils.refundAndError(args.msg, args.sender, 'Bidding allowed only on active orders', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Bidding allowed only on active orders', 'Order-Error')
 		return
 	end
 
 	-- Check if auction has expired
 	if not english_auction.isAuctionActive(targetOrder.expirationTime, args.createdAt) then
-		utils.refundAndError(args.msg, args.sender, 'Auction has expired', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Auction has expired', 'Order-Error')
 		return
 	end
 
@@ -163,7 +163,7 @@ function english_auction.handleAntOrder(args)
 		english_auction.validateBidAmount(bidAmount, currentHighestBid, minimumStartingPrice)
 
 	if not isValidBid then
-		utils.refundAndError(args.msg, args.sender, bidError, 'Validation-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, bidError, 'Validation-Error')
 		return
 	end
 

@@ -95,12 +95,12 @@ function fixed_price.handleArioOrder(args, validPair, pair)
 			Handler = 'Create-Order',
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
-		Quantity = tostring(args.quantity),
-	Price = args.price and tostring(args.price),
-	Message = 'ARIO order added to orderbook for buy now!',
-	['Order-Type'] = ORDER_TYPES.FIXED,
-	['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
-	},
+			Quantity = tostring(args.quantity),
+			Price = args.price and tostring(args.price),
+			Message = 'ARIO order added to orderbook for buy now!',
+			['Order-Type'] = ORDER_TYPES.FIXED,
+			['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
+		},
 })
 end
 
@@ -141,13 +141,13 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 
 		-- Validate we have a valid fill amount
 		if fillAmount <= bint(0) then
-			utils.refundAndError(args.msg, args.sender, 'No amount to fill', 'Order-Error')
+			utils.refundAndNotifyError(args.msg, args.sender, 'No amount to fill', 'Order-Error')
 			return
 		end
 
-				-- Apply fees and calculate final amounts based on required amount
-				local calculatedSendAmount = utils.calculateSendAmount(requiredAmount)
-				local calculatedFillAmount = utils.calculateFillAmount(fillAmount)
+			-- Apply fees and calculate final amounts based on required amount
+			local calculatedSendAmount = utils.calculateSendAmount(requiredAmount)
+			local calculatedFillAmount = utils.calculateFillAmount(fillAmount)
 
 			-- Accrue fee based on the actual sent amount vs calculated
 			local originalSendAmount = tostring(sentAmount)
@@ -240,13 +240,13 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 				['Dominant-Token'] = args.dominantToken,
 				['Swap-Token'] = args.swapToken,
 				Quantity = tostring(sumVolume),
-			Price = args.price and tostring(args.price) or 'None',
-			Message = 'ANT order executed immediately!',
+				Price = args.price and tostring(args.price) or 'None',
+				Message = 'ANT order executed immediately!',
 			},
 		})
 	else
 		-- No matches found for ANT token - return error
-		utils.refundAndError(
+		utils.refundAndNotifyError(
 			args.msg,
 			args.sender,
 			'No matching orders found for immediate ANT trade - exact ARIO amount match required',

@@ -167,7 +167,7 @@ end
 function ucm.validateAntDominantOrder(args, _validPair)
 	-- ANT tokens can only be sold in quantities of exactly 1
 	if bint(args.quantity) ~= bint(constants.QUANTITY.ANT_EXACT_AMOUNT) then
-		utils.refundAndError(
+		utils.refundAndNotifyError(
 			args.msg,
 			args.sender,
 			'ANT tokens can only be sold in quantities of exactly ' .. constants.QUANTITY.ANT_EXACT_AMOUNT
@@ -177,21 +177,21 @@ function ucm.validateAntDominantOrder(args, _validPair)
 
 	-- Price is required when selling ANT
 	if not args.price then
-		utils.refundAndError(args.msg, args.sender, 'Price is required when selling ANT tokens')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Price is required when selling ANT tokens')
 		return
 	end
 
 	-- Validate expiration time is valid
 	local isValidExpiration, expirationError = utils.checkValidExpirationTime(args.expirationTime, args.createdAt)
 	if not isValidExpiration then
-		utils.refundAndError(args.msg, args.sender, expirationError)
+		utils.refundAndNotifyError(args.msg, args.sender, expirationError)
 		return
 	end
 
 	-- Validate price is valid
 	local isValidPrice, priceError = utils.checkValidAmount(args.price)
 	if not isValidPrice then
-		utils.refundAndError(args.msg, args.sender, priceError or 'Unknown price error')
+		utils.refundAndNotifyError(args.msg, args.sender, priceError or 'Unknown price error')
 		return
 	end
 	return true
@@ -215,20 +215,20 @@ function ucm.validateOrderParams(args)
 	-- 1. Check pair data
 	local validPair, pairError = utils.validatePairData({ args.dominantToken, args.swapToken })
 	if not validPair then
-		utils.refundAndError(args.msg, args.sender, pairError or 'Error validating pair', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, pairError or 'Error validating pair', 'Order-Error')
 		return
 	end
 
 	-- 2. Validate ARIO is in trade (marketplace requirement)
 	local isArioValid, arioError = utils.validateArioInTrade(args.dominantToken, args.swapToken)
 	if not isArioValid then
-		utils.refundAndError(args.msg, args.sender, arioError or 'Invalid trade - ARIO must be involved', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, arioError or 'Invalid trade - ARIO must be involved', 'Order-Error')
 		return
 	end
 
 	-- 3. Check quantity is positive integer
 	if not utils.checkValidAmount(args.quantity) then
-		utils.refundAndError(args.msg, args.sender, 'Quantity must be an integer greater than zero')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Quantity must be an integer greater than zero')
 		return
 	end
 
@@ -237,7 +237,7 @@ function ucm.validateOrderParams(args)
 		not args.orderType
 		or (args.orderType ~= constants.ORDER_TYPES.FIXED and args.orderType ~= constants.ORDER_TYPES.DUTCH and args.orderType ~= constants.ORDER_TYPES.ENGLISH)
 	then
-		utils.refundAndError(args.msg, args.sender, 'Order type must be "fixed" or "dutch" or "english"')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Order type must be "fixed" or "dutch" or "english"')
 		return
 	end
 
@@ -252,7 +252,7 @@ function ucm.validateOrderParams(args)
 		if args.orderType == constants.ORDER_TYPES.DUTCH then
 			local isValidDutch, dutchError = dutch_auction.validateDutchParams(args)
 			if not isValidDutch then
-				utils.refundAndError(args.msg, args.sender, dutchError)
+				utils.refundAndNotifyError(args.msg, args.sender, dutchError)
 				return
 			end
 		end
@@ -335,7 +335,7 @@ function ucm.handleAntOrderAuctions(args, validPair, pair)
 		args.pair = pair
 		english_auction.handleAntOrder(args)
 	else
-		utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
 		return
 	end
 end
@@ -349,7 +349,7 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 	local currentOrders = pair.orders
 	for _, existingOrder in pairs(currentOrders) do
 		if existingOrder.token == args.dominantToken then
-			utils.refundAndError(
+			utils.refundAndNotifyError(
 				args.msg,
 				args.sender,
 				'This ANT token is already being sold - cannot create duplicate sell order'
@@ -365,7 +365,7 @@ function ucm.handleArioOrderAuctions(args, validPair, pair)
 	elseif args.orderType == constants.ORDER_TYPES.ENGLISH then
 		english_auction.handleArioOrder(args, validPair, pair)
 	else
-		utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
+		utils.refundAndNotifyError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
 		return
 	end
 end
@@ -401,8 +401,6 @@ function ucm.createOrder(args)
 		return
 	end
 
-	-- Placeholder for future order type handling
-	utils.refundAndError(args.msg, args.sender, 'Order type not implemented yet', 'Order-Error')
 end
 
 --- Handler: Create-Order (for ARIO orders via direct message using internal balance)

@@ -31,7 +31,7 @@ function notices.creditNoticeHandler(msg)
 			end
 		else
 			-- Refund non-ARIO tokens (like ANT)
-			_utils.refundAndError(msg, sender, errorMessage)
+			_utils.refundAndNotifyError(msg, sender, errorMessage)
 		end
 	end
 
@@ -118,7 +118,7 @@ function notices.creditNoticeHandler(msg)
 		-- Validate that at least one token in the trade is ARIO
 		local isArioValid, arioError = _utils.validateArioInTrade(msg.From, swapToken)
 		if not isArioValid then
-			_utils.refundAndError(msg, sender, arioError or 'At least one token in the trade must be ARIO')
+			_utils.refundAndNotifyError(msg, sender, arioError or 'At least one token in the trade must be ARIO')
 			return
 		end
 
@@ -147,12 +147,12 @@ function notices.creditNoticeHandler(msg)
 		end
 
 		-- Protect order creation to catch unexpected runtime errors
-		-- Note: refundAndError calls within createOrder will throw errors that are caught here
+		-- Note: refundAndNotifyError calls within createOrder will throw errors that are caught here
 		local ok, err = pcall(function()
 			ucm.createOrder(orderArgs)
 		end)
 		if not ok then
-			-- Error occurred - it was already handled by refundAndError which sends error notice
+			-- Error occurred - it was already handled by refundAndNotifyError which sends error notice
 			-- Just return without double-handling
 			return
 		end

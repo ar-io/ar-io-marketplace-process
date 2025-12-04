@@ -28,12 +28,12 @@ describe('Auction Mechanisms', () => {
     const process = await createLocalProcess({
       processId: 'my-marketplace-process-'.padEnd(43, '1'),
       lua: luaWithTestConfig,
-      });
+    });
     ao_mock = process.ao as any as LocalAO;
     marketplaceProcess = new MarketplaceProcess({
       process: new AOProcess({ ao: process.ao, processId: process.processId }),
       signer: TEST_SIGNER,
-      });
+    });
   });
 
   beforeEach(async () => {
@@ -44,14 +44,14 @@ describe('Auction Mechanisms', () => {
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `ARIO_TOKEN_PROCESS_ID = "${TEST_ARIO_TOKEN}"`,
       signer: TEST_SIGNER,
-      });
+    });
 
     // Whitelist test ANT module
     await marketplaceProcess.process.send({
       tags: [{ name: 'Action', value: 'Eval' }],
       data: `WhitelistedModules["${TEST_ANT_MODULE_WHITELISTED}"] = true`,
       signer: TEST_SIGNER,
-      });
+    });
 
     await marketplaceProcess.depositArio(
       '200000000000', // 200 ARIO for listing fees (7 days = 168 hours × 1 ARIO/hour)
@@ -69,8 +69,8 @@ describe('Auction Mechanisms', () => {
           quantity: '1000',
           price: '100',
           // Missing: minimumPrice, decreaseInterval
-        expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
-      });
+          expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
+        });
 
         assert(result, 'Result should be defined');
         // Validation should catch missing parameters
@@ -84,7 +84,7 @@ describe('Auction Mechanisms', () => {
           minimumPrice: '150', // Invalid: higher than price
           decreaseInterval: '60000',
           expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
-      });
+        });
 
         assert(result, 'Result should be defined');
       });
@@ -117,7 +117,7 @@ describe('Auction Mechanisms', () => {
           minimumPrice: '500',
           decreaseInterval: '60000', // 1 minute intervals
           expirationTime: futureTime.toString(),
-      });
+        });
 
         assert(result, 'Result should be defined');
       });
@@ -132,7 +132,7 @@ describe('Auction Mechanisms', () => {
           quantity: '1000',
           price: '100', // Starting bid
           expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
-      });
+        });
 
         assert(result, 'Result should be defined');
       });
@@ -159,7 +159,7 @@ describe('Auction Mechanisms', () => {
           quantity: '1000',
           price: '100',
           expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
-      });
+        });
 
         assert(result, 'Result should be defined');
       });
@@ -184,7 +184,7 @@ describe('Auction Mechanisms', () => {
       it('should reject settlement of non-existent auction', async () => {
         const result = await marketplaceProcess.settleAuction({
           orderId: 'non-existent-auction-'.padEnd(43, 'x'),
-      });
+        });
 
         assert(result, 'Result should be defined');
         assert.strictEqual(result.Action, 'Invalid-Settle-Auction-Notice');
@@ -201,7 +201,7 @@ describe('Auction Mechanisms', () => {
         // before it expires or has bids
         const result = await marketplaceProcess.settleAuction({
           orderId: 'test-auction-id',
-      });
+        });
 
         assert(result, 'Result should be defined');
         // Should return error about order not found or not ready
