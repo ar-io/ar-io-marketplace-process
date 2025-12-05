@@ -1,0 +1,179 @@
+graph TB
+    subgraph "User Entry Points"
+        U1["User sends ARIO<br/>Action: Credit-Notice<br/>X-Action: Deposit"]
+        U2["User sends ANT<br/>Action: Credit-Notice<br/>X-Action: Create-Order"]
+        U3["User sends Message<br/>Action: Create-Intent"]
+        U4["User sends Message<br/>Action: Bid-On-English-Auction<br/>Locks ARIO, holds until settlement"]
+        U5["User sends Message<br/>Action: Withdraw-Ario"]
+        U6["User sends Message<br/>Action: Cancel-Order"]
+        U7["User sends Message<br/>Action: Settle-Auction<br/>Returns all losing bids"]
+    end
+
+    subgraph "ARIO Balance System"
+        B1["ARIOBalances Structure<br/>balance: available<br/>orders: orderId to locked"]
+        B2["Deposit ARIO<br/>Increase balance"]
+        B3["Lock Balance for Order<br/>Move to orders"]
+        B4["Unlock Balance<br/>Return to available"]
+        B5["Withdraw ARIO<br/>Transfer to ARIO Process"]
+    end
+
+    subgraph "Intent System"
+        I1["Create Parent Intent<br/>Type: ANT Listing"]
+        I2["Charge Listing Fee<br/>Fee = baseFee × duration"]
+        I3["Transfer Fee to Treasury"]
+        I4["Set Intent TTL<br/>24 hours"]
+        I5["Create Child Intent<br/>Expect: Debit-Notice"]
+        I6["Prune Expired Intents<br/>No refunds - SPAM protection"]
+        I7{"Intent Expired?"}
+    end
+
+    subgraph "Order Creation ANT Listings"
+        O1{"Token Type?"}
+        O2["ANT Listing<br/>Seller lists ANT for ARIO"]
+        O3{"Order Type?"}
+        O4["Fixed Price Order<br/>Set fixed price"]
+        O5["Dutch Auction Order<br/>Set price decrease"]
+        O6["English Auction Order<br/>Set starting price"]
+        O7["Add to Orderbook<br/>Initialize order.bids"]
+        O8["Validate Max Expiration<br/>30 days or less"]
+    end
+
+    subgraph "Bidding and Buying Internal Balance"
+        BB1{"Action Type?"}
+        BB2["Buy Fixed/Dutch<br/>Match with ANT seller"]
+        BB3["Bid on English Auction<br/>Lock ARIO until settlement"]
+        BB4["Calculate Delta<br/>New - Current Bid"]
+        BB5["Lock Delta Amount<br/>Previous bids stay locked"]
+        BB6["Update order.bids<br/>bids[bidder] = true"]
+        BB7["Update Highest Bid<br/>If highest"]
+        BB8{"Sufficient Balance?"}
+    end
+
+    subgraph "Order Execution and Settlement"
+        E1{"Execution Type?"}
+        E2["Immediate Match<br/>Fixed/Dutch"]
+        E3["English Auction<br/>Settlement"]
+        E4["Calculate Fees<br/>0.5% marketplace fee"]
+        E5["Transfer ARIO to Seller<br/>Winner's bid to seller balance"]
+        E6["Transfer ANT to Buyer<br/>Via Credit-Notice with intent"]
+        E7["Return ALL Losing Bids<br/>Unlock all non-winners"]
+        E8["Clear order.bids<br/>Order Complete"]
+    end
+
+    subgraph "Order Cancellation"
+        C1["Cancel Order Handler"]
+        C2{"Has Locked Balance?"}
+        C3["Unlock Balance<br/>Return to creator"]
+        C4["Transfer ANT Back<br/>Via Credit-Notice"]
+        C5["Remove from Orderbook<br/>Order Cancelled"]
+    end
+
+    subgraph "Error Handling"
+        ERR1["Insufficient Balance Error"]
+        ERR2["Validation Error"]
+        ERR3["Refund Tokens"]
+    end
+
+    subgraph "Global State"
+        G1["ARIOBalances<br/>User balances and locks"]
+        G2["Orderbook<br/>dominantToken to swapToken to orders"]
+        G3["OrderIndex<br/>orderId to pair location"]
+        G4["Intents<br/>intentId to intent data"]
+        G5["Pruning<br/>Next scheduled times"]
+    end
+
+    %% Happy path flows (will be green)
+    U1 --> B2
+    B2 --> B1
+    U5 --> B5
+    B5 --> B1
+    U2 --> I1
+    U3 --> I1
+    I1 --> I2
+    I2 --> I3
+    I3 --> I4
+    I4 --> I5
+    I5 --> I7
+    I7 -->|Valid| O1
+    O1 -->|ANT| O2
+    O2 --> O8
+    O8 --> O3
+    O3 -->|Fixed| O4
+    O3 -->|Dutch| O5
+    O3 -->|English| O6
+    O4 --> O7
+    O5 --> O7
+    O6 --> O7
+    O7 --> G2
+    U4 --> BB8
+    BB8 -->|Yes| BB1
+    BB1 -->|Bid| BB3
+    BB3 --> BB4
+    BB4 --> BB5
+    BB5 --> B3
+    B3 --> B1
+    BB5 --> BB6
+    BB6 --> BB7
+    BB7 --> G2
+    U7 --> E1
+    BB1 -->|Buy| BB2
+    BB2 --> E1
+    E1 -->|Fixed/Dutch| E2
+    E1 -->|English| E3
+    E2 --> E4
+    E3 --> E4
+    E4 --> E5
+    E5 --> B1
+    E4 --> E6
+    E3 --> E7
+    E7 --> B4
+    B4 --> B1
+    E7 --> E8
+
+    %% Error/cancellation flows (will be red)
+    I7 -->|Expired| I6
+    I6 --> G4
+    U6 --> C1
+    C1 --> C2
+    C2 -->|Yes| C3
+    C2 -->|No| C4
+    C3 --> B4
+    C4 --> C5
+    C5 --> G2
+    BB8 -->|No| ERR1
+    ERR1 --> ERR3
+    O8 -->|Invalid| ERR2
+    ERR2 --> ERR3
+
+    %% Neutral state connections
+    B1 --> G1
+    O7 --> G3
+    I1 --> G4
+    I6 --> G5
+
+    %% Link styling: GREEN for happy paths (links 0-47)
+    linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47 stroke:#2e7d32,stroke-width:3px
+
+    %% Link styling: RED for error/cancellation paths (links 48-59)
+    linkStyle 48,49,50,51,52,53,54,55,56,57,58,59 stroke:#d32f2f,stroke-width:3px
+
+    %% Node styling
+    style U1 fill:#e1f5ff
+    style U2 fill:#e1f5ff
+    style U3 fill:#e1f5ff
+    style U4 fill:#e1f5ff
+    style U5 fill:#e1f5ff
+    style U6 fill:#ffe1e1
+    style U7 fill:#e1f5ff
+    style B1 fill:#fff4e1
+    style E8 fill:#d4f4dd
+    style C5 fill:#ffe1e1
+    style I6 fill:#ffe1e1
+    style ERR1 fill:#ffe1e1
+    style ERR2 fill:#ffe1e1
+    style ERR3 fill:#ffe1e1
+    style G1 fill:#f0f0f0
+    style G2 fill:#f0f0f0
+    style G3 fill:#f0f0f0
+    style G4 fill:#f0f0f0
+    style G5 fill:#f0f0f0

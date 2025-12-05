@@ -1,0 +1,19 @@
+{
+  "Lua.diagnostics.severity": {
+    // Type checking - missing required fields
+    "missing-fields": "Error!",
+    // Nil safety checks
+    "need-check-nil": "Error!",
+    "undefined-field": "Error!",
+    // Type mismatch checks
+    "assign-type-mismatch": "Error!",
+    "param-type-mismatch": "Error!",
+    "cast-type-mismatch": "Error!"
+  },
+  "Lua.type.castNumberToInteger": true,
+  "Lua.type.weakUnionCheck": true,
+  "Lua.hint.enable": true,
+  "Lua.hint.paramName": "All",
+  "Lua.hint.paramType": true,
+  "Lua.hint.setType": true
+}

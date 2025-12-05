@@ -1,0 +1,74 @@
+{
+  "Lua": {
+    "runtime": {
+      "version": "5.3",
+      "path": ["?.lua", "?/init.lua"]
+    },
+    "workspace": {
+      "library": [
+        "src",
+        "tests/unit",
+        "${3rd}/busted/library",
+        "${3rd}/luassert/library"
+      ],
+      "ignoreDir": ["dist", "node_modules", ".git", "tests/fixtures/contracts"]
+    },
+    "diagnostics": {
+      "enable": true,
+      "globals": [
+        "describe",
+        "it",
+        "before_each",
+        "after_each",
+        "setup",
+        "teardown",
+        "before",
+        "after",
+        "assert",
+        "spy",
+        "stub",
+        "mock",
+        "finally",
+        "pending",
+        "insulate",
+        "expose",
+        "randomize",
+        "Owner",
+        "Name",
+        "Handlers",
+        "ao",
+        "OrderIndex",
+        "Orderbook",
+        "EnglishAuctionBids",
+        "Intents",
+        "ARIO_TOKEN_PROCESS_ID"
+      ],
+      "disable": ["lowercase-global", "redundant-parameter"],
+      "neededFileStatus": {
+        "unused-local": "Any",
+        "unused-function": "Any",
+        "unused-vararg": "Any"
+      },
+      "severity": {
+        "missing-fields": "Error!",
+        "need-check-nil": "Error!",
+        "undefined-field": "Error!",
+        "duplicate-set-field": "Error!",
+        "assign-type-mismatch": "Error!",
+        "param-type-mismatch": "Error!",
+        "cast-type-mismatch": "Error!"
+      }
+    },
+    "type": {
+      "castNumberToInteger": true,
+      "weakUnionCheck": true
+    },
+    "hint": {
+      "enable": true,
+      "paramName": "All",
+      "paramType": true,
+      "setType": true
+    }
+  },
+  "workspace.checkThirdParty": false
+}
