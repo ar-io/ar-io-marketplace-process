@@ -163,6 +163,7 @@ describe('UCM (Universal Content Marketplace)', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       // Create intent first
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_TOKEN, // Must match the From in Credit-Notice
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
@@ -222,6 +223,7 @@ describe('UCM (Universal Content Marketplace)', () => {
     it('should accept Credit-Notice from whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_TOKEN, // Must match the From in Credit-Notice
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',

@@ -5,6 +5,9 @@ local constants = require('constants')
 local bint = require('.bint')(256)
 print('✓ intents module loaded')
 
+-- Test constants
+local TEST_ANT_PROCESS_ID = 'test-ant-process-123'..(string.rep('0', 43 - #'test-ant-process-123'))
+
 describe('Intent Management', function()
 	print('\n--- Starting Intent Management tests ---')
 	before_each(function()
@@ -30,7 +33,7 @@ describe('Intent Management', function()
 			price = '5000000000',
 		}
 
-			local intent = intents.createIntent(msg, orderParams)
+			local intent = intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 
 			-- Verify intent structure
 			assert.is_not_nil(intent.intentId)
@@ -58,7 +61,7 @@ describe('Intent Management', function()
 				quantity = '1',
 			}
 
-			local intent = intents.createIntent(msg, orderParams)
+			local intent = intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 
 			-- Check that the intent exists in Intents table
 			assert.is_not_nil(Intents[intent.intentId])
@@ -78,7 +81,7 @@ describe('Intent Management', function()
 				quantity = '1',
 			}
 
-			intents.createIntent(msg, orderParams)
+			intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 
 			-- Fee should be 1 ARIO (base fee)
 			assert.are.equal(tostring(bint('9000000000')), ARIOBalances['user-abc'].balance)
@@ -100,7 +103,7 @@ describe('Intent Management', function()
 			quantity = '1',
 		}
 
-		intents.createIntent(msg, orderParams)
+		intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 
 		-- Fee should be 48 ARIO (48 hours at 1 ARIO per hour)
 		assert.are.equal(tostring(bint('100000000000') - bint('48000000000')), ARIOBalances['user-abc'].balance)
@@ -120,7 +123,7 @@ describe('Intent Management', function()
 			}
 
 			assert.has_error(function()
-				intents.createIntent(msg, orderParams)
+				intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 			end)
 		end)
 
@@ -136,9 +139,9 @@ describe('Intent Management', function()
 				quantity = '1',
 			}
 
-			local intent1 = intents.createIntent(msg, orderParams)
-			local intent2 = intents.createIntent(msg, orderParams)
-			local intent3 = intents.createIntent(msg, orderParams)
+			local intent1 = intents.createIntent(msg, orderParams, 'test-ant-1-'..(string.rep('0', 43 - #'test-ant-1-')))
+			local intent2 = intents.createIntent(msg, orderParams, 'test-ant-2-'..(string.rep('0', 43 - #'test-ant-2-')))
+			local intent3 = intents.createIntent(msg, orderParams, 'test-ant-3-'..(string.rep('0', 43 - #'test-ant-3-')))
 
 			assert.is_not_nil(intent1.intentId)
 			assert.is_not_nil(intent2.intentId)
@@ -164,7 +167,7 @@ describe('Intent Management', function()
 			decreaseInterval = '3600000',
 		}
 
-			local intent = intents.createIntent(msg, orderParams)
+			local intent = intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 
 		assert.are.equal('dutch', intent.orderParams.orderType)
 		assert.are.equal('50000000000', intent.orderParams.price)
@@ -182,7 +185,7 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-			local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 			assert.are.equal('pending', intent.status)
 
 			intents.resolveIntent(intent.intentId, 1000500)
@@ -206,7 +209,7 @@ describe('Intent Management', function()
 			Timestamp = 1000000,
 		}
 
-		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
+		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 		
 		intents.updateIntentStatus(intent.intentId, 'completed', msg)
 
@@ -230,7 +233,7 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-			local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 			
 			intents.failIntent(intent.intentId, 'Test failure reason')
 
@@ -253,7 +256,7 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
+		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 		
 		local retrieved = intents.getIntentById(intent.intentId)
 		assert.is_not_nil(retrieved)
@@ -278,9 +281,9 @@ describe('Intent Management', function()
 				Timestamp = 1000000,
 			}
 
-			intents.createIntent(msg, {quantity = '1', expirationTime = 4600000})
-			intents.createIntent(msg, {quantity = '2', expirationTime = 4600000})
-			intents.createIntent(msg, {quantity = '3', expirationTime = 4600000})
+			intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, 'test-ant-a-'..(string.rep('0', 43 - #'test-ant-a-')))
+			intents.createIntent(msg, {quantity = '2', expirationTime = 4600000}, 'test-ant-b-'..(string.rep('0', 43 - #'test-ant-b-')))
+			intents.createIntent(msg, {quantity = '3', expirationTime = 4600000}, 'test-ant-c-'..(string.rep('0', 43 - #'test-ant-c-')))
 
 			local allIntents = intents.getAllIntents()
 			assert.are.equal(3, #allIntents)

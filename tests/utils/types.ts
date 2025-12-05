@@ -66,6 +66,7 @@ export interface Message {
  * Parameters for creating an intent (Create-Order action is assumed)
  */
 export interface CreateIntentParams {
+  antId: string; // Required: ANT process ID for this intent
   orderType?: string;
   quantity?: string;
   price?: string;

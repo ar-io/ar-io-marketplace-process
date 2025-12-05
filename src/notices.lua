@@ -73,9 +73,14 @@ function notices.creditNoticeHandler(msg)
 		return
 	end
 
-	-- Store ANT process ID in intent for later State-Notice verification (if ANT transfer)
+	-- Validate ANT process ID matches the intent (ANT ID was set during Create-Intent)
 	if not _utils.isArioToken(msg.From) then
-		intent.antProcessId = msg.From
+		if msg.From ~= intent.antProcessId then
+			-- Fail the intent and refund the ANT
+			intents.failIntent(msg.Tags['X-Intent-Id'], 'ANT process ID does not match intent. Expected: ' .. tostring(intent.antProcessId), msg)
+			handleInvalidTransfer('ANT process ID does not match intent. Expected: ' .. tostring(intent.antProcessId))
+			return
+		end
 	end
 	
 	-- Resolve intent (pending → active)
@@ -125,7 +130,7 @@ function notices.creditNoticeHandler(msg)
 		-- Build order arguments from intent parameters and ANT transfer context
 		local orderArgs = {
 			orderId = msg.Id,
-			dominantToken = msg.From, -- ANT process ID from Credit-Notice
+			dominantToken = intent.antProcessId, -- ANT process ID from intent (set during Create-Intent)
 			swapToken = swapToken, -- Always ARIO for ANT sell orders
 			sender = sender,
 			quantity = quantity, -- From ANT transfer

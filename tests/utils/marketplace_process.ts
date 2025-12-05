@@ -40,6 +40,7 @@ export class MarketplaceProcess {
   }
 
   async createIntent({
+    antId,
     orderType,
     quantity,
     price,
@@ -49,6 +50,7 @@ export class MarketplaceProcess {
   }: CreateIntentParams): Promise<ReadResponse> {
     const tags: Array<{ name: string; value: string | undefined }> = [
       { name: 'Action', value: 'Create-Intent' },
+      { name: 'X-Intent-ANT-Id', value: antId },
       { name: 'X-Intent-Order-Type', value: orderType },
       { name: 'X-Intent-Quantity', value: quantity },
       { name: 'X-Intent-Price', value: price },

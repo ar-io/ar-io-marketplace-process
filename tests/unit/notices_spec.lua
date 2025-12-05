@@ -6,6 +6,9 @@ local utils = require('utils')
 local balances = require('balances')
 print('✓ notices module loaded')
 
+-- Test constants
+local TEST_ANT_PROCESS_ID = 'test-ant-process-123'..(string.rep('0', 43 - #'test-ant-process-123'))
+
 describe('Notices Module', function()
 	print('\n--- Starting Notices tests ---')
 	
@@ -171,7 +174,7 @@ describe('Notices Module', function()
 		it('should validate sender matches intent initiator', function()
 			-- Create intent
 			local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({
@@ -194,7 +197,7 @@ describe('Notices Module', function()
 		it('should validate intent TTL not expired', function()
 			-- Create intent with TTL
 			local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 			local intentId = intent.intentId
 			-- Manually set TTL
 			Intents[intentId].ttl = 2000
@@ -221,7 +224,7 @@ describe('Notices Module', function()
 			-- Create intent with valid sender for intent creation
 			ARIOBalances['short-12345678901234567890123456789012345678'] = { balance = '10000000000', orders = {} }
 			local msg = { From = 'short-12345678901234567890123456789012345678', Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({
@@ -244,7 +247,7 @@ describe('Notices Module', function()
 		it('should validate quantity is valid amount', function()
 			-- Create intent (long user already funded in before_each)
 			local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
 			local intentId = intent.intentId
 
 			local msg = createMockMsg({
@@ -290,7 +293,7 @@ describe('Notices Module', function()
 			expirationTime = '2000',
 			quantity = '1',
 		}
-		local intent = intents.createIntent(msg, orderParams)
+		local intent = intents.createIntent(msg, orderParams, validAntToken)
 		local intentId = intent.intentId
 
 		-- Add ARIO balance for matching
@@ -331,7 +334,7 @@ describe('Notices Module', function()
 			local validAntToken = 'ant-token-4567890123456789012345678901234567'
 			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
 			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {expirationTime = 4600000}, validAntToken)
 			local intentId = intent.intentId
 
 			-- Note: swapToken is always ARIO (hardcoded in Credit-Notice handler, not stored in orderParams)
@@ -373,7 +376,7 @@ describe('Notices Module', function()
 			local validAntToken = 'ant-token-7890123456789012345678901234567890'
 			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
 			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {expirationTime = 4600000}, validAntToken)
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({
@@ -423,7 +426,7 @@ describe('Notices Module', function()
 			price = '1000',
 			quantity = '1',
 		}
-		local intent = intents.createIntent(msg, orderParams)
+		local intent = intents.createIntent(msg, orderParams, validAntToken)
 		local intentId = intent.intentId
 
 		local creditMsg = createMockMsg({
@@ -458,7 +461,7 @@ describe('Notices Module', function()
 			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
 			
 			local msg = { From = validUser, Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000})
+			local intent = intents.createIntent(msg, {expirationTime = 4600000}, validAntToken)
 			local intentId = intent.intentId
 
 			local creditMsg = createMockMsg({

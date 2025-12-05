@@ -69,8 +69,9 @@ end
 --- Create an intent
 --- @param msg Message The incoming message
 --- @param orderParams OrderIntentParams User-provided order parameters (stored as-is; action in intent.action, swapToken always ARIO)
+--- @param antProcessId TokenId The ANT process ID for this intent
 --- @return Intent intent The created intent
-function intents.createIntent(msg, orderParams)
+function intents.createIntent(msg, orderParams, antProcessId)
 	local balances = require('balances')
 	
 	-- Calculate TTL (24 hours from creation)
@@ -100,6 +101,7 @@ function intents.createIntent(msg, orderParams)
 		completedAt = nil,
 		failureReason = nil,
 		orderParams = orderParams, -- Always a table from createIntentHandler
+		antProcessId = antProcessId, -- ANT process ID set at creation
 	}
 
 	Intents[intent.intentId] = intent
@@ -325,6 +327,25 @@ end
 -- ARIO buy orders don't use intents - they use Create-Order handler directly
 -- Action is always 'Create-Order' (assumed, not required as parameter)
 function intents.createIntentHandler(msg)
+	local _utils = require('utils')
+	
+	-- Validate ANT ID is provided and valid
+	local antId = msg.Tags['X-Intent-ANT-Id']
+	assert(antId, 'X-Intent-ANT-Id required')
+	assert(_utils.checkValidAddress(antId), 'X-Intent-ANT-Id must be a valid Arweave ID (43 characters)')
+	
+	-- Check for existing intents with the same ANT ID (one intent per ANT)
+	for _, intent in pairs(Intents) do
+		if intent.antProcessId == antId then
+			-- Only block if intent is in non-terminal state
+			if intent.status == constants.INTENT_STATUSES.PENDING or 
+			   intent.status == constants.INTENT_STATUSES.ACTIVE or 
+			   intent.status == constants.INTENT_STATUSES.SETTLING then
+				error('An intent already exists for this ANT ID. Intent ID: ' .. intent.intentId)
+			end
+		end
+	end
+	
 	-- Extract order parameters from X-Intent-* tags (Train-Case)
 	---@type OrderIntentParams
 	local orderParams = {
@@ -370,11 +391,11 @@ function intents.createIntentHandler(msg)
 		error('Invalid order type: ' .. tostring(orderType) .. '. Must be fixed, dutch, or english')
 	end
 
-	-- Note: Full validation will happen in Credit-Notice handler
+	-- Note: Full validation will happen in Credit-Notice or State-Notice handler
 	-- This is just basic parameter presence check
 
 	-- Create intent for Create-Order (action='Create-Order' and swapToken=ARIO added internally)
-	local intent = intents.createIntent(msg, orderParams)
+	local intent = intents.createIntent(msg, orderParams, antId)
 
 	-- Return intentId to user (handler wrapper will send as notice)
 	return json.encode({
@@ -441,7 +462,7 @@ function intents.pushANTIntentResolutionHandler(msg)
 	assert(isAuthorized, 
 		'Unauthorized to push intent resolution. Only intent initiator, process owner, or intent pushing authority can push.')
 
-	-- Get ANT process ID from intent (set during Credit-Notice)
+	-- Get ANT process ID from intent (set during Create-Intent)
 	local antId = intent.antProcessId
 	assert(antId, 'No ANT process ID associated with this intent')
 
@@ -455,10 +476,11 @@ function intents.pushANTIntentResolutionHandler(msg)
 end
 
 
--- TODO: ensure order is created in this handler before resolving the intent
--- Handler: State-Notice - Resolves intents based on ANT state
+-- Handler: State-Notice - Creates order after validating ANT ownership
 function intents.stateNoticeHandler(msg)
 	local _utils = require('utils')
+	local ucm = require('ucm')
+	
 	local intentId = msg.Tags['X-Intent-Id']
 	assert(intentId, 'X-Intent-Id required')
 	assert(_utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format')
@@ -477,17 +499,56 @@ function intents.stateNoticeHandler(msg)
 	local owner = antState.Owner
 	assert(owner == ao.id, 'Marketplace does not own this ANT')
 
-	-- Owner matches, resolve the intent
+	-- Owner matches, resolve the intent (pending → active)
 	intents.resolveIntent(intentId, msg.Timestamp)
-
+	
+	-- Get order parameters from the intent (stored during Create-Intent)
+	local orderParams = intent.orderParams or {}
+	
+	-- Swap token is always ARIO for intent-based ANT sell orders
+	local swapToken = ARIO_TOKEN_PROCESS_ID
+	
+	-- Build order arguments from intent parameters
+	local orderArgs = {
+		orderId = msg.Id, -- Use State-Notice message ID as order ID
+		dominantToken = intent.antProcessId, -- ANT process ID from intent (set during Create-Intent)
+		swapToken = swapToken, -- Always ARIO for ANT sell orders
+		sender = intent.initiator, -- Intent creator is the seller
+		quantity = orderParams.quantity, -- From intent parameters
+		createdAt = msg.Timestamp,
+		blockheight = msg['Block-Height'],
+		orderType = orderParams.orderType or 'fixed',
+		expirationTime = orderParams.expirationTime and tonumber(orderParams.expirationTime),
+		minimumPrice = orderParams.minimumPrice,
+		decreaseInterval = orderParams.decreaseInterval,
+		price = orderParams.price,
+		msg = msg, -- Pass msg context for intent tracking
+	}
+	
+	-- Protect order creation to catch unexpected runtime errors
+	local ok, err = pcall(function()
+		ucm.createOrder(orderArgs)
+	end)
+	
+	if not ok then
+		-- Order creation failed - fail the intent
+		intents.failIntent(intentId, 'Order creation failed: ' .. tostring(err), msg)
+		return
+	end
+	
+	-- Order created successfully - complete the intent
+	intents.updateIntentStatus(intentId, constants.INTENT_STATUSES.COMPLETED, msg)
+	
 	-- Send acknowledgment to the intent initiator
 	_utils.Send(msg, {
 		Target = intent.initiator,
 		Action = 'State-Notice-Processed',
 		['Intent-Id'] = intentId,
+		['Order-Id'] = msg.Id,
 		['ANT-Id'] = msg.From,
 		['Owner'] = owner,
-		['Intent-Status'] = 'resolved',
+		['Intent-Status'] = constants.INTENT_STATUSES.COMPLETED,
+		['Order-Status'] = 'listed',
 	})
 end
 

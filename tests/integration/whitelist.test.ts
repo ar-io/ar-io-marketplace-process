@@ -227,6 +227,7 @@ describe('Module Whitelist Management', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         price: '1000000000000',
         quantity: '1',
@@ -294,6 +295,7 @@ describe('Module Whitelist Management', () => {
 
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         price: '1000000000000',
         quantity: '1',
@@ -362,6 +364,7 @@ describe('Module Whitelist Management', () => {
 
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         price: '1000000000000',
         quantity: '1',

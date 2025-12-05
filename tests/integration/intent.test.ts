@@ -65,6 +65,7 @@ describe('Intent Workflow Tracking', () => {
   describe('Create-Intent', () => {
     it('should create an intent for Create-Order action', async () => {
       const result = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -87,19 +88,20 @@ describe('Intent Workflow Tracking', () => {
       assert(result.Tags?.Error, 'Should have Error tag');
     });
 
-    it('should fail to create intent without X-Intent-Quantity', async () => {
+    it('should fail to create intent without X-Intent-ANT-Id', async () => {
       const result = await marketplaceProcess.createIntent({} as any);
 
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Invalid-Create-Intent-Notice');
       assert(
-        result.Data.includes('X-Intent-Quantity required'),
-        'Error should mention X-Intent-Quantity is required',
+        result.Data.includes('X-Intent-ANT-Id required'),
+        'Error should mention X-Intent-ANT-Id is required',
       );
     });
 
     it('should successfully create intent with all required parameters', async () => {
       const result = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         quantity: '1',
         price: '1000000000', // Now required
         expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
@@ -131,6 +133,7 @@ describe('Intent Workflow Tracking', () => {
     it('should return created intents', async () => {
       // Create an intent first
       await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500', // Now required
@@ -149,6 +152,7 @@ describe('Intent Workflow Tracking', () => {
     it('should support pagination with limit', async () => {
       // Create multiple intents
       await marketplaceProcess.createIntent({
+        antId: 'test-ant-process-1'.padEnd(43, '1'),
         orderType: 'fixed',
         quantity: '1000',
         price: '500', // Now required
@@ -156,6 +160,7 @@ describe('Intent Workflow Tracking', () => {
       });
 
       await marketplaceProcess.createIntent({
+        antId: 'test-ant-process-2'.padEnd(43, '2'),
         orderType: 'fixed',
         quantity: '2000',
         price: '600', // Now required
@@ -179,6 +184,7 @@ describe('Intent Workflow Tracking', () => {
     it('should return intent by ID', async () => {
       // Create an intent
       const createResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500', // Now required
@@ -224,6 +230,7 @@ describe('Intent Workflow Tracking', () => {
     it('should return statistics about intents via info handler', async () => {
       // Create various intents
       await marketplaceProcess.createIntent({
+        antId: 'test-ant-process-1'.padEnd(43, '1'),
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -231,6 +238,7 @@ describe('Intent Workflow Tracking', () => {
       });
 
       await marketplaceProcess.createIntent({
+        antId: 'test-ant-process-2'.padEnd(43, '2'),
         orderType: 'dutch',
         quantity: '2000',
         price: '1000',
@@ -320,6 +328,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
     it('should complete intent after successful fixed-price order creation via Credit-Notice', async () => {
       // Step 1: Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
@@ -496,6 +505,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
 
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
@@ -543,6 +553,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
@@ -602,6 +613,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
     it('should accept Credit-Notice from whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
@@ -702,6 +714,7 @@ describe('ANT Intent Resolution', () => {
   describe('Push-ANT-Intent-Resolution', () => {
     it('should trigger ANT state query for valid intent by initiator', async () => {
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -767,6 +780,7 @@ describe('ANT Intent Resolution', () => {
 
     it('should allow process owner to push resolution', async () => {
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -807,6 +821,7 @@ describe('ANT Intent Resolution', () => {
 
     it('should fail for intent in completed status', async () => {
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -850,6 +865,7 @@ describe('ANT Intent Resolution', () => {
 
     it('should fail for intent in failed status', async () => {
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -893,6 +909,7 @@ describe('ANT Intent Resolution', () => {
 
     it('should fail for intent in expired status', async () => {
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -936,6 +953,7 @@ describe('ANT Intent Resolution', () => {
 
     it('should allow pushing for intent in active status', async () => {
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',
@@ -973,6 +991,7 @@ describe('ANT Intent Resolution', () => {
 
     it('should allow pushing for intent in settling status', async () => {
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '500',

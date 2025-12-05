@@ -65,6 +65,7 @@ describe('Auction Mechanisms', () => {
       it('should validate required Dutch auction parameters', async () => {
         // Create intent without required Dutch auction params
         const result = await marketplaceProcess.createIntent({
+          antId: TEST_ANT_PROCESS,
           orderType: 'dutch',
           quantity: '1000',
           price: '100',
@@ -78,6 +79,7 @@ describe('Auction Mechanisms', () => {
 
       it('should validate minimum price is less than starting price', async () => {
         const result = await marketplaceProcess.createIntent({
+          antId: TEST_ANT_PROCESS,
           orderType: 'dutch',
           quantity: '1000',
           price: '100',
@@ -91,6 +93,7 @@ describe('Auction Mechanisms', () => {
 
       it('should validate expiration time is required', async () => {
         const result = await marketplaceProcess.createIntent({
+          antId: TEST_ANT_PROCESS,
           orderType: 'dutch',
           quantity: '1000',
           price: '100',
@@ -111,6 +114,7 @@ describe('Auction Mechanisms', () => {
         // For now, we validate that the order creation intent validates the parameters
         const futureTime = STUB_TIMESTAMP + 3600000; // 1 hour from now
         const result = await marketplaceProcess.createIntent({
+          antId: TEST_ANT_PROCESS,
           orderType: 'dutch',
           quantity: '1000',
           price: '1000',
@@ -128,6 +132,7 @@ describe('Auction Mechanisms', () => {
     describe('Order Creation', () => {
       it('should validate required English auction parameters', async () => {
         const result = await marketplaceProcess.createIntent({
+          antId: TEST_ANT_PROCESS,
           orderType: 'english',
           quantity: '1000',
           price: '100', // Starting bid
@@ -139,6 +144,7 @@ describe('Auction Mechanisms', () => {
 
       it('should require expiration time for English auctions', async () => {
         const result = await marketplaceProcess.createIntent({
+          antId: TEST_ANT_PROCESS,
           orderType: 'english',
           quantity: '1000',
           price: '100',
@@ -155,6 +161,7 @@ describe('Auction Mechanisms', () => {
         // In a real test, we'd create an auction and then try to bid below the minimum
         // For now, we test the intent validation
         const result = await marketplaceProcess.createIntent({
+          antId: TEST_ANT_PROCESS,
           orderType: 'english',
           quantity: '1000',
           price: '100',
@@ -212,6 +219,7 @@ describe('Auction Mechanisms', () => {
   describe('Fixed Price Orders', () => {
     it('should create valid fixed price order intent', async () => {
       const result = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         price: '100',
@@ -226,6 +234,7 @@ describe('Auction Mechanisms', () => {
 
     it('should validate required parameters for fixed price', async () => {
       const result = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1000',
         // Missing: price
@@ -239,6 +248,7 @@ describe('Auction Mechanisms', () => {
   describe('Order Type Validation', () => {
     it('should reject invalid order type', async () => {
       const result = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'invalid' as any,
         quantity: '1000',
         price: '100',
@@ -254,6 +264,7 @@ describe('Auction Mechanisms', () => {
 
       // Fixed
       const fixed = await marketplaceProcess.createIntent({
+        antId: 'test-ant-fixed-'.padEnd(43, '1'),
         orderType: 'fixed',
         quantity: '1000',
         price: '100',
@@ -262,6 +273,7 @@ describe('Auction Mechanisms', () => {
 
       // Dutch
       const dutch = await marketplaceProcess.createIntent({
+        antId: 'test-ant-dutch-'.padEnd(43, '2'),
         orderType: 'dutch',
         quantity: '1000',
         price: '1000',
@@ -272,6 +284,7 @@ describe('Auction Mechanisms', () => {
 
       // English
       const english = await marketplaceProcess.createIntent({
+        antId: 'test-ant-english'.padEnd(43, '3'),
         orderType: 'english',
         quantity: '1000',
         price: '100',
@@ -288,6 +301,7 @@ describe('Auction Mechanisms', () => {
     it('should reject Credit-Notice from non-whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
@@ -347,6 +361,7 @@ describe('Auction Mechanisms', () => {
     it('should accept Credit-Notice from whitelisted module', async () => {
       // Create intent
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'fixed',
         quantity: '1',
         price: '1000000',
@@ -407,6 +422,7 @@ describe('Auction Mechanisms', () => {
       // Use a far future timestamp to ensure it's always in the future
       const futureTimestamp = STUB_TIMESTAMP + 7 * 24 * 60 * 60 * 1000; // 7 days from now
       const intentResult = await marketplaceProcess.createIntent({
+        antId: TEST_ANT_PROCESS,
         orderType: 'english',
         quantity: '1000',
         price: '100',
