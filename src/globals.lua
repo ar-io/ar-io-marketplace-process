@@ -59,13 +59,13 @@ AccruedFeesAmount = AccruedFeesAmount or '0'
 --- Structure: ARIOBalances[address] = { balance: "amount", orders: {[orderId]: "lockedAmount"} }
 --- - balance: Available ARIO that can be used for new bids/orders or withdrawn
 --- - orders: ARIO locked in active orders/bids, indexed by orderId
---- 
+---
 --- This unified structure replaces the previous separate globals:
 --- - Old ARIOBalances (just available balance)
 --- - EnglishAuctionBalances (auction bids)
 --- - OrderLockedBalances (buy order locks)
 --- - UserOrdersIndex (reverse lookup from user to orders)
---- 
+---
 --- To find all orders a user is involved in: iterate ARIOBalances[user].orders
 --- To find all bidders on an auction: use order.bids field (English auctions only)
 ---]]

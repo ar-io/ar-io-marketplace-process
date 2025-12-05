@@ -14,16 +14,16 @@ local ORDER_TYPES = constants.ORDER_TYPES
 --- @return table|nil {bidder: Address, amount: BalanceAmount} or nil if no bids
 function english_auction.getHighestBid(orderId)
 	local balances = require('balances')
-	
+
 	-- Get the order's locked balances - this contains all bids
 	local orderBalances = balances.getOrderBalances(orderId)
 	if not orderBalances then
 		return nil
 	end
-	
+
 	local highestBidder = nil
 	local highestAmount = bint(0)
-	
+
 	-- Scan all locked balances for this order to find the highest bid
 	for bidder, amount in pairs(orderBalances) do
 		local bidAmount = bint(amount)
@@ -32,11 +32,11 @@ function english_auction.getHighestBid(orderId)
 			highestBidder = bidder
 		end
 	end
-	
+
 	if not highestBidder then
 		return nil
 	end
-	
+
 	return {
 		bidder = highestBidder,
 		amount = tostring(highestAmount)
@@ -79,21 +79,21 @@ end
 -- Called during settlement to return bids to internal balances
 function english_auction.returnLosingBids(order, winningBidder, msg)
 	local balances = require('balances')
-	
+
 	if not order.bids then
 		return
 	end
-	
+
 	-- Return all bids except the winner's to internal balances
 	for bidder, _ in pairs(order.bids) do
 		if bidder ~= winningBidder then
 			-- Get locked amount for this bidder
 			local amount = balances.getOrderLockedBalance(order.id, bidder)
-			
+
 			if bint(amount) > 0 then
 				-- Transfer bid back to bidder's available balance
 				balances.unlockBalanceFromOrder(order.id, bidder, bidder, amount)
-				
+
 				-- Notify bidder
 				utils.Send(msg, {
 					Target = bidder,
@@ -154,7 +154,7 @@ function english_auction.handleAntOrder(args)
 
 	-- Determine minimum starting price from the target order for first bid validation
 	local minimumStartingPrice = targetOrder.price
-	
+
 	-- Get current highest bid
 	local highestBidInfo = english_auction.getHighestBid(targetOrder.id)
 	local currentHighestBid = highestBidInfo and highestBidInfo.amount or nil
@@ -168,7 +168,7 @@ function english_auction.handleAntOrder(args)
 	end
 
 	-- Keep all bids until auction ends - losing bids returned during settlement
-	
+
 	-- Add bidder to order.bids for tracking
 	if not targetOrder.bids then
 		targetOrder.bids = {}
@@ -234,19 +234,17 @@ function english_auction.settleAuction(args)
 	local order = args.order
 	local pair = args.pair
 	local orderId = order.id
-	
+
 	-- Get highest bid info
 	local highestBidInfo = english_auction.getHighestBid(orderId)
 	assert(highestBidInfo, 'No bids found for auction')
-	
+
 	local winningBidder = highestBidInfo.bidder
 	local winningBid = highestBidInfo.amount
 
 	-- Execute the settlement
 	-- For English auction settlement: seller gets ARIO tokens, buyer gets ANT tokens
 	-- The Orderbook pair is [ANT_token_process, ARIO_token_process]
-	-- We need validPair to be [ARIO_token_process, ANT_token_process] for correct transfers
-	local validPair = { pair.Pair[2], pair.Pair[1] } -- Swap the order to get [ARIO, ANT]
 	local winningBidAmount = bint(winningBid)
 	local quantity = bint(order.quantity)
 
@@ -257,16 +255,16 @@ function english_auction.settleAuction(args)
 	-- All bids now use internal balance (ARIO Credit-Notices for orders are blocked)
 	local balances = require('balances')
 	local feeAmount = winningBidAmount - calculatedSendAmount
-	
+
 	-- Transfer fee from winner's locked bid to treasury balance
 	balances.unlockBalanceFromOrder(orderId, winningBidder, TREASURY_ADDRESS, tostring(feeAmount))
-	
+
 	-- Transfer remaining bid ARIO to seller's balance
 	balances.unlockBalanceFromOrder(orderId, winningBidder, order.creator, tostring(calculatedSendAmount))
-	
+
 	-- Record the fee
 	utils.accrueFee(tostring(feeAmount))
-	
+
 	-- Transfer ANT to winner via Credit-Notice (ANT came via Credit-Notice)
 	local ucm = require('ucm')
 	ucm.transfer(winningBidder, tostring(calculatedFillAmount), order.token, args.msg)
@@ -299,9 +297,8 @@ function english_auction.settleAuction(args)
 	pair.orders[orderId] = nil
 	-- Remove from index
 	OrderIndex[orderId] = nil
-	
+
 	-- Prune the pair if it's now empty
-	local ucm = require('ucm')
 	ucm.pruneEmptyPair(args.dominantToken, args.swapToken)
 
 	-- Notify winner
@@ -344,13 +341,13 @@ end
 function english_auction.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
 	-- This creates an auction selling ANT for ARIO
-	
+
 	-- Add to index FIRST for O(1) lookup (safer update order)
 	OrderIndex[args.orderId] = {
 		dominantToken = validPair[1],
 		swapToken = validPair[2],
 	}
-	
+
 	-- Then add the new order to the orderbook
 	pair.orders[args.orderId] = {
 		id = args.orderId,
@@ -396,73 +393,73 @@ end
 
 --- Handler for bidding on English auctions using internal ARIO balance.
 --- This handler supports both placing new bids and increasing existing bids on the same auction.
---- 
+---
 --- Delta Calculation (Contract-Side):
 --- - Clients send their total desired bid amount, NOT the delta/increment.
 --- - The contract calculates the delta internally by comparing with the user's existing bid.
 --- - When a user places a new bid, the full bid amount is deducted from their available ARIO balance.
 --- - When a user increases an existing bid, only the delta (difference between new and current bid) is deducted.
 --- - This allows users to incrementally increase their bid without withdrawing and re-bidding.
---- 
+---
 --- Why Contract-Side Delta?
 --- - Simplifies client-side interface: clients only need to know their desired total bid, not calculate deltas.
 --- - Prevents race conditions: if a client sends multiple "increase bid" messages before they're processed,
 ---   the contract will correctly handle each one based on the current state, avoiding double-charges or errors.
 --- - More robust: clients don't need to track intermediate bid states or handle failed/pending transactions.
---- 
+---
 --- Bid Storage:
 --- - All bids are stored in ARIOBalances[bidder].orders[orderId] and kept until auction settlement.
 --- - The highest bid is determined by calling getHighestBid(orderId) which scans all bids.
 --- - Losing bids are returned to internal ARIO balance at settlement, not immediately when outbid.
---- 
+---
 --- Intended Use:
 --- - Direct message to marketplace with Action: "Bid-On-English-Auction"
 --- - Requires: Order-Id (auction to bid on), Bid-Amount (total desired bid, not delta)
 --- - User must have sufficient available ARIO balance for the delta amount
---- 
+---
 --- @param msg Message The incoming message with Order-Id and Bid-Amount tags
 --- @return string JSON response with status, action (Bid-Placed or Bid-Updated), and bid details
 function english_auction.bidOnEnglishAuctionHandler(msg)
 	local balances = require('balances')
 	local json = require('json')
 	local ucm = require('ucm')
-	
+
 	-- Parse parameters
 	local orderId = msg.Tags['Order-Id']
 	local bidAmount = msg.Tags['Bid-Amount']
 	local bidder = msg.From
-	
+
 	assert(orderId, 'Order-Id is required')
 	assert(bidAmount, 'Bid-Amount is required')
 	assert(utils.checkValidAmount(bidAmount), 'Bid-Amount must be a positive integer')
-	
+
 	-- Find the order
-	local order, pair = ucm.getOrderById(orderId)
+	local order = ucm.getOrderById(orderId)
 	assert(order, 'Order not found')
-	
+
 	-- Validate it's an English auction
 	assert(order.orderType == ORDER_TYPES.ENGLISH, 'Order is not an English auction')
-	
+
 	-- Validate auction is active
 	assert(order.status == ORDER_STATUSES.ACTIVE, 'Auction is not active')
-	
+
 	-- Check if auction has expired
 	assert(not utils.isExpired(order.expirationTime, msg.Timestamp), 'Auction has expired')
-	
+
 	-- Get current bid for this bidder from their locked balances
 	local currentBidAmount = balances.getOrderLockedBalance(orderId, bidder)
 	local isNewBid = currentBidAmount == '0'
-	
+
 	-- Calculate delta needed
 	local newBidAmount = bint(bidAmount)
 	local delta = newBidAmount - bint(currentBidAmount)
-	
+
 	assert(delta > bint(0), 'New bid must be higher than your current bid')
-	
+
 	-- Get current highest bid to validate new bid
 	local highestBidInfo = english_auction.getHighestBid(orderId)
 	local currentHighestBid = highestBidInfo and highestBidInfo.amount or nil
-	
+
 	-- Validate new bid amount meets requirements
 	local minimumStartingPrice = order.price
 	local isValidBid, bidError = english_auction.validateBidAmount(
@@ -471,26 +468,26 @@ function english_auction.bidOnEnglishAuctionHandler(msg)
 		minimumStartingPrice
 	)
 	assert(isValidBid, bidError or 'Invalid bid amount')
-	
+
 	-- Check if bidder has sufficient balance for delta
 	assert(
 		balances.walletHasSufficientBalance(bidder, tostring(delta)),
 		'Insufficient ARIO balance for bid. Required: ' .. tostring(delta)
 	)
-	
+
 	-- Lock delta from available balance to this order
 	balances.lockBalanceForOrder(orderId, bidder, tostring(delta))
-	
+
 	-- Add bidder to order.bids for tracking
 	if not order.bids then
 		order.bids = {}
 	end
 	order.bids[bidder] = true
-	
+
 	-- Get updated highest bid after locking this bid
 	local updatedHighestBidInfo = english_auction.getHighestBid(orderId)
 	local isHighestBid = updatedHighestBidInfo and updatedHighestBidInfo.bidder == bidder
-	
+
 	-- Send success notice
 	local action = isNewBid and constants.ACTIONS.BID_PLACED or constants.ACTIONS.BID_UPDATED
 	return json.encode({

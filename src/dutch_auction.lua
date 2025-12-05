@@ -27,7 +27,7 @@ end
 function dutch_auction.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
 	-- This creates a Dutch auction selling ANT for ARIO
-	
+
 	local decreaseStep = dutch_auction.calculateDecreaseStep(args)
 
 	-- Add to index FIRST for O(1) lookup (safer update order)
@@ -207,11 +207,11 @@ function dutch_auction.handleAntOrder(args, _validPair, pair)
 			-- Store tokens before removing the order
 			local dominantToken = matchedOrder.dominantToken
 			local swapToken = matchedOrder.swapToken
-			
+
 			pair.orders[matchedOrderId] = nil
 			-- Remove from index
 			OrderIndex[matchedOrderId] = nil
-			
+
 			-- Prune the pair if it's now empty
 			local ucm = require('ucm')
 			ucm.pruneEmptyPair(dominantToken, swapToken)
@@ -273,22 +273,22 @@ function dutch_auction.validateDutchParams(args)
 	-- Calculate auction duration and intervals (convert to numbers for timestamp arithmetic)
 	local auctionDuration = tonumber(args.expirationTime) - tonumber(args.createdAt)
 	local decreaseInterval = tonumber(args.decreaseInterval)
-	
+
 	if decreaseInterval >= auctionDuration then
 		return false, 'Decrease interval must be less than auction duration'
 	end
 
 	local intervalsCount = auctionDuration / decreaseInterval
 	local priceDecreaseMax = bint(args.price) - bint(args.minimumPrice)
-	
+
 	-- Ensure price decrease is evenly divisible by interval count
 	local remainder = priceDecreaseMax % intervalsCount
 	if remainder > bint(0) then
-		return false, 
-			'Price decrease (' .. tostring(priceDecreaseMax) .. ' mARIO) must be evenly divisible by interval count (' .. 
+		return false,
+			'Price decrease (' .. tostring(priceDecreaseMax) .. ' mARIO) must be evenly divisible by interval count (' ..
 			tostring(intervalsCount) .. '). Adjust your price range or decrease interval to ensure even price drops.'
 	end
-	
+
 	local decreaseStep = priceDecreaseMax / intervalsCount
 
 	if decreaseStep < bint(1) then

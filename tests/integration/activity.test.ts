@@ -1,14 +1,14 @@
-import { before, beforeEach, describe, it } from 'node:test';
-import { MarketplaceProcess } from '../utils/marketplace_process.js';
-import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
-import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
+import { before, beforeEach, describe, it } from 'node:test';
+import { AOProcess } from '@ar.io/sdk';
+import Arweave from 'arweave';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   TEST_SIGNER,
   TEST_WALLET,
 } from '../utils/constants.js';
-import Arweave from 'arweave';
+import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
+import { MarketplaceProcess } from '../utils/marketplace_process.js';
 
 describe('Activity Tracking', () => {
   let marketplaceProcess: MarketplaceProcess;

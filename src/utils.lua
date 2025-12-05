@@ -382,14 +382,14 @@ end
 --- CRITICAL: This function does NOT throw an error to prevent transaction rollback in critical handlers.
 --- In AO, if a critical handler throws an error, the entire transaction is rolled back including
 --- all queued messages (refunds and error notices), leaving users with lost tokens and no feedback.
---- 
+---
 --- Instead, this function:
 --- 1. Queues refund message (if applicable)
 --- 2. Queues error notice
 --- 3. Returns false to indicate failure
---- 
+---
 --- Callers must check the return value and handle the failure appropriately (return early, etc.)
---- 
+---
 --- NOTE: We always transfer on errors because the marketplace received these tokens
 --- via Credit-Notice. Balance increases should ONLY happen for:
 --- 1. Deposits (X-Action: Deposit in balances.handleDeposit)
@@ -405,7 +405,7 @@ function utils.refundAndNotifyError(msg, sender, message, action)
 		local ucm = require('ucm')
 		ucm.transfer(sender, tostring(msg.Tags.Quantity), msg.From, msg)
 	end
-	
+
 	-- Send error notice
 	utils.handleError({
 		target = sender,
@@ -413,7 +413,7 @@ function utils.refundAndNotifyError(msg, sender, message, action)
 		message = message,
 		msg = msg,
 	})
-	
+
 	-- Return false to indicate error (do NOT throw to avoid transaction rollback)
 	return false
 end
@@ -815,7 +815,7 @@ function utils.accrueFee(amount)
 	if not amount then
 		return
 	end
-	
+
 	local feeAmount = bint(amount)
 	if feeAmount > bint(0) then
 		AccruedFeesAmount = tostring(bint(AccruedFeesAmount) + feeAmount)
@@ -860,7 +860,7 @@ function utils.sendFeeToTreasury(originalAmount, calculatedAmount, feeToken, msg
 		local ucm = require('ucm')
 		ucm.transfer(TREASURY_ADDRESS, tostring(feeAmount), feeToken, msgContext)
 		end
-		
+
 		-- Track the accrued fee
 		utils.accrueFee(tostring(feeAmount))
 	end
@@ -908,7 +908,7 @@ function utils.onBeforeHandler(msg)
 	-- The pruning function handles its own scheduling checks
 	local ucm = require('ucm')
 	ucm.pruneOrderbook(msg.Timestamp, msg)
-	
+
 	-- Prune expired intents (TTL-based cleanup)
 	local intents = require('intents')
 	intents.pruneIntents(msg.Timestamp)
@@ -1036,7 +1036,7 @@ function utils.createHandler(tagName, tagValue, handler, position, critical)
 			-- CRITICAL: Dynamically require at execution time to allow hot-reloading
 			-- This pulls the LATEST version of onBeforeHandler/onAfterHandler each time
 			-- Use _utils to avoid shadowing the outer 'utils' variable
-			-- 
+			--
 			-- Resource cost: Minimal. Lua's require() caches modules after first load,
 			-- so subsequent calls only perform a table lookup (O(1) operation).
 			-- The initial parse/load happens once per module, not per handler call.

@@ -201,12 +201,12 @@ describe('Dutch Auction', function()
 			assert.are.equal('Transfer', transfers[1].action)
 			assert.are.equal('xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10', transfers[1].target)
 			assert.are.equal('ario-buyer', transfers[1].recipient)
-			
+
 		-- Check that seller received ARIO in internal balance (after 0.5% fee)
 		local expectedArioToSeller = '497500000000' -- 500B * 995/1000 = 497.5B
 		assert.is_not_nil(ARIOBalances['ant-seller'])
 		assert.are.equal(expectedArioToSeller, ARIOBalances['ant-seller'].balance)
-			
+
 			-- Check ANT quantity
 			assert.are.equal('1', transfers[1].quantity)
 
@@ -274,7 +274,7 @@ describe('Dutch Auction', function()
 
 		-- Buyer should receive 1 ANT
 		assert.are.equal('1', transfers[1].quantity)
-		
+
 	-- Check that seller received ARIO in internal balance (after 0.5% fee)
 	local expectedArioToSeller = '398000000000' -- 400B * 995/1000 = 398B
 	assert.is_not_nil(ARIOBalances['ant-seller'])

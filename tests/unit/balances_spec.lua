@@ -205,18 +205,18 @@ describe('Balance Management', function()
 
 			-- Should send Transfer message (ucm.transfer, not ucm.transferExternal)
 			assert.are.equal(1, #sentMessages) -- Only Transfer (notice sent by wrapper)
-			
+
 			-- Message should be the Transfer (no X-Intent-Id tag)
 			local transferMsg = sentMessages[1]
 			assert.are.equal('Transfer', transferMsg.Action)
 			assert.are.equal(ARIO_TOKEN_PROCESS_ID, transferMsg.Target)
 			assert.are.equal('user-withdraw', transferMsg.Tags.Recipient)
 			assert.are.equal('3000', transferMsg.Tags.Quantity)
-			
+
 			-- Verify NO intent tracking (no X-Intent-Id tag)
 			assert.is_nil(transferMsg.Tags['X-Intent-Id'])
 		end)
-		
+
 		it('should support custom recipient', function()
 			ARIOBalances['user-withdraw'] = {balance = '10000', orders = {}}
 
@@ -260,7 +260,7 @@ describe('Balance Management', function()
 			assert.is_false(success)
 			assert.is_not_nil(err)
 			assert.is_true(string.find(tostring(err), 'Insufficient balance') ~= nil)
-			
+
 			-- Balance should remain unchanged
 			assert.are.equal('100', ARIOBalances['user-poor'].balance)
 		end)
@@ -415,11 +415,11 @@ describe('Balance Management', function()
 		describe('getUserTotalLockedBalance', function()
 			it('should return total locked balance across all orders', function()
 				local order2 = 'order-auction-456'
-				
+
 				-- Lock to multiple orders
 				balances.lockBalanceForOrder(orderId, bidder1, '1000')
 				balances.lockBalanceForOrder(order2, bidder1, '2000')
-				
+
 				local totalLocked = balances.getUserTotalLockedBalance(bidder1)
 				assert.are.equal('3000', totalLocked)
 			end)
@@ -434,10 +434,10 @@ describe('Balance Management', function()
 			it('should return available, locked, and total', function()
 				-- Setup: user starts with 5000, locks 1500
 				ARIOBalances[bidder1] = {balance = '5000', orders = {}}
-				
+
 				-- Lock some balance
 				balances.lockBalanceForOrder(orderId, bidder1, '1500')
-				
+
 				local breakdown = balances.getUserBalanceBreakdown(bidder1)
 				assert.are.equal('3500', breakdown.available) -- 5000 - 1500 locked
 				assert.are.equal('1500', breakdown.locked)
@@ -446,7 +446,7 @@ describe('Balance Management', function()
 
 			it('should handle user with no locked balance', function()
 				ARIOBalances[bidder1] = {balance = '10000', orders = {}}
-				
+
 				local breakdown = balances.getUserBalanceBreakdown(bidder1)
 				assert.are.equal('10000', breakdown.available)
 				assert.are.equal('0', breakdown.locked)
@@ -456,7 +456,7 @@ describe('Balance Management', function()
 		it('should handle user with no balance at all', function()
 			-- Clear balance set by before_each
 			ARIOBalances[bidder1] = nil
-			
+
 			local breakdown = balances.getUserBalanceBreakdown(bidder1)
 			assert.are.equal('0', breakdown.available)
 			assert.are.equal('0', breakdown.locked)

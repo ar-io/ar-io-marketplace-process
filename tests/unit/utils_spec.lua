@@ -616,7 +616,6 @@ describe('utils', function()
 
 	describe('handleError', function()
 		local validTarget = 'error-target-process'
-		local validTransferToken = 'refund-token-process'
 
 		local testCases = {
 			{
@@ -904,7 +903,7 @@ describe('utils', function()
 			utils.accrueFee('-50')
 			assert.are.equal('100', _G.AccruedFeesAmount)
 		end)
-		
+
 	it('handles nil input', function()
 		_G.AccruedFeesAmount = '100'
 		---@diagnostic disable-next-line: param-type-mismatch

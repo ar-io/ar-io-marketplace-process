@@ -1,3 +1,4 @@
+import { AOProcess } from '@ar.io/sdk';
 import {
   AOS_WASM,
   AO_LOADER_HANDLER_ENV,
@@ -5,14 +6,13 @@ import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   DEFAULT_HANDLE_OPTIONS,
 } from './constants.js';
-import { AOProcess } from '@ar.io/sdk';
 import { createAosLoader } from './index.js';
 import type {
   AoClient,
+  CreateLocalProcessParams,
   HandleFunction,
   HandlerEnv,
   LocalAOInitParams,
-  CreateLocalProcessParams,
 } from './types.js';
 
 /**

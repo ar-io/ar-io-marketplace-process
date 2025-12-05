@@ -163,7 +163,7 @@ describe('fixed_price helpers', function()
 			assert.are.equal('5000', order.price)
 			assert.are.equal('active', order.status)
 			assert.are.equal('fixed', order.orderType)
-			
+
 			-- Check index was updated
 			assert.is_not_nil(OrderIndex['order-123'])
 			assert.are.equal('ant-token-456', OrderIndex['order-123'].dominantToken)
@@ -252,10 +252,10 @@ describe('fixed_price helpers', function()
 
 			-- Order should be removed from orderbook
 			assert.is_nil(pair.orders['sell-order-1'])
-			
+
 			-- Buyer balance should be reduced by the price (10000 - 5000 = 5000)
 			assert.are.equal('5000', ARIOBalances['buyer-123'].balance)
-			
+
 			-- Seller should have received ARIO minus 0.5% maker fee (5000 * 0.995 = 4975)
 			assert.are.equal('4975', balances.getBalance('seller-123'))
 
@@ -298,13 +298,13 @@ describe('fixed_price helpers', function()
 				msg = testGlobals.mockMsg({}),
 			}
 
-			-- Should throw error when no matching order found
-			local success, err = pcall(function()
-				fixed_price.handleAntOrder(args, validPair, pair)
-			end)
+		-- Should throw error when no matching order found
+		local success = pcall(function()
+			fixed_price.handleAntOrder(args, validPair, pair)
+		end)
 
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-		assert.is_true(success)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+	assert.is_true(success)
 		end)
 
 		it('should skip orders with insufficient buyer balance', function()
@@ -360,7 +360,7 @@ describe('fixed_price helpers', function()
 			-- Should match with cheaper order
 			assert.is_nil(pair.orders['sell-order-cheap'])
 			assert.is_not_nil(pair.orders['sell-order-expensive']) -- Still there
-			
+
 			-- Buyer balance should be reduced
 			assert.are.equal('2000', ARIOBalances['buyer-123'].balance)
 		end)
@@ -403,13 +403,13 @@ describe('fixed_price helpers', function()
 				msg = testGlobals.mockMsg({}),
 			}
 
-			-- Should throw error when order is expired (skipped in matching)
-			local success, err = pcall(function()
-				fixed_price.handleAntOrder(args, validPair, pair)
-			end)
+		-- Should throw error when order is expired (skipped in matching)
+		local success = pcall(function()
+			fixed_price.handleAntOrder(args, validPair, pair)
+		end)
 
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-		assert.is_true(success)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+	assert.is_true(success)
 		end)
 	end)
 end)

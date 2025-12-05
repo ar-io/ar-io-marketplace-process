@@ -55,13 +55,13 @@ end
 function fixed_price.handleArioOrder(args, validPair, pair)
 	-- NOTE: No balance deduction here - ANT comes via Credit-Notice
 	-- This creates a fixed-price order selling ANT for ARIO
-	
+
 	-- Add to index FIRST for O(1) lookup (safer update order)
 	OrderIndex[args.orderId] = {
 		dominantToken = validPair[1],
 		swapToken = validPair[2],
 	}
-	
+
 	-- Then add the new order to the orderbook (buy now functionality)
 	-- Use dictionary-style (lookup table) for efficient order management
 	pair.orders[args.orderId] = {
@@ -214,11 +214,11 @@ function fixed_price.handleAntOrder(args, _validPair, pair)
 			-- Store tokens before removing the order
 			local dominantToken = matchedOrder.dominantToken
 			local swapToken = matchedOrder.swapToken
-			
+
 			pair.orders[matchedOrderId] = nil
 			-- Remove from index
 			OrderIndex[matchedOrderId] = nil
-			
+
 			-- Prune the pair if it's now empty
 			local ucm = require('ucm')
 			ucm.pruneEmptyPair(dominantToken, swapToken)

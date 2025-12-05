@@ -83,7 +83,7 @@ end
 function balances.increaseBalance(target, qty)
 	assert(bint(qty) ~= nil, "Quantity is required and must be a number!")
 	assert(bint(qty) > 0, "Quantity must be greater than 0")
-	
+
 	balances.ensureAccountExists(target)
 	local prevBalance = balances.getBalance(target)
 	ARIOBalances[target].balance = tostring(bint(prevBalance) + bint(qty))
@@ -103,7 +103,7 @@ function balances.getPaginatedBalances(cursor, limit, sortBy, sortOrder)
 		local locked = balances.getUserTotalLockedBalance(address)
 		local available = account.balance
 		local total = bint(available) + bint(locked)
-		
+
 		table.insert(balancesArray, {
 			address = address,
 			balance = available, -- Available balance
@@ -146,14 +146,14 @@ function balances.withdrawArioHandler(msg)
 	local account = msg.From
 	local quantity = msg.Tags.Quantity
 	local recipient = msg.Tags.Recipient or account
-	
+
 	assert(quantity and _utils.checkValidAmount(quantity), "Invalid quantity. Must be integer greater than 0")
 	assert(balances.walletHasSufficientBalance(account, quantity), "Insufficient balance")
-	
+
 	balances.reduceBalance(account, quantity)
 	local ucm = require('ucm')  -- Lazy load to avoid circular dependency
 	ucm.transfer(recipient, quantity, ARIO_TOKEN_PROCESS_ID, msg)
-	
+
 	return json.encode({
 		Status = 'Success',
 		Message = 'ARIO withdrawal initiated',
@@ -180,9 +180,9 @@ function balances.getBalanceHandler(msg)
 	local available = balances.getBalance(target)
 	local locked = balances.getUserTotalLockedBalance(target)
 	local total = bint(available) + bint(locked)
-	
+
 	balances.ensureAccountExists(target)
-	
+
 	local balanceData = {
 		address = target,
 		balance = available, -- Available balance
@@ -190,7 +190,7 @@ function balances.getBalanceHandler(msg)
 		totalBalance = tostring(total), -- Available + locked
 		orders = ARIOBalances[target].orders or {}, -- Per-order locked amounts
 	}
-	
+
 	return json.encode(balanceData)
 end
 
@@ -208,12 +208,12 @@ function balances.lockBalanceForOrder(orderId, user, qty)
 	assert(type(user) == "string", "User is required!")
 	assert(bint(qty) > 0, "Quantity must be greater than 0")
 	assert(balances.walletHasSufficientBalance(user, qty), "Insufficient balance to lock for order")
-	
+
 	balances.ensureAccountExists(user)
-	
+
 	-- Reduce from available balance
 	balances.reduceBalance(user, qty)
-	
+
 	-- Add to locked orders
 	local prevLocked = ARIOBalances[user].orders[orderId] or '0'
 	ARIOBalances[user].orders[orderId] = tostring(bint(prevLocked) + bint(qty))
@@ -230,14 +230,14 @@ function balances.unlockBalanceFromOrder(orderId, user, recipient, qty)
 	assert(type(user) == "string", "User is required!")
 	assert(type(recipient) == "string", "Recipient is required!")
 	assert(bint(qty) > 0, "Quantity must be greater than 0")
-	
+
 	balances.ensureAccountExists(user)
-	
+
 	-- Check locked balance exists
 	local lockedBalance = ARIOBalances[user].orders[orderId] or '0'
 	assert(bint(lockedBalance) > 0, "No locked balance for this user on this order")
 	assert(bint(lockedBalance) >= bint(qty), "Insufficient locked balance")
-	
+
 	-- Reduce from locked balance
 	local newLockedBalance = bint(lockedBalance) - bint(qty)
 	if newLockedBalance == bint(0) then
@@ -245,7 +245,7 @@ function balances.unlockBalanceFromOrder(orderId, user, recipient, qty)
 	else
 		ARIOBalances[user].orders[orderId] = tostring(newLockedBalance)
 	end
-	
+
 	-- Add to recipient's available balance
 	balances.increaseBalance(recipient, qty)
 end
@@ -267,14 +267,14 @@ end
 function balances.getOrderBalances(orderId)
 	local orderBalances = {}
 	local hasBalances = false
-	
+
 	for user, userBalance in pairs(ARIOBalances) do
 		if userBalance.orders and userBalance.orders[orderId] then
 			orderBalances[user] = userBalance.orders[orderId]
 			hasBalances = true
 		end
 	end
-	
+
 	return hasBalances and orderBalances or nil
 end
 
@@ -285,12 +285,12 @@ function balances.getUserTotalLockedBalance(user)
 	if not ARIOBalances[user] or not ARIOBalances[user].orders then
 		return '0'
 	end
-	
+
 	local total = bint(0)
 	for _, amount in pairs(ARIOBalances[user].orders) do
 		total = total + bint(amount)
 	end
-	
+
 	return tostring(total)
 end
 
@@ -301,7 +301,7 @@ function balances.getUserBalanceBreakdown(user)
 	local available = balances.getBalance(user)
 	local locked = balances.getUserTotalLockedBalance(user)
 	local total = bint(available) + bint(locked)
-	
+
 	return {
 		available = available,
 		locked = locked,

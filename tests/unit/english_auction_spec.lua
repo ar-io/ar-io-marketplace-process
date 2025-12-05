@@ -408,8 +408,6 @@ describe('English Auction', function()
 	end)
 
 	describe('Helper functions', function()
-		local english_auction = require('english_auction')
-
 		-- Note: getAuctionBids and getExistingAuctionBids have been removed
 		-- Bids are now stored directly on order objects
 
@@ -496,7 +494,7 @@ describe('English Auction', function()
 		_G.ao.send = function(msg)
 				table.insert(returnBidMessages, msg)
 			end
-			
+
 			-- Reset state
 			testGlobals.resetState()
 		end)
@@ -507,7 +505,7 @@ describe('English Auction', function()
 		local loser1 = 'loser1-addr'
 		local loser2 = 'loser2-addr'
 		local msg = { Tags = {} }
-		
+
 		-- Setup order with bids field
 		local order = {
 			id = orderId,
@@ -517,25 +515,25 @@ describe('English Auction', function()
 				[loser2] = true,
 			}
 		}
-		
+
 		-- Setup locked balances for each bidder
 		ARIOBalances[winner] = {balance = '0', orders = {[orderId] = '3000'}}
 		ARIOBalances[loser1] = {balance = '5000', orders = {[orderId] = '1000'}}
 		ARIOBalances[loser2] = {balance = '6000', orders = {[orderId] = '2000'}}
-		
+
 		-- Return losing bids
 		english_auction.returnLosingBids(order, winner, msg)
-		
+
 		-- Winner's locked bid should still be there
 		assert.are.equal('3000', ARIOBalances[winner].orders[orderId])
-		
+
 		-- Losers' bids should be returned to their available balances
 		assert.are.equal('6000', ARIOBalances[loser1].balance) -- 5000 + 1000
 		assert.are.equal('8000', ARIOBalances[loser2].balance) -- 6000 + 2000
 		-- Losers' locked balances should be cleared
 		assert.is_nil(ARIOBalances[loser1].orders[orderId])
 		assert.is_nil(ARIOBalances[loser2].orders[orderId])
-		
+
 		-- Should have sent 2 notifications (one per loser)
 		assert.are.equal(2, #returnBidMessages)
 	end)
@@ -551,8 +549,6 @@ describe('English Auction', function()
 	end)
 
 	describe('bidOnEnglishAuctionHandler', function()
-		local english_auction = require('english_auction')
-
 		it('should place new bid using internal balance', function()
 			-- Setup: Create an English auction
 			ucm.createOrder({
@@ -707,7 +703,7 @@ describe('English Auction', function()
 		assert.are.equal('8000000000', ARIOBalances['bidder-a'].balance)
 		-- Bidder B should have reduced available balance
 		assert.are.equal('6000000000', ARIOBalances['bidder-b'].balance)
-		
+
 		-- Both bids should be in locked balances
 		assert.are.equal('2000000000', ARIOBalances['bidder-a'].orders['auction-refund-1'])
 		assert.are.equal('4000000000', ARIOBalances['bidder-b'].orders['auction-refund-1'])
@@ -864,8 +860,6 @@ describe('English Auction', function()
 	end)
 
 	describe('English Auction Cancellation', function()
-		local english_auction = require('english_auction')
-
 	it('should allow cancellation of English auction without bids', function()
 		-- Setup: Create an English auction with no bids
 		ucm.createOrder({

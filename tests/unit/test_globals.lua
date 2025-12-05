@@ -74,7 +74,7 @@ return {
 			Tags = {},
 			Data = '',
 		}
-		
+
 		-- Merge overrides
 		if overrides then
 			for k, v in pairs(overrides) do
@@ -87,7 +87,7 @@ return {
 				end
 			end
 		end
-		
+
 		return msg
 	end,
 

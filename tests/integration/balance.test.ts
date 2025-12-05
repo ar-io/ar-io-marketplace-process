@@ -1,14 +1,14 @@
-import { before, beforeEach, describe, it } from 'node:test';
-import { MarketplaceProcess } from '../utils/marketplace_process.js';
-import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
-import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
+import { before, beforeEach, describe, it } from 'node:test';
+import { AOProcess } from '@ar.io/sdk';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
   TEST_ARIO_PROCESS,
   TEST_SENDER,
   TEST_SIGNER,
 } from '../utils/constants.js';
+import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
+import { MarketplaceProcess } from '../utils/marketplace_process.js';
 
 describe('Balance Management', () => {
   let marketplaceProcess: MarketplaceProcess;

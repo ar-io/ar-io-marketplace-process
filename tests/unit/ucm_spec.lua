@@ -121,12 +121,12 @@ describe('ucm helpers', function()
 			msg = { Tags = { Quantity = '2' }, From = 'token-process-id' },
 		}
 
-		local success, err = pcall(function()
-			ucm.validateAntDominantOrder(args, validPair)
-		end)
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-		assert.is_true(success)
-		assert.are.equal(2, #sentMessages) -- Transfer (refund) + Validation-Error
+	local success = pcall(function()
+		ucm.validateAntDominantOrder(args, validPair)
+	end)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+	assert.is_true(success)
+	assert.are.equal(2, #sentMessages) -- Transfer (refund) + Validation-Error
 		assert.are.equal('Transfer', sentMessages[1].Action)
 		assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
@@ -134,16 +134,16 @@ describe('ucm helpers', function()
 		it('should reject missing price', function()
 			local args = {
 				quantity = '1',
-				sender = 'test-sender',
-				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
-			}
+			sender = 'test-sender',
+			msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
+		}
 
-		local success, err = pcall(function()
-			ucm.validateAntDominantOrder(args, validPair)
-		end)
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-		assert.is_true(success)
-		assert.are.equal(2, #sentMessages)
+	local success = pcall(function()
+		ucm.validateAntDominantOrder(args, validPair)
+	end)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+	assert.is_true(success)
+	assert.are.equal(2, #sentMessages)
 		assert.are.equal('Transfer', sentMessages[1].Action)
 		assert.are.equal('Validation-Error', sentMessages[2].Action)
 	end)
@@ -153,15 +153,15 @@ describe('ucm helpers', function()
 				quantity = '1',
 				price = '0',
 				sender = 'test-sender',
-				createdAt = 1000,
-				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
-			}
+			createdAt = 1000,
+			msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
+		}
 
-		local success, err = pcall(function()
-			ucm.validateAntDominantOrder(args, validPair)
-		end)
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true
-		assert.is_true(success)
+	local success = pcall(function()
+		ucm.validateAntDominantOrder(args, validPair)
+	end)
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true
+	assert.is_true(success)
 	end)
 
 		it('should accept valid ANT order', function()
@@ -355,7 +355,7 @@ describe('ucm helpers', function()
 		before_each(function()
 			resetGlobals()
 			balances = require('balances')
-			
+
 			-- Mock ao.send to track messages
 			sentMessages = {}
 			---@diagnostic disable-next-line: duplicate-set-field
@@ -363,7 +363,7 @@ describe('ucm helpers', function()
 				table.insert(sentMessages, msg)
 				return true
 			end
-			
+
 			-- Give user and seller some ARIO balance
 			_G.ARIOBalances['test-user'] = {balance = '10000000000', orders = {}} -- 10 ARIO
 			_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}} -- ANT seller
@@ -469,7 +469,7 @@ describe('ucm helpers', function()
 			assert.is_false(success)
 			assert.is_not_nil(err)
 			assert.is_true(string.find(tostring(err), 'Insufficient balance') ~= nil)
-			
+
 			-- User balance should remain unchanged
 			assert.are.equal('10000000000', _G.ARIOBalances['test-user'].balance)
 		end)
@@ -534,24 +534,24 @@ describe('ucm helpers', function()
 
 		it('should initialize Pruning if not exists', function()
 			ucm.scheduleNextOrderbookPruning(5000)
-			
+
 			assert.is_not_nil(_G.Pruning)
 			assert.are.equal(5000, _G.Pruning.nextScheduledOrderbookPruning)
 		end)
 
 		it('should update if new timestamp is sooner', function()
 			_G.Pruning = { nextScheduledOrderbookPruning = 10000 }
-			
+
 			ucm.scheduleNextOrderbookPruning(5000)
-			
+
 			assert.are.equal(5000, _G.Pruning.nextScheduledOrderbookPruning)
 		end)
 
 		it('should not update if new timestamp is later', function()
 			_G.Pruning = { nextScheduledOrderbookPruning = 5000 }
-			
+
 			ucm.scheduleNextOrderbookPruning(10000)
-			
+
 			assert.are.equal(5000, _G.Pruning.nextScheduledOrderbookPruning)
 		end)
 
@@ -562,33 +562,30 @@ describe('ucm helpers', function()
 	end)
 
 	describe('pruneOrderbook', function()
-		local testGlobals = require('test_globals')
-
 		before_each(function()
 			testGlobals.resetState()
 		end)
 
 		it('should return early if no pruning scheduled', function()
 			_G.Pruning = nil
-			
+
 			ucm.pruneOrderbook(5000, {})
-			
+
 			-- Should not crash
 		end)
 
 		it('should return early if not time yet', function()
 			_G.Pruning = { nextScheduledOrderbookPruning = 10000 }
-			
+
 			ucm.pruneOrderbook(5000, {})
-			
+
 			-- nextScheduledOrderbookPruning should not change
 			assert.are.equal(10000, _G.Pruning.nextScheduledOrderbookPruning)
 		end)
 
-		it('should prune expired fixed price orders', function()
-			local fixedPrice = require('fixed_price')
-			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
-			
+	it('should prune expired fixed price orders', function()
+		_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+
 			_G.Orderbook = {
 				['ant-token'] = {
 					['ario-token'] = {
@@ -614,7 +611,7 @@ describe('ucm helpers', function()
 
 		it('should reschedule next pruning for future expirations', function()
 			_G.Pruning = { nextScheduledOrderbookPruning = 1000 }
-			
+
 			_G.Orderbook = {
 				['ant-token'] = {
 					['ario-token'] = {
@@ -732,13 +729,10 @@ describe('ucm helpers', function()
 		end)
 	end)
 
-	describe('cancelOrderHandler', function()
-		local testGlobals = require('test_globals')
-		local balances = require('balances')
-
-		before_each(function()
-			testGlobals.resetState()
-			testGlobals.setArioTokenId('ario-token-123')
+describe('cancelOrderHandler', function()
+	before_each(function()
+		testGlobals.resetState()
+		testGlobals.setArioTokenId('ario-token-123')
 		end)
 
 		it('should cancel order and return balance', function()
@@ -770,14 +764,14 @@ describe('ucm helpers', function()
 			local msg = testGlobals.mockMsg({
 				From = 'user-123',
 				Tags = {
-					['Order-Id'] = 'order-123',
-				},
-			})
+			['Order-Id'] = 'order-123',
+		},
+	})
 
-			local result = ucm.cancelOrderHandler(msg)
+	ucm.cancelOrderHandler(msg)
 
-			-- Order should be removed
-			assert.is_nil(_G.OrderIndex['order-123'])
+	-- Order should be removed
+	assert.is_nil(_G.OrderIndex['order-123'])
 
 			-- Pair should be pruned (empty) - dominant token level should be removed
 			assert.is_nil(_G.Orderbook['ant-token'])
@@ -836,13 +830,10 @@ describe('ucm helpers', function()
 		end)
 	end)
 
-	describe('infoHandler', function()
-		local testGlobals = require('test_globals')
-		local json = require('json')
-
-		before_each(function()
-			testGlobals.resetState()
-			testGlobals.setArioTokenId('ario-token-123')
+describe('infoHandler', function()
+	before_each(function()
+		testGlobals.resetState()
+		testGlobals.setArioTokenId('ario-token-123')
 		end)
 
 		it('should return marketplace info', function()
@@ -896,7 +887,7 @@ describe('ucm helpers', function()
 		assert.is_not_nil(info.whitelistedModules)
 		assert.are.equal('table', type(info.whitelistedModules))
 		assert.are.equal(2, #info.whitelistedModules)
-		
+
 		-- Check that both modules are in the array
 		local hasModule1 = false
 		local hasModule2 = false
@@ -957,13 +948,10 @@ end)
 		end)
 	end)
 
-	describe('getOrderHandler', function()
-		local testGlobals = require('test_globals')
-		local json = require('json')
-
-		before_each(function()
-			testGlobals.resetState()
-		end)
+describe('getOrderHandler', function()
+	before_each(function()
+		testGlobals.resetState()
+	end)
 
 		it('should return order by ID', function()
 			_G.Orderbook = {
@@ -1013,18 +1001,17 @@ end)
 		end)
 	end)
 
-	describe('Whitelist Management', function()
-		local TEST_MODULE_ID = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
-		local TEST_MODULE_ID_2 = '9afQ1PLf2mrshqCTZEzzJTR2gWaC9zHYWyqH3_1234'
+describe('Whitelist Management', function()
+	local TEST_MODULE_ID = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
 
-		before_each(function()
-			testGlobals.resetState()
-		end)
+	before_each(function()
+		testGlobals.resetState()
+	end)
 
 		describe('whitelistModule', function()
 			it('should add module to whitelist', function()
 				local result = ucm.whitelistModule(TEST_MODULE_ID)
-				
+
 				assert.is_true(result)
 				assert.is_true(WhitelistedModules[TEST_MODULE_ID])
 			end)
@@ -1033,17 +1020,17 @@ end)
 				local success = pcall(function()
 					ucm.whitelistModule('invalid-id')
 				end)
-				
+
 				assert.is_false(success)
 			end)
 
 			it('should reject already whitelisted module', function()
 				ucm.whitelistModule(TEST_MODULE_ID)
-				
+
 				local success = pcall(function()
 					ucm.whitelistModule(TEST_MODULE_ID)
 				end)
-				
+
 				assert.is_false(success)
 			end)
 		end)
@@ -1051,9 +1038,9 @@ end)
 		describe('unwhitelistModule', function()
 			it('should remove module from whitelist', function()
 				ucm.whitelistModule(TEST_MODULE_ID)
-				
+
 				local result = ucm.unwhitelistModule(TEST_MODULE_ID)
-				
+
 				assert.is_true(result)
 				assert.is_nil(WhitelistedModules[TEST_MODULE_ID])
 			end)
@@ -1062,7 +1049,7 @@ end)
 				local success = pcall(function()
 					ucm.unwhitelistModule(TEST_MODULE_ID)
 				end)
-				
+
 				assert.is_false(success)
 			end)
 		end)
@@ -1074,10 +1061,10 @@ end)
 						['Module-Id'] = TEST_MODULE_ID,
 					},
 				})
-				
+
 				local result = ucm.whitelistModuleHandler(msg)
 				local whitelist = json.decode(result)
-				
+
 				assert.is_true(WhitelistedModules[TEST_MODULE_ID])
 				assert.is_true(whitelist[TEST_MODULE_ID])
 			end)
@@ -1086,11 +1073,11 @@ end)
 				local msg = testGlobals.mockMsg({
 					Tags = {},
 				})
-				
+
 				local success = pcall(function()
 					ucm.whitelistModuleHandler(msg)
 				end)
-				
+
 				assert.is_false(success)
 			end)
 		end)
@@ -1098,16 +1085,16 @@ end)
 		describe('unwhitelistModuleHandler', function()
 			it('should unwhitelist via message handler', function()
 				ucm.whitelistModule(TEST_MODULE_ID)
-				
+
 				local msg = testGlobals.mockMsg({
 					Tags = {
 						['Module-Id'] = TEST_MODULE_ID,
 					},
 				})
-				
+
 				local result = ucm.unwhitelistModuleHandler(msg)
 				local whitelist = json.decode(result)
-				
+
 				assert.is_nil(WhitelistedModules[TEST_MODULE_ID])
 				assert.is_nil(whitelist[TEST_MODULE_ID])
 			end)
@@ -1116,11 +1103,11 @@ end)
 				local msg = testGlobals.mockMsg({
 					Tags = {},
 				})
-				
+
 				local success = pcall(function()
 					ucm.unwhitelistModuleHandler(msg)
 				end)
-				
+
 				assert.is_false(success)
 			end)
 		end)

@@ -1,8 +1,8 @@
-import { ArweaveSigner, createAoSigner } from '@ar.io/sdk';
-import { createDataItemSigner } from '@permaweb/aoconnect';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ArweaveSigner, createAoSigner } from '@ar.io/sdk';
+import { createDataItemSigner } from '@permaweb/aoconnect';
 import type {
   AoLoaderOptions,
   DefaultHandleOptions,
@@ -67,7 +67,7 @@ export function createLoggingFetch(originalFetch: typeof fetch) {
             `[FETCH] ✓ ${response.status} ${urlString} (${body.length} bytes)`,
           );
         }
-      } catch (e) {
+      } catch (_e) {
         console.log(
           `[FETCH] ✓ ${response.status} ${urlString} (binary/non-text)`,
         );

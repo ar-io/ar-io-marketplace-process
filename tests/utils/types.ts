@@ -1,5 +1,5 @@
-import type { connect } from '@permaweb/aoconnect';
 import type AoLoader from '@permaweb/ao-loader';
+import type { connect } from '@permaweb/aoconnect';
 import type { AO_LOADER_HANDLER_ENV } from './constants.js';
 
 /**

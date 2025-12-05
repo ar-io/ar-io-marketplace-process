@@ -199,9 +199,9 @@ end
 
 --- Validate ARIO dominant token orders (buying ANT with ARIO)
 --- Throws error if validation fails
---- @param args table Order arguments containing sender, quantity
+--- @param _args table Order arguments containing sender, quantity
 --- @param _validPair TokenId[] The validated pair [ARIO, ANT]
-function ucm.validateArioDominantOrder(args, _validPair)
+function ucm.validateArioDominantOrder(_args, _validPair)
 	-- Currently no specific validation rules for ARIO dominant orders
 	-- All general validations (quantity, pair, etc.) are handled in validateOrderParams
 	-- This function is a placeholder for future ARIO-specific validation rules
@@ -296,10 +296,10 @@ function ucm.pruneEmptyPair(dominantToken, swapToken)
 	end
 
 	local pair = Orderbook[dominantToken][swapToken]
-	
+
 	-- Count remaining orders in the pair
 	local hasOrders = false
-	for _ in pairs(pair.orders) do
+	for _ in pairs(pair.orders) do -- luacheck: ignore (intentional single iteration check)
 		hasOrders = true
 		break
 	end
@@ -307,14 +307,14 @@ function ucm.pruneEmptyPair(dominantToken, swapToken)
 	-- If no orders remain, remove the pair
 	if not hasOrders then
 		Orderbook[dominantToken][swapToken] = nil
-		
+
 		-- If the dominant token level is now empty, remove it too
 		local hasSwapTokens = false
-		for _ in pairs(Orderbook[dominantToken]) do
+		for _ in pairs(Orderbook[dominantToken]) do -- luacheck: ignore (intentional single iteration check)
 			hasSwapTokens = true
 			break
 		end
-		
+
 		if not hasSwapTokens then
 			Orderbook[dominantToken] = nil
 		end
@@ -407,26 +407,26 @@ end
 --- ANT orders must come via Credit-Notice
 --- @param msg Message The message containing order parameters
 --- @return string jsonResponse JSON-encoded response with status and order ID
-function ucm.createOrderHandler(msg)	
+function ucm.createOrderHandler(msg)
 	-- Parse order parameters
 	local swapToken = msg.Tags['Swap-Token']
 	local quantity = msg.Tags.Quantity
 	local orderType = msg.Tags['Order-Type'] or 'fixed'
 	local price = msg.Tags.Price
 	local expirationTime = msg.Tags['Expiration-Time'] and tonumber(msg.Tags['Expiration-Time'])
-	
+
 	assert(swapToken, 'Swap-Token is required')
 	assert(quantity, 'Quantity is required')
 	assert(utils.checkValidAmount(quantity), 'Quantity must be a positive integer')
-	
+
 	-- Validate that sender has ARIO token process ID as dominantToken
 	-- For ARIO orders, we're offering ARIO from internal balance to get the swap token
 	local dominantToken = ARIO_TOKEN_PROCESS_ID
-	
+
 	-- Validate that at least one token is ARIO
 	local isArioValid, arioError = utils.validateArioInTrade(dominantToken, swapToken)
 	assert(isArioValid, arioError or 'At least one token in the trade must be ARIO')
-	
+
 	local orderArgs = {
 		orderId = msg.Id,
 		dominantToken = dominantToken,
@@ -441,17 +441,17 @@ function ucm.createOrderHandler(msg)
 		decreaseInterval = msg.Tags['Decrease-Interval'],
 		msg = msg,
 	}
-	
+
 	if price then
 		orderArgs.price = price
 	end
 	if msg.Tags['Transfer-Denomination'] then
 		orderArgs.transferDenomination = msg.Tags['Transfer-Denomination']
 	end
-	
+
 	-- Create the order (will use internal balance via handleArioOrder)
 	ucm.createOrder(orderArgs)
-	
+
 	return json.encode({
 		Status = 'Success',
 		Message = 'ARIO order created using internal balance',
@@ -524,10 +524,10 @@ function ucm.cancelOrderHandler(msg)
 
 	-- Return funds to the creator
 	local balances = require('balances')
-	
+
 	-- Check if this order has locked balance (internal ARIO balance order)
 	local lockedBalance = balances.getOrderLockedBalance(orderId, currentOrderEntry.creator)
-	
+
 	if bint(lockedBalance) > 0 then
 		-- Internal balance order: Unlock and return to creator
 		balances.unlockBalanceFromOrder(orderId, currentOrderEntry.creator, currentOrderEntry.creator, lockedBalance)

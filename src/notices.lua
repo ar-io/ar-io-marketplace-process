@@ -66,7 +66,7 @@ function notices.creditNoticeHandler(msg)
 		handleInvalidTransfer('Sender does not match intent initiator')
 		return
 	end
-	
+
 	-- Validate intent hasn't expired (parent intents have TTL)
 	if intent.ttl and msg.Timestamp >= intent.ttl then
 		handleInvalidTransfer('Intent has expired')
@@ -82,7 +82,7 @@ function notices.creditNoticeHandler(msg)
 			return
 		end
 	end
-	
+
 	-- Resolve intent (pending → active)
 	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp)
 
@@ -116,10 +116,10 @@ function notices.creditNoticeHandler(msg)
 	if msg.Tags['X-Order-Action'] == 'Create-Order' then
 		-- Get order parameters from the intent (stored during Create-Intent)
 		local orderParams = intent.orderParams or {}
-		
+
 		-- Swap token is always ARIO for intent-based ANT sell orders
 		local swapToken = ARIO_TOKEN_PROCESS_ID
-		
+
 		-- Validate that at least one token in the trade is ARIO
 		local isArioValid, arioError = _utils.validateArioInTrade(msg.From, swapToken)
 		if not isArioValid then
@@ -153,7 +153,7 @@ function notices.creditNoticeHandler(msg)
 
 		-- Protect order creation to catch unexpected runtime errors
 		-- Note: refundAndNotifyError calls within createOrder will throw errors that are caught here
-		local ok, err = pcall(function()
+		local ok = pcall(function()
 			ucm.createOrder(orderArgs)
 		end)
 		if not ok then
@@ -163,10 +163,10 @@ function notices.creditNoticeHandler(msg)
 		end
 
 		-- Order created successfully - complete the intent
-		local intent = intents.getIntentById(msg.Tags['X-Intent-Id'])
-		local intentStatus = intent and intent.status or 'not-found'
-		
-		if intent then
+		local updatedIntent = intents.getIntentById(msg.Tags['X-Intent-Id'])
+		local intentStatus = updatedIntent and updatedIntent.status or 'not-found'
+
+		if updatedIntent then
 			intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed', msg)
 			intentStatus = 'completed'
 		end

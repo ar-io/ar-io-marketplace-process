@@ -11,7 +11,7 @@ local TEST_ANT_PROCESS_ID = 'test-ant-process-123'..(string.rep('0', 43 - #'test
 
 describe('Notices Module', function()
 	print('\n--- Starting Notices tests ---')
-	
+
 	local function createMockMsg(overrides)
 		return testGlobals.mockMsg(overrides or {})
 	end
@@ -110,7 +110,7 @@ describe('Notices Module', function()
 
 			-- Should handle invalid transfer (accrue fee for ARIO)
 			notices.creditNoticeHandler(msg)
-			
+
 			-- Fee should be accrued
 			assert.are.equal('1000', tostring(utils.getAccruedFees()))
 		end)
@@ -124,13 +124,13 @@ describe('Notices Module', function()
 				},
 			})
 
-			-- Handler should throw error about missing intent ID
-			local success, err = pcall(function()
-				notices.creditNoticeHandler(msg)
-			end)
-			
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-		assert.is_true(success)
+		-- Handler should throw error about missing intent ID
+		local success = pcall(function()
+			notices.creditNoticeHandler(msg)
+		end)
+
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+	assert.is_true(success)
 		end)
 
 		it('should validate X-Intent-Id format', function()
@@ -143,13 +143,13 @@ describe('Notices Module', function()
 				},
 			})
 
-			-- Handler should throw error about invalid intent ID format
-			local success, err = pcall(function()
-				notices.creditNoticeHandler(msg)
-			end)
-			
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-		assert.is_true(success)
+		-- Handler should throw error about invalid intent ID format
+		local success = pcall(function()
+			notices.creditNoticeHandler(msg)
+		end)
+
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+	assert.is_true(success)
 		end)
 
 		it('should validate intent exists', function()
@@ -162,13 +162,13 @@ describe('Notices Module', function()
 				},
 			})
 
-			-- Handler should throw error about non-existent intent
-			local success, err = pcall(function()
-				notices.creditNoticeHandler(msg)
-			end)
-			
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-		assert.is_true(success)
+		-- Handler should throw error about non-existent intent
+		local success = pcall(function()
+			notices.creditNoticeHandler(msg)
+		end)
+
+	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+	assert.is_true(success)
 		end)
 
 		it('should validate sender matches intent initiator', function()
@@ -190,7 +190,7 @@ describe('Notices Module', function()
 		local success = pcall(function()
 			notices.creditNoticeHandler(creditMsg)
 		end)
-		
+
 		assert.is_true(success)
 		end)
 
@@ -216,7 +216,7 @@ describe('Notices Module', function()
 		local success = pcall(function()
 			notices.creditNoticeHandler(creditMsg)
 		end)
-		
+
 		assert.is_true(success)
 		end)
 
@@ -240,17 +240,17 @@ describe('Notices Module', function()
 		local success = pcall(function()
 			notices.creditNoticeHandler(creditMsg)
 		end)
-		
+
 		assert.is_true(success)
 		end)
 
 		it('should validate quantity is valid amount', function()
 			-- Create intent (long user already funded in before_each)
-			local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
-			local intent = intents.createIntent(msg, {expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
-			local intentId = intent.intentId
+		local msg = { From = 'user-123-1234567890123456789012345678901234567890', Timestamp = 1000 }
+		local intent = intents.createIntent(msg, {expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
+		local intentId = intent.intentId
 
-			local msg = createMockMsg({
+		local creditMsg = createMockMsg({
 				From = 'ant-token-123',
 				Tags = {
 					Sender = 'user-123-1234567890123456789012345678901234567890',
@@ -261,9 +261,9 @@ describe('Notices Module', function()
 
 		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
 		local success = pcall(function()
-			notices.creditNoticeHandler(msg)
+			notices.creditNoticeHandler(creditMsg)
 		end)
-		
+
 		assert.is_true(success)
 		end)
 	end)
@@ -284,7 +284,7 @@ describe('Notices Module', function()
 		local validAntToken = 'ant-token-123456789012345678901234567890ABC'
 		ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
 		local msg = { From = validUser, Timestamp = 1000 }
-		
+
 		-- Order params go in the intent now
 		local orderParams = {
 			swapToken = 'ario-token-123456789012345678901234567890AB',
@@ -312,9 +312,9 @@ describe('Notices Module', function()
 				['From-Module'] = TEST_MODULE_ID,
 			},
 		})
-			
+
 			notices.creditNoticeHandler(creditMsg)
-			
+
 			local creditNoticeProcessed = false
 			for _, sentMsg in ipairs(testGlobals.sentMessages) do
 				if sentMsg.Action == 'Credit-Notice-Processed' then
@@ -338,7 +338,7 @@ describe('Notices Module', function()
 			local intentId = intent.intentId
 
 			-- Note: swapToken is always ARIO (hardcoded in Credit-Notice handler, not stored in orderParams)
-			
+
 			local creditMsg = createMockMsg({
 				From = validAntToken,
 				Tags = {
@@ -352,13 +352,13 @@ describe('Notices Module', function()
 				},
 			})
 
-			-- Should succeed because swapToken is always ARIO
-			local success, err = pcall(function()
-				notices.creditNoticeHandler(creditMsg)
-			end)
-			
-			assert.is_true(success)
-			
+		-- Should succeed because swapToken is always ARIO
+		local success = pcall(function()
+			notices.creditNoticeHandler(creditMsg)
+		end)
+
+		assert.is_true(success)
+
 			-- Verify no refund was sent (order creation succeeded)
 			local refundSent = false
 			for _, sentMsg in ipairs(testGlobals.sentMessages) do
@@ -394,7 +394,7 @@ describe('Notices Module', function()
 
 			-- Should not crash
 			notices.creditNoticeHandler(creditMsg)
-			
+
 			-- Should have sent refund
 			assert.is_true(#testGlobals.sentMessages > 0)
 		end)
@@ -416,9 +416,9 @@ describe('Notices Module', function()
 		local validUser = 'user-whitelist-test123456789012345678901234'
 		local validAntToken = 'ant-token-whitelist-test1234567890123456789'
 		ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
-		
+
 		local msg = { From = validUser, Timestamp = 1000 }
-		
+
 		-- Order params go in the intent now
 		local orderParams = {
 			swapToken = _G.ARIO_TOKEN_PROCESS_ID,
@@ -439,14 +439,14 @@ describe('Notices Module', function()
 				['From-Module'] = TEST_MODULE_WHITELISTED,
 			},
 		})
-			
+
 			notices.creditNoticeHandler(creditMsg)
-			
+
 			-- Verify order was created successfully (or intent completed)
 			local processed = false
 			for _, sentMsg in ipairs(testGlobals.sentMessages) do
 				-- Either Credit-Notice-Processed or Intent-Resolved with success
-				if sentMsg.Action == 'Credit-Notice-Processed' or 
+				if sentMsg.Action == 'Credit-Notice-Processed' or
 				   (sentMsg.Action == 'Intent-Resolved' and sentMsg.Status == 'completed') then
 					processed = true
 					break
@@ -459,7 +459,7 @@ describe('Notices Module', function()
 			local validUser = 'user-not-whitelisted-12345678901234567890'
 			local validAntToken = 'ant-token-not-whitelisted-1234567890123456'
 			ARIOBalances[validUser] = { balance = '10000000000', orders = {} }
-			
+
 			local msg = { From = validUser, Timestamp = 1000 }
 			local intent = intents.createIntent(msg, {expirationTime = 4600000}, validAntToken)
 			local intentId = intent.intentId
@@ -477,9 +477,9 @@ describe('Notices Module', function()
 					['From-Module'] = TEST_MODULE_NOT_WHITELISTED,  -- Not whitelisted
 				},
 			})
-			
+
 			notices.creditNoticeHandler(creditMsg)
-			
+
 			-- Verify failure message sent
 			local failureSent = false
 			for _, sentMsg in ipairs(testGlobals.sentMessages) do
@@ -493,7 +493,7 @@ describe('Notices Module', function()
 
 		it('should allow ARIO deposits without whitelist check', function()
 			local validUser = 'user-ario-deposit-test123456789012345678'
-			
+
 			local creditMsg = createMockMsg({
 				From = _G.ARIO_TOKEN_PROCESS_ID,  -- ARIO token
 				Tags = {
@@ -503,9 +503,9 @@ describe('Notices Module', function()
 					-- No From-Module tag - should still work for ARIO
 				},
 			})
-			
+
 			notices.creditNoticeHandler(creditMsg)
-			
+
 			-- Verify balance increased
 			assert.are.equal('5000000000', ARIOBalances[validUser].balance)
 		end)

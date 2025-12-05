@@ -19,50 +19,50 @@ end
 --- @return string|nil error Error message if validation fails (nil on success)
 function intents.calculateListingFee(expirationTime, currentTimestamp)
 	local listingFee = bint(constants.FEE.LISTING_FEE_ARIO)
-	
+
 	if not expirationTime then
 		-- No expiration time, use base fee (1 hour minimum)
 		return tostring(listingFee), nil
 	end
-	
+
 	-- Validate expiration time is a number
 	local expTime = tonumber(expirationTime)
 	-- TODO: should be an assertion
 	if not expTime then
 		return nil, 'Expiration time must be a valid number'
 	end
-	
+
 	-- Calculate listing duration (using regular numbers for timestamps)
 	local listingDurationMs = expTime - currentTimestamp
-	
+
 	-- Validate duration is positive
 	if listingDurationMs <= 0 then
 		return nil, 'Expiration time must be in the future'
 	end
-	
+
 	-- Validate duration doesn't exceed maximum (30 days)
 	if listingDurationMs > constants.LISTING.MAX_EXPIRATION_MS then
 		return nil, 'Expiration time cannot exceed 30 days'
 	end
-	
+
 	-- TODO: if less than 1 hour, assert error. This
 	-- Clamp minimum duration to 1 hour
 	if listingDurationMs < constants.LISTING.MIN_EXPIRATION_MS then
 		listingDurationMs = constants.LISTING.MIN_EXPIRATION_MS
 	end
-	
+
 	-- Calculate fee based on duration (1 ARIO per hour)
 	local listingDurationHours = listingDurationMs / constants.LISTING.MIN_EXPIRATION_MS -- Convert ms to hours
 	local hoursPerFee = constants.FEE.LISTING_FEE_MULTIPLIER_HOURS -- 1 hour per fee (1 ARIO per hour)
-	
+
 	-- Calculate multiplier: ceiling of (hours / hoursPerFee)
 	local feeMultiplier = math.ceil(listingDurationHours / hoursPerFee)
 	if feeMultiplier < 1 then
 		feeMultiplier = 1
 	end
-	
+
 	listingFee = listingFee * bint(feeMultiplier)
-	
+
 	return tostring(listingFee), nil
 end
 
@@ -73,23 +73,23 @@ end
 --- @return Intent intent The created intent
 function intents.createIntent(msg, orderParams, antProcessId)
 	local balances = require('balances')
-	
+
 	-- Calculate TTL (24 hours from creation)
 	local ttl = msg.Timestamp + constants.TIME.ONE_DAY_MS
-	
+
 	-- Calculate and charge listing fee
 	local expirationTime = orderParams.expirationTime
-	
+
 	local listingFee, feeError = intents.calculateListingFee(expirationTime, msg.Timestamp)
 	assert(not feeError, feeError)
-	
+
 	-- Validate and charge fee
 	assert(
 		balances.walletHasSufficientBalance(msg.From, listingFee),
 		'Insufficient ARIO balance for listing fee. Required: ' .. listingFee
 	)
 	balances.transfer(TREASURY_ADDRESS, msg.From, listingFee, true)
-	
+
 	local intent = {
 		intentId = intents.incrementIntentCounter(),
 		initiator = msg.From,
@@ -105,10 +105,10 @@ function intents.createIntent(msg, orderParams, antProcessId)
 	}
 
 	Intents[intent.intentId] = intent
-	
+
 	-- Schedule pruning for this intent's TTL
 	intents.scheduleNextIntentsPruning(ttl)
-	
+
 	return intent
 end
 
@@ -328,24 +328,24 @@ end
 -- Action is always 'Create-Order' (assumed, not required as parameter)
 function intents.createIntentHandler(msg)
 	local _utils = require('utils')
-	
+
 	-- Validate ANT ID is provided and valid
 	local antId = msg.Tags['X-Intent-ANT-Id']
 	assert(antId, 'X-Intent-ANT-Id required')
 	assert(_utils.checkValidAddress(antId), 'X-Intent-ANT-Id must be a valid Arweave ID (43 characters)')
-	
+
 	-- Check for existing intents with the same ANT ID (one intent per ANT)
 	for _, intent in pairs(Intents) do
 		if intent.antProcessId == antId then
 			-- Only block if intent is in non-terminal state
-			if intent.status == constants.INTENT_STATUSES.PENDING or 
-			   intent.status == constants.INTENT_STATUSES.ACTIVE or 
+			if intent.status == constants.INTENT_STATUSES.PENDING or
+			   intent.status == constants.INTENT_STATUSES.ACTIVE or
 			   intent.status == constants.INTENT_STATUSES.SETTLING then
 				error('An intent already exists for this ANT ID. Intent ID: ' .. intent.intentId)
 			end
 		end
 	end
-	
+
 	-- Extract order parameters from X-Intent-* tags (Train-Case)
 	---@type OrderIntentParams
 	local orderParams = {
@@ -354,15 +354,15 @@ function intents.createIntentHandler(msg)
 		quantity = msg.Tags['X-Intent-Quantity'], -- Required: amount to trade (usually '1' for ANT)
 		price = msg.Tags['X-Intent-Price'], -- Required: asking price or starting bid
 		expirationTime = msg.Tags['X-Intent-Expiration-Time'], -- Required: Unix timestamp (min 1h, max 30 days, rounded up to nearest hour)
-		
+
 		-- Dutch auction only: price decay parameters
 		minimumPrice = msg.Tags['X-Intent-Minimum-Price'], -- nil unless order-type is 'dutch'
 		decreaseInterval = msg.Tags['X-Intent-Decrease-Interval'], -- nil unless order-type is 'dutch'
 	}
-	
+
 	-- Determine order type (default to 'fixed')
 	local orderType = orderParams.orderType or 'fixed'
-	
+
 	-- Validate common required parameters (all order types)
 	assert(orderParams.quantity, 'X-Intent-Quantity required')
 	assert(orderParams.price, 'X-Intent-Price required')
@@ -372,24 +372,19 @@ function intents.createIntentHandler(msg)
 	local expTime = tonumber(orderParams.expirationTime)
 	assert(expTime, 'X-Intent-Expiration-Time must be a valid number')
 	assert(expTime > msg.Timestamp, 'X-Intent-Expiration-Time must be in the future')
-	
+
 	local maxExpiration = msg.Timestamp + constants.LISTING.MAX_EXPIRATION_MS
-	assert(expTime <= maxExpiration, 
+	assert(expTime <= maxExpiration,
 		'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration))
-	
+
 	-- Validate order type-specific parameters
 	if orderType == 'dutch' then
 		assert(orderParams.minimumPrice, 'X-Intent-Minimum-Price required for dutch auction')
 		assert(orderParams.decreaseInterval, 'X-Intent-Decrease-Interval required for dutch auction')
-	elseif orderType == 'english' then
-		-- English auctions only need the common parameters (price is starting bid)
-		-- No additional validation needed here
-	elseif orderType == 'fixed' then
-		-- Fixed price orders only need the common parameters
-		-- No additional validation needed here
-	else
+	elseif orderType ~= 'english' and orderType ~= 'fixed' then
 		error('Invalid order type: ' .. tostring(orderType) .. '. Must be fixed, dutch, or english')
 	end
+	-- English and fixed price orders only need the common parameters
 
 	-- Note: Full validation will happen in Credit-Notice or State-Notice handler
 	-- This is just basic parameter presence check
@@ -445,21 +440,21 @@ function intents.pushANTIntentResolutionHandler(msg)
 
 	-- Validate intent is in pushable state
 	assert(
-		intent.status == constants.INTENT_STATUSES.PENDING or 
-		intent.status == constants.INTENT_STATUSES.ACTIVE or 
+		intent.status == constants.INTENT_STATUSES.PENDING or
+		intent.status == constants.INTENT_STATUSES.ACTIVE or
 		intent.status == constants.INTENT_STATUSES.SETTLING,
 		'Intent is not in a pushable state. Current status: ' .. intent.status
 	)
 
 	-- Check against the intent's initiator
 	local expectedInitiator = intent.initiator
-	
+
 	-- Check if sender is authorized (3 authorities: initiator, Owner, or IntentPushingAuthority)
-	local isAuthorized = msg.From == expectedInitiator or 
-	                     msg.From == Owner or 
+	local isAuthorized = msg.From == expectedInitiator or
+	                     msg.From == Owner or
 	                     msg.From == IntentPushingAuthority
-	
-	assert(isAuthorized, 
+
+	assert(isAuthorized,
 		'Unauthorized to push intent resolution. Only intent initiator, process owner, or intent pushing authority can push.')
 
 	-- Get ANT process ID from intent (set during Create-Intent)
@@ -480,7 +475,7 @@ end
 function intents.stateNoticeHandler(msg)
 	local _utils = require('utils')
 	local ucm = require('ucm')
-	
+
 	local intentId = msg.Tags['X-Intent-Id']
 	assert(intentId, 'X-Intent-Id required')
 	assert(_utils.isValidIntentId(intentId), 'Invalid X-Intent-Id format')
@@ -501,13 +496,13 @@ function intents.stateNoticeHandler(msg)
 
 	-- Owner matches, resolve the intent (pending → active)
 	intents.resolveIntent(intentId, msg.Timestamp)
-	
+
 	-- Get order parameters from the intent (stored during Create-Intent)
 	local orderParams = intent.orderParams or {}
-	
+
 	-- Swap token is always ARIO for intent-based ANT sell orders
 	local swapToken = ARIO_TOKEN_PROCESS_ID
-	
+
 	-- Build order arguments from intent parameters
 	local orderArgs = {
 		orderId = msg.Id, -- Use State-Notice message ID as order ID
@@ -524,21 +519,21 @@ function intents.stateNoticeHandler(msg)
 		price = orderParams.price,
 		msg = msg, -- Pass msg context for intent tracking
 	}
-	
+
 	-- Protect order creation to catch unexpected runtime errors
 	local ok, err = pcall(function()
 		ucm.createOrder(orderArgs)
 	end)
-	
+
 	if not ok then
 		-- Order creation failed - fail the intent
 		intents.failIntent(intentId, 'Order creation failed: ' .. tostring(err), msg)
 		return
 	end
-	
+
 	-- Order created successfully - complete the intent
 	intents.updateIntentStatus(intentId, constants.INTENT_STATUSES.COMPLETED, msg)
-	
+
 	-- Send acknowledgment to the intent initiator
 	_utils.Send(msg, {
 		Target = intent.initiator,

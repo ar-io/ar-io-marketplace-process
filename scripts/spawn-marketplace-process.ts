@@ -1,10 +1,10 @@
-import { config } from 'dotenv';
-import { connect, createDataItemSigner } from '@permaweb/aoconnect';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { MarketplaceProcess } from '../tests/utils/marketplace_process.js';
 import { AOProcess } from '@ar.io/sdk';
+import { connect, createDataItemSigner } from '@permaweb/aoconnect';
+import { config } from 'dotenv';
+import { MarketplaceProcess } from '../tests/utils/marketplace_process.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

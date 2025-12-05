@@ -19,7 +19,7 @@ describe('Intent Management', function()
 		it('should create an intent with correct structure', function()
 			-- Setup balance for listing fee
 			ARIOBalances['user-address-abc'] = {balance = '10000000000', orders = {}} -- 10 ARIO
-			
+
 			local msg = {
 				Id = 'test-intent-123',
 				From = 'user-address-abc',
@@ -50,7 +50,7 @@ describe('Intent Management', function()
 
 		it('should add intent to Intents table', function()
 			ARIOBalances['user-xyz'] = {balance = '10000000000', orders = {}}
-			
+
 			local msg = {
 				Id = 'test-intent-456',
 				From = 'user-xyz',
@@ -71,7 +71,7 @@ describe('Intent Management', function()
 
 		it('should charge base listing fee (1 ARIO) when no expiration time', function()
 			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}} -- 10 ARIO
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
@@ -90,7 +90,7 @@ describe('Intent Management', function()
 
 	it('should charge listing fee based on expiration time', function()
 		ARIOBalances['user-abc'] = {balance = '100000000000', orders = {}} -- 100 ARIO
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
@@ -112,7 +112,7 @@ describe('Intent Management', function()
 
 		it('should fail if insufficient balance for listing fee', function()
 			ARIOBalances['user-abc'] = {balance = '500000000', orders = {}} -- 0.5 ARIO (not enough)
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
@@ -129,7 +129,7 @@ describe('Intent Management', function()
 
 		it('should increment intent counter for each new intent', function()
 			ARIOBalances['user-abc'] = {balance = '50000000000', orders = {}}
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
@@ -152,7 +152,7 @@ describe('Intent Management', function()
 
 		it('should store different order parameters correctly', function()
 			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
@@ -179,7 +179,7 @@ describe('Intent Management', function()
 	describe('resolveIntent', function()
 		it('should transition intent from pending to active', function()
 			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
@@ -203,14 +203,14 @@ describe('Intent Management', function()
 	describe('updateIntentStatus', function()
 	it('should update intent to completed and prune it', function()
 		ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
-		
+
 		local msg = {
 			From = 'user-abc',
 			Timestamp = 1000000,
 		}
 
 		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
-		
+
 		intents.updateIntentStatus(intent.intentId, 'completed', msg)
 
 		-- Intent should be pruned after completion
@@ -227,14 +227,14 @@ describe('Intent Management', function()
 	describe('failIntent', function()
 		it('should mark intent as failed with reason and prune it', function()
 			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
 			}
 
 			local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
-			
+
 			intents.failIntent(intent.intentId, 'Test failure reason')
 
 			-- Intent should be pruned after failure
@@ -250,14 +250,14 @@ describe('Intent Management', function()
 	describe('getIntentById', function()
 		it('should retrieve intent by ID', function()
 			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}}
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
 			}
 
 		local intent = intents.createIntent(msg, {quantity = '1', expirationTime = 4600000}, TEST_ANT_PROCESS_ID)
-		
+
 		local retrieved = intents.getIntentById(intent.intentId)
 		assert.is_not_nil(retrieved)
 		if retrieved then
@@ -275,7 +275,7 @@ describe('Intent Management', function()
 	describe('getAllIntents', function()
 		it('should return all intents as an array', function()
 			ARIOBalances['user-abc'] = {balance = '50000000000', orders = {}}
-			
+
 			local msg = {
 				From = 'user-abc',
 				Timestamp = 1000000,
@@ -305,7 +305,7 @@ describe('Intent Management', function()
 		it('should calculate fee based on hours (1 ARIO per hour)', function()
 			local currentTime = 1000000
 			local expirationTime = currentTime + (10 * 3600000) -- 10 hours
-			
+
 			local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
 			assert.is_nil(err)
 			assert.are.equal('10000000000', fee) -- 10 ARIO
@@ -314,7 +314,7 @@ describe('Intent Management', function()
 		it('should use minimum of 1 hour for short durations', function()
 			local currentTime = 1000000
 			local expirationTime = currentTime + 1800000 -- 30 minutes
-			
+
 			local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
 			assert.is_nil(err)
 			assert.are.equal('1000000000', fee) -- 1 ARIO (minimum)
@@ -323,7 +323,7 @@ describe('Intent Management', function()
 		it('should fail for expiration time in the past', function()
 			local currentTime = 1000000
 			local expirationTime = currentTime - 3600000 -- 1 hour ago
-			
+
 			local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
 			assert.is_not_nil(err)
 			assert.is_nil(fee)
@@ -332,7 +332,7 @@ describe('Intent Management', function()
 		it('should fail for expiration time exceeding 30 days', function()
 			local currentTime = 1000000
 			local expirationTime = currentTime + (31 * 24 * 3600000) -- 31 days
-			
+
 			local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
 			assert.is_not_nil(err)
 			assert.is_nil(fee)

@@ -1,12 +1,12 @@
 import { AOProcess, AoSigner } from '@ar.io/sdk';
 import type {
   CreateIntentParams,
-  GetPaginatedIntentsParams,
   GetOrdersParams,
+  GetPaginatedIntentsParams,
   InfoResponse,
-  ReadResponse,
   Intent,
   MessageTag,
+  ReadResponse,
 } from './types.js';
 
 export class MarketplaceProcess {

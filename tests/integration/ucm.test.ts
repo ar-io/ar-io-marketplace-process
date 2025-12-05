@@ -1,12 +1,10 @@
-import { before, beforeEach, describe, it } from 'node:test';
-import { MarketplaceProcess } from '../utils/marketplace_process.js';
-import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
-import { AOProcess } from '@ar.io/sdk';
 import assert from 'node:assert';
+import { before, beforeEach, describe, it } from 'node:test';
+import { AOProcess } from '@ar.io/sdk';
 import {
   BUNDLED_MARKETPLACE_SOURCE_CODE,
-  STUB_TIMESTAMP,
   PROCESS_OWNER,
+  STUB_TIMESTAMP,
   TEST_ANT_MODULE_NOT_WHITELISTED,
   TEST_ANT_MODULE_WHITELISTED,
   TEST_ANT_TOKEN,
@@ -14,6 +12,8 @@ import {
   TEST_SENDER,
   TEST_SIGNER,
 } from '../utils/constants.js';
+import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
+import { MarketplaceProcess } from '../utils/marketplace_process.js';
 
 describe('UCM (Universal Content Marketplace)', () => {
   let marketplaceProcess: MarketplaceProcess;
