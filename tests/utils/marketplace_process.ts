@@ -1,6 +1,7 @@
 import { AOProcess, AoSigner } from '@ar.io/sdk';
 import type {
   CreateIntentParams,
+  CreateOrderParams,
   GetOrdersParams,
   GetPaginatedIntentsParams,
   InfoResponse,
@@ -196,6 +197,84 @@ export class MarketplaceProcess {
         Action: 'Invalid-Get-Order-Notice',
         Data: error.message || String(error),
         Tags: { Error: 'Get-Order-Error' },
+      };
+    }
+  }
+
+  async createOrder({
+    swapToken,
+    quantity,
+    orderType,
+    price,
+    expirationTime,
+    minimumPrice,
+    decreaseInterval,
+    transferDenomination,
+  }: CreateOrderParams): Promise<ReadResponse> {
+    const tags: Array<{ name: string; value: string | undefined }> = [
+      { name: 'Action', value: 'Create-Order' },
+      { name: 'Swap-Token', value: swapToken },
+      { name: 'Quantity', value: quantity },
+      { name: 'Order-Type', value: orderType },
+      { name: 'Price', value: price },
+      { name: 'Expiration-Time', value: expirationTime },
+      { name: 'Minimum-Price', value: minimumPrice },
+      { name: 'Decrease-Interval', value: decreaseInterval },
+      { name: 'Transfer-Denomination', value: transferDenomination },
+    ];
+
+    const filteredTags = tags.filter(
+      (tag): tag is { name: string; value: string } => tag.value !== undefined,
+    );
+
+    try {
+      // Send the message
+      const { id: messageId } = (await this.process.send({
+        tags: filteredTags,
+        signer: this.signer,
+      })) as any;
+
+      // Get the handler result
+      const result = await this.process.ao.result({
+        message: messageId,
+        process: this.process.processId,
+      });
+
+      // Check if there was an error at the top level
+      if (result.Error) {
+        return {
+          Action: 'Invalid-Create-Order-Notice',
+          Data: result.Error,
+          Tags: { Error: 'Create-Order-Error' },
+        };
+      }
+
+      // Find the response message with Action: 'Create-Order-Notice'
+      const responseMessage = result.Messages?.find((m: any) =>
+        m.Tags?.find(
+          (t: any) => t.name === 'Action' && t.value === 'Create-Order-Notice',
+        ),
+      );
+
+      if (responseMessage && responseMessage.Data) {
+        return {
+          Action: 'Create-Order-Notice',
+          Data: responseMessage.Data,
+          Tags: {},
+        };
+      }
+
+      // No response message found, return empty
+      return {
+        Action: 'Create-Order-Notice',
+        Data: JSON.stringify({}),
+        Tags: {},
+      };
+    } catch (error: any) {
+      return {
+        Action: 'Invalid-Create-Order-Notice',
+        Data: error.message || String(error),
+        Tags: { Error: 'Create-Order-Error' },
       };
     }
   }

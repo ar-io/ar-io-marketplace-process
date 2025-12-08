@@ -76,6 +76,20 @@ export interface CreateIntentParams {
 }
 
 /**
+ * Parameters for creating an order using internal ARIO balance
+ */
+export interface CreateOrderParams {
+  swapToken: string; // Required: Token to receive in exchange for ARIO
+  quantity: string; // Required: Amount of ARIO to trade
+  orderType?: 'fixed' | 'dutch' | 'english'; // Order type (defaults to 'fixed')
+  price?: string; // Price (required for fixed and dutch, starting bid for english)
+  expirationTime?: string; // Unix timestamp when order expires
+  minimumPrice?: string; // Minimum price floor (dutch auction only)
+  decreaseInterval?: string; // Price decrease interval in ms (dutch auction only)
+  transferDenomination?: string; // Optional transfer denomination
+}
+
+/**
  * Parameters for paginated intent queries
  */
 export interface GetPaginatedIntentsParams {

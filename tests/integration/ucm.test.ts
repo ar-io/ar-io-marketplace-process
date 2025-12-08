@@ -59,6 +59,89 @@ describe('UCM (Universal Content Marketplace)', () => {
     );
   });
 
+  describe('Create-Order (ARIO Buy Orders)', () => {
+    it('should create a fixed-price ARIO buy order using internal balance', async () => {
+      const antId = 'test-ant-to-buy-'.padEnd(43, '1');
+
+      // Create order to buy ANT with ARIO from internal balance
+      const result = await marketplaceProcess.createOrder({
+        swapToken: antId,
+        quantity: '1000000000', // 1 ARIO (in mARIO)
+        orderType: 'fixed',
+        price: '1000000000',
+        expirationTime: (STUB_TIMESTAMP + 86400000).toString(), // 24 hours
+      });
+
+      assert(result, 'Result should be defined');
+
+      // If it's an error response, check what went wrong
+      if (result.Action === 'Invalid-Create-Order-Notice') {
+        assert.fail(`Order creation failed: ${result.Data}`);
+      }
+
+      assert.strictEqual(result.Action, 'Create-Order-Notice');
+
+      const data = JSON.parse(result.Data);
+      assert.strictEqual(data.Status, 'Success');
+      assert(data['Order-Id'], 'Order-Id should be returned');
+      assert(
+        data.Message.includes('ARIO order created'),
+        'Should confirm order creation',
+      );
+    });
+
+    it('should create a dutch auction ARIO buy order', async () => {
+      const antId = 'test-ant-dutch-'.padEnd(43, '2');
+
+      const result = await marketplaceProcess.createOrder({
+        swapToken: antId,
+        quantity: '5000000000', // 5 ARIO
+        orderType: 'dutch',
+        price: '5000000000', // Starting price: 5 ARIO
+        minimumPrice: '2000000000', // Minimum: 2 ARIO
+        decreaseInterval: '3600000', // Decrease every hour
+        expirationTime: (STUB_TIMESTAMP + 604800000).toString(), // 7 days
+      });
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Create-Order-Notice');
+
+      const data = JSON.parse(result.Data);
+      assert.strictEqual(data.Status, 'Success');
+      assert(data['Order-Id'], 'Order-Id should be returned');
+    });
+
+    it('should create an english auction ARIO buy order', async () => {
+      const antId = 'test-ant-english-'.padEnd(43, '3');
+
+      const result = await marketplaceProcess.createOrder({
+        swapToken: antId,
+        quantity: '3000000000', // 3 ARIO
+        orderType: 'english',
+        price: '1000000000', // Starting bid: 1 ARIO
+        expirationTime: (STUB_TIMESTAMP + 86400000).toString(), // 24 hours
+      });
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Create-Order-Notice');
+
+      const data = JSON.parse(result.Data);
+      assert.strictEqual(data.Status, 'Success');
+      assert(data['Order-Id'], 'Order-Id should be returned');
+    });
+
+    it('should fail without required parameters', async () => {
+      const result = await marketplaceProcess.createOrder({
+        swapToken: 'test-ant-'.padEnd(43, '4'),
+        quantity: '', // Empty quantity
+      });
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Invalid-Create-Order-Notice');
+      assert(result.Tags?.Error, 'Should have Error tag');
+    });
+  });
+
   describe('Get-Orders with flexible filtering', () => {
     it('should return empty orders for non-existent pair using getOrdersByPair', async () => {
       const result = await marketplaceProcess.getOrdersByPair(
