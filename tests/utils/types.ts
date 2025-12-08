@@ -128,21 +128,39 @@ export interface PaginatedResponse<T> {
 }
 
 /**
- * Intent structure
+ * User-provided order parameters for intent-based order creation
+ * These are the user-configurable fields when creating an order via the intent workflow
+ */
+export interface OrderIntentParams {
+  orderType?: 'fixed' | 'dutch' | 'english'; // nil defaults to 'fixed'
+  quantity?: string; // Amount to trade (string integer)
+  price?: string; // Asking price or starting bid
+  expirationTime?: string; // Unix timestamp when order expires (min 1h, max 30 days, fee rounded up to nearest hour)
+  minimumPrice?: string; // Minimum price floor (dutch auction only)
+  decreaseInterval?: string; // Price decrease interval in ms (dutch auction only)
+}
+
+/**
+ * Intent structure - matches Lua Intent type
  */
 export interface Intent {
-  IntentId: string;
-  Type: 'parent' | 'child';
-  Status: 'pending' | 'active' | 'settling' | 'completed' | 'failed';
-  Action: string;
-  Initiator: string;
-  CreatedAt: number;
-  ResolvedAt?: number;
-  ForwardedTags: Record<string, string>;
-  ParentId?: string;
-  Children?: Record<string, boolean>;
-  ExpectedFrom?: string;
-  FailureReason?: string;
+  intentId: string; // Unique intent identifier
+  initiator: string; // Address that created the intent
+  action: string; // Action being performed (Create-Order, Cancel-Order, Settle-Auction, Transfer)
+  status:
+    | 'pending'
+    | 'active'
+    | 'settling'
+    | 'completed'
+    | 'resolved'
+    | 'failed'; // Intent status
+  createdAt: number; // Creation timestamp
+  ttl?: number; // Time-to-live timestamp (24 hours from creation)
+  resolvedAt?: number; // Resolution timestamp
+  completedAt?: number; // Completion timestamp
+  failureReason?: string; // Failure reason if status is failed
+  orderParams: OrderIntentParams; // Order parameters stored with the intent
+  antProcessId?: string; // ANT process ID (set during Create-Intent)
 }
 
 /**
@@ -153,6 +171,36 @@ export interface IntentStats {
   byStatus: Record<string, number>;
   byType: Record<string, number>;
   byAction: Record<string, number>;
+}
+
+/**
+ * Individual order structure returned from Get-Orders and Get-Order handlers
+ */
+export interface Order {
+  id: string; // Order identifier
+  creator: string; // Order creator address
+  quantity: string; // Quantity of tokens
+  originalQuantity: string; // Original quantity before partial fills
+  token: string; // Token process ID
+  dominantToken: string; // The dominant token in the trading pair
+  swapToken: string; // The swap token in the trading pair
+  dateCreated: number; // Creation timestamp
+  price?: string; // Order price (optional for some order types)
+  expirationTime?: number; // Expiration timestamp (optional)
+  orderType: 'fixed' | 'dutch' | 'english'; // Order type
+  status:
+    | 'active'
+    | 'executed'
+    | 'cancelled'
+    | 'ready-for-settlement'
+    | 'expired'; // Order status
+  minimumPrice?: string; // Minimum price (dutch auction only)
+  decreaseInterval?: string; // Decrease interval (dutch auction only)
+  decreaseStep?: string; // Decrease step (dutch auction only)
+  sender?: string; // Order sender (set after execution)
+  receiver?: string; // Order receiver (set after execution)
+  endedAt?: number; // Timestamp when order ended
+  bids?: Record<string, boolean>; // Bidders for English auctions (bidder address -> true)
 }
 
 /**
