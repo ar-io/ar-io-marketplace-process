@@ -619,6 +619,11 @@ function ucm.infoHandler(_msg)
 			accruedFees = tostring(utils.getAccruedFees()),
 			arioTokenProcess = ARIO_TOKEN_PROCESS_ID,
 		},
+		fees = {
+			listingFeePerHour = constants.FEE.LISTING_FEE_ARIO,
+			saleTaxNumerator = constants.FEE.AMOUNT_NUMERATOR,
+			saleTaxDenominator = constants.FEE.AMOUNT_DENOMINATOR,
+		},
 		whitelistedModules = utils.keys(WhitelistedModules),
 	})
 end
