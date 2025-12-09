@@ -128,8 +128,8 @@ describe('Info', () => {
     );
     assert.strictEqual(
       info.fees.listingFeePerHour,
-      '1000000000',
-      'listingFeePerHour should be 1 ARIO (1000000000 mARIO)',
+      '1000000',
+      'listingFeePerHour should be 1 ARIO (1000000 mARIO)',
     );
     assert.strictEqual(
       info.fees.saleTaxNumerator,

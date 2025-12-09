@@ -243,7 +243,7 @@ export interface UCMInfo {
  * Fee information structure for calculating order costs
  */
 export interface FeeInfo {
-  listingFeePerHour: string; // Listing fee in mARIO per hour (1 ARIO = 1000000000 mARIO)
+  listingFeePerHour: string; // Listing fee in mARIO per hour (1 ARIO = 1000000 mARIO)
   saleTaxNumerator: number; // Numerator for sale tax calculation
   saleTaxDenominator: number; // Denominator for sale tax calculation (tax = amount * numerator / denominator)
 }
