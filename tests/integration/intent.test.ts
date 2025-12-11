@@ -355,7 +355,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
         ],
         data: '',
@@ -426,7 +425,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           // Missing X-Intent-Id
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
         ],
         data: '',
@@ -454,7 +452,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: 'invalid-id-with-letters' }, // Invalid format
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
         ],
         data: '',
@@ -482,7 +479,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: '99999' }, // Non-existent intent
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
         ],
         data: '',
@@ -524,7 +520,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
           { name: 'Sender', value: differentSender }, // Different from intent initiator
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED },
         ],
         data: '',
@@ -571,7 +566,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Non-whitelisted!
         ],
         data: '',
@@ -631,7 +625,6 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',

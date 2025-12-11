@@ -35,8 +35,8 @@ function notices.creditNoticeHandler(msg)
 		end
 	end
 
-	-- BLOCK ARIO Credit-Notices with X-Order-Action (ARIO orders must use internal balance)
-	if msg.Tags['X-Order-Action'] == 'Create-Order' and _utils.isArioToken(msg.From) then
+	-- BLOCK ARIO Credit-Notices with X-Intent-Id (ARIO orders must use internal balance, not intents)
+	if msg.Tags['X-Intent-Id'] and _utils.isArioToken(msg.From) then
 		handleInvalidTransfer('ARIO orders must use internal balance - deposit ARIO first, then call Create-Order')
 		return
 	end
@@ -87,7 +87,7 @@ function notices.creditNoticeHandler(msg)
 	intents.resolveIntent(msg.Tags['X-Intent-Id'], msg.Timestamp)
 
 	-- Whitelist check for ANT order creation
-	if not _utils.isArioToken(msg.From) and msg.Tags['X-Order-Action'] == 'Create-Order' then
+	if not _utils.isArioToken(msg.From) then
 		if not _utils.isWhitelisted(msg) then
 			intents.failIntent(msg.Tags['X-Intent-Id'], 'ANT module not whitelisted', msg)
 			return
@@ -112,75 +112,74 @@ function notices.creditNoticeHandler(msg)
 		return
 	end
 
-	-- If Order-Action then create the order
-	if msg.Tags['X-Order-Action'] == 'Create-Order' then
-		-- Get order parameters from the intent (stored during Create-Intent)
-		local orderParams = intent.orderParams or {}
+	-- Create the order (only flow for intent-based credit notices)
+	-- Get order parameters from the intent (stored during Create-Intent)
+	local orderParams = intent.orderParams or {}
 
-		-- Swap token is always ARIO for intent-based ANT sell orders
-		local swapToken = ARIO_TOKEN_PROCESS_ID
+	-- Swap token is always ARIO for intent-based ANT sell orders
+	local swapToken = ARIO_TOKEN_PROCESS_ID
 
-		-- Validate that at least one token in the trade is ARIO
-		local isArioValid, arioError = _utils.validateArioInTrade(msg.From, swapToken)
-		if not isArioValid then
-			_utils.refundAndNotifyError(msg, sender, arioError or 'At least one token in the trade must be ARIO')
-			return
-		end
-
-		-- Build order arguments from intent parameters and ANT transfer context
-		local orderArgs = {
-			orderId = msg.Id,
-			dominantToken = intent.antProcessId, -- ANT process ID from intent (set during Create-Intent)
-			swapToken = swapToken, -- Always ARIO for ANT sell orders
-			sender = sender,
-			quantity = quantity, -- From ANT transfer
-			createdAt = msg.Timestamp,
-			blockheight = msg['Block-Height'],
-			orderType = orderParams.orderType or 'fixed',
-			expirationTime = orderParams.expirationTime and tonumber(orderParams.expirationTime),
-			minimumPrice = orderParams.minimumPrice,
-			decreaseInterval = orderParams.decreaseInterval,
-			price = orderParams.price,
-			msg = msg, -- Pass msg context for intent tracking
-		}
-
-		if orderParams.price then
-			orderArgs.price = orderParams.price
-		end
-		if msg.Tags['X-Transfer-Denomination'] then
-			orderArgs.transferDenomination = msg.Tags['X-Transfer-Denomination']
-		end
-
-		-- Protect order creation to catch unexpected runtime errors
-		-- Note: refundAndNotifyError calls within createOrder will throw errors that are caught here
-		local ok = pcall(function()
-			ucm.createOrder(orderArgs)
-		end)
-		if not ok then
-			-- Error occurred - it was already handled by refundAndNotifyError which sends error notice
-			-- Just return without double-handling
-			return
-		end
-
-		-- Order created successfully - complete the intent
-		local updatedIntent = intents.getIntentById(msg.Tags['X-Intent-Id'])
-		local intentStatus = updatedIntent and updatedIntent.status or 'not-found'
-
-		if updatedIntent then
-			intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed', msg)
-			intentStatus = 'completed'
-		end
-
-		-- Send acknowledgment with intent and order status
-		_utils.Send(msg, {
-			Target = sender,
-			Action = 'Credit-Notice-Processed',
-			['Order-Id'] = msg.Id,
-			['Intent-Id'] = msg.Tags['X-Intent-Id'],
-			['Intent-Status'] = intentStatus,
-			['Order-Status'] = 'listed',
-		})
+	-- Validate that at least one token in the trade is ARIO
+	local isArioValid, arioError = _utils.validateArioInTrade(msg.From, swapToken)
+	if not isArioValid then
+		_utils.refundAndNotifyError(msg, sender, arioError or 'At least one token in the trade must be ARIO')
+		return
 	end
+
+	-- Build order arguments from intent parameters and ANT transfer context
+	local orderArgs = {
+		orderId = msg.Id,
+		dominantToken = intent.antProcessId, -- ANT process ID from intent (set during Create-Intent)
+		swapToken = swapToken, -- Always ARIO for ANT sell orders
+		sender = sender,
+		quantity = quantity, -- From ANT transfer
+		createdAt = msg.Timestamp,
+		blockheight = msg['Block-Height'],
+		orderType = orderParams.orderType or 'fixed',
+		expirationTime = orderParams.expirationTime and tonumber(orderParams.expirationTime),
+		minimumPrice = orderParams.minimumPrice,
+		decreaseInterval = orderParams.decreaseInterval,
+		price = orderParams.price,
+		msg = msg, -- Pass msg context for intent tracking
+	}
+
+	if orderParams.price then
+		orderArgs.price = orderParams.price
+	end
+	if msg.Tags['X-Transfer-Denomination'] then
+		orderArgs.transferDenomination = msg.Tags['X-Transfer-Denomination']
+	end
+
+	-- Protect order creation to catch unexpected runtime errors
+	-- Note: refundAndNotifyError calls within createOrder will throw errors that are caught here
+	local ok, res = pcall(function()
+		ucm.createOrder(orderArgs)
+	end)
+	print(tostring(res))
+	if not ok then
+		-- Error occurred - it was already handled by refundAndNotifyError which sends error notice
+		-- Just return without double-handling
+		return
+	end
+
+	-- Order created successfully - complete the intent
+	local updatedIntent = intents.getIntentById(msg.Tags['X-Intent-Id'])
+	local intentStatus = updatedIntent and updatedIntent.status or 'not-found'
+
+	if updatedIntent then
+		intents.updateIntentStatus(msg.Tags['X-Intent-Id'], 'completed', msg)
+		intentStatus = 'completed'
+	end
+
+	-- Send acknowledgment with intent and order status
+	_utils.Send(msg, {
+		Target = sender,
+		Action = 'Credit-Notice-Processed',
+		['Order-Id'] = msg.Id,
+		['Intent-Id'] = msg.Tags['X-Intent-Id'],
+		['Intent-Status'] = intentStatus,
+		['Order-Status'] = 'listed',
+	})
 end
 
 return notices

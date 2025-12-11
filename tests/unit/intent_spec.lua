@@ -69,32 +69,32 @@ describe('Intent Management', function()
 			assert.are.equal('Create-Order', Intents[intent.intentId].action)
 		end)
 
-		it('should charge base listing fee (1 ARIO) when no expiration time', function()
-			ARIOBalances['user-abc'] = {balance = '10000000000', orders = {}} -- 10 ARIO
+	it('should charge base listing fee (1 ARIO) when no expiration time', function()
+		ARIOBalances['user-abc'] = {balance = '10000000', orders = {}} -- 10 ARIO
 
-			local msg = {
-				From = 'user-abc',
-				Timestamp = 1000000,
-			}
+		local msg = {
+			From = 'user-abc',
+			Timestamp = 1000000,
+		}
 
-			local orderParams = {
-				quantity = '1',
-			}
+		local orderParams = {
+			quantity = '1',
+		}
 
-			intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
+		intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 
-			-- Fee should be 1 ARIO (base fee)
-			assert.are.equal(tostring(bint('9000000000')), ARIOBalances['user-abc'].balance)
-			assert.are.equal('1000000000', ARIOBalances[TREASURY_ADDRESS].balance)
-		end)
+		-- Fee should be 1 ARIO (base fee)
+		assert.are.equal(tostring(bint('9000000')), ARIOBalances['user-abc'].balance)
+		assert.are.equal('1000000', ARIOBalances[TREASURY_ADDRESS].balance)
+	end)
 
 	it('should charge listing fee based on expiration time', function()
-		ARIOBalances['user-abc'] = {balance = '100000000000', orders = {}} -- 100 ARIO
+		ARIOBalances['user-abc'] = {balance = '100000000', orders = {}} -- 100 ARIO
 
-			local msg = {
-				From = 'user-abc',
-				Timestamp = 1000000,
-			}
+		local msg = {
+			From = 'user-abc',
+			Timestamp = 1000000,
+		}
 
 		-- Set expiration to 48 hours from now
 		local expirationTime = 1000000 + (48 * 3600000)
@@ -106,29 +106,29 @@ describe('Intent Management', function()
 		intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 
 		-- Fee should be 48 ARIO (48 hours at 1 ARIO per hour)
-		assert.are.equal(tostring(bint('100000000000') - bint('48000000000')), ARIOBalances['user-abc'].balance)
-		assert.are.equal('48000000000', ARIOBalances[TREASURY_ADDRESS].balance)
+		assert.are.equal(tostring(bint('100000000') - bint('48000000')), ARIOBalances['user-abc'].balance)
+		assert.are.equal('48000000', ARIOBalances[TREASURY_ADDRESS].balance)
+	end)
+
+	it('should fail if insufficient balance for listing fee', function()
+		ARIOBalances['user-abc'] = {balance = '500000', orders = {}} -- 0.5 ARIO (not enough)
+
+		local msg = {
+			From = 'user-abc',
+			Timestamp = 1000000,
+		}
+
+		local orderParams = {
+			quantity = '1',
+		}
+
+		assert.has_error(function()
+			intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
 		end)
+	end)
 
-		it('should fail if insufficient balance for listing fee', function()
-			ARIOBalances['user-abc'] = {balance = '500000000', orders = {}} -- 0.5 ARIO (not enough)
-
-			local msg = {
-				From = 'user-abc',
-				Timestamp = 1000000,
-			}
-
-			local orderParams = {
-				quantity = '1',
-			}
-
-			assert.has_error(function()
-				intents.createIntent(msg, orderParams, TEST_ANT_PROCESS_ID)
-			end)
-		end)
-
-		it('should increment intent counter for each new intent', function()
-			ARIOBalances['user-abc'] = {balance = '50000000000', orders = {}}
+	it('should increment intent counter for each new intent', function()
+		ARIOBalances['user-abc'] = {balance = '50000000', orders = {}}
 
 			local msg = {
 				From = 'user-abc',
@@ -296,29 +296,29 @@ describe('Intent Management', function()
 	end)
 
 	describe('calculateListingFee', function()
-		it('should return base fee for no expiration time', function()
-			local fee, err = intents.calculateListingFee(nil, 1000000)
-			assert.is_nil(err)
-			assert.are.equal('1000000000', fee) -- 1 ARIO
-		end)
+	it('should return base fee for no expiration time', function()
+		local fee, err = intents.calculateListingFee(nil, 1000000)
+		assert.is_nil(err)
+		assert.are.equal('1000000', fee) -- 1 ARIO
+	end)
 
-		it('should calculate fee based on hours (1 ARIO per hour)', function()
-			local currentTime = 1000000
-			local expirationTime = currentTime + (10 * 3600000) -- 10 hours
+	it('should calculate fee based on hours (1 ARIO per hour)', function()
+		local currentTime = 1000000
+		local expirationTime = currentTime + (10 * 3600000) -- 10 hours
 
-			local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
-			assert.is_nil(err)
-			assert.are.equal('10000000000', fee) -- 10 ARIO
-		end)
+		local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
+		assert.is_nil(err)
+		assert.are.equal('10000000', fee) -- 10 ARIO
+	end)
 
-		it('should use minimum of 1 hour for short durations', function()
-			local currentTime = 1000000
-			local expirationTime = currentTime + 1800000 -- 30 minutes
+	it('should use minimum of 1 hour for short durations', function()
+		local currentTime = 1000000
+		local expirationTime = currentTime + 1800000 -- 30 minutes
 
-			local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
-			assert.is_nil(err)
-			assert.are.equal('1000000000', fee) -- 1 ARIO (minimum)
-		end)
+		local fee, err = intents.calculateListingFee(tostring(expirationTime), currentTime)
+		assert.is_nil(err)
+		assert.are.equal('1000000', fee) -- 1 ARIO (minimum)
+	end)
 
 		it('should fail for expiration time in the past', function()
 			local currentTime = 1000000

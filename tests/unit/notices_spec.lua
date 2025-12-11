@@ -98,22 +98,22 @@ describe('Notices Module', function()
 			assert.is_false(success)
 		end)
 
-		it('should block ARIO Credit-Notices with X-Order-Action', function()
-			local msg = createMockMsg({
-				From = 'ario-token-123456789012345678901234567890AB',
-				Tags = {
-					Sender = 'user-123',
-					Quantity = '1000',
-					['X-Order-Action'] = 'Create-Order',
-				},
-			})
+	it('should block ARIO Credit-Notices with X-Intent-Id', function()
+		local msg = createMockMsg({
+			From = 'ario-token-123456789012345678901234567890AB',
+			Tags = {
+				Sender = 'user-123',
+				Quantity = '1000',
+				['X-Intent-Id'] = '1',
+			},
+		})
 
-			-- Should handle invalid transfer (accrue fee for ARIO)
-			notices.creditNoticeHandler(msg)
+		-- Should handle invalid transfer (accrue fee for ARIO)
+		notices.creditNoticeHandler(msg)
 
-			-- Fee should be accrued
-			assert.are.equal('1000', tostring(utils.getAccruedFees()))
-		end)
+		-- Fee should be accrued
+		assert.are.equal('1000', tostring(utils.getAccruedFees()))
+	end)
 
 		it('should require X-Intent-Id for ANT orders', function()
 			local msg = createMockMsg({
@@ -302,16 +302,15 @@ describe('Notices Module', function()
 			orders = {}
 		}
 
-		local creditMsg = createMockMsg({
-			From = validAntToken,
-			Tags = {
-				Sender = validUser,
-				Quantity = '1',
-				['X-Intent-Id'] = intentId,
-				['X-Order-Action'] = 'Create-Order',
-				['From-Module'] = TEST_MODULE_ID,
-			},
-		})
+	local creditMsg = createMockMsg({
+		From = validAntToken,
+		Tags = {
+			Sender = validUser,
+			Quantity = '1',
+			['X-Intent-Id'] = intentId,
+			['From-Module'] = TEST_MODULE_ID,
+		},
+	})
 
 			notices.creditNoticeHandler(creditMsg)
 
@@ -339,18 +338,17 @@ describe('Notices Module', function()
 
 			-- Note: swapToken is always ARIO (hardcoded in Credit-Notice handler, not stored in orderParams)
 
-			local creditMsg = createMockMsg({
-				From = validAntToken,
-				Tags = {
-					Sender = validUser,
-					Quantity = '1',
-					['X-Intent-Id'] = intentId,
-					['X-Order-Action'] = 'Create-Order',
-					['X-Order-Type'] = 'fixed',
-					['X-Price'] = '1000',
-					['From-Module'] = TEST_MODULE_ID,
-				},
-			})
+		local creditMsg = createMockMsg({
+			From = validAntToken,
+			Tags = {
+				Sender = validUser,
+				Quantity = '1',
+				['X-Intent-Id'] = intentId,
+				['X-Order-Type'] = 'fixed',
+				['X-Price'] = '1000',
+				['From-Module'] = TEST_MODULE_ID,
+			},
+		})
 
 		-- Should succeed because swapToken is always ARIO
 		local success = pcall(function()
@@ -379,18 +377,17 @@ describe('Notices Module', function()
 			local intent = intents.createIntent(msg, {expirationTime = 4600000}, validAntToken)
 			local intentId = intent.intentId
 
-			local creditMsg = createMockMsg({
-				From = validAntToken,
-				Tags = {
-					Sender = validUser,
-					Quantity = '2', -- Invalid quantity for ANT
-					['X-Intent-Id'] = intentId,
-					['X-Order-Action'] = 'Create-Order',
-					['X-Swap-Token'] = 'ario-token-123456789012345678901234567890AB', -- Use the ARIO token ID
-					['X-Order-Type'] = 'fixed',
-					['X-Price'] = '1000',
-				},
-			})
+		local creditMsg = createMockMsg({
+			From = validAntToken,
+			Tags = {
+				Sender = validUser,
+				Quantity = '2', -- Invalid quantity for ANT
+				['X-Intent-Id'] = intentId,
+				['X-Swap-Token'] = 'ario-token-123456789012345678901234567890AB', -- Use the ARIO token ID
+				['X-Order-Type'] = 'fixed',
+				['X-Price'] = '1000',
+			},
+		})
 
 			-- Should not crash
 			notices.creditNoticeHandler(creditMsg)
@@ -429,16 +426,15 @@ describe('Notices Module', function()
 		local intent = intents.createIntent(msg, orderParams, validAntToken)
 		local intentId = intent.intentId
 
-		local creditMsg = createMockMsg({
-			From = validAntToken,
-			Tags = {
-				Sender = validUser,
-				Quantity = '1',
-				['X-Intent-Id'] = intentId,
-				['X-Order-Action'] = 'Create-Order',
-				['From-Module'] = TEST_MODULE_WHITELISTED,
-			},
-		})
+	local creditMsg = createMockMsg({
+		From = validAntToken,
+		Tags = {
+			Sender = validUser,
+			Quantity = '1',
+			['X-Intent-Id'] = intentId,
+			['From-Module'] = TEST_MODULE_WHITELISTED,
+		},
+	})
 
 			notices.creditNoticeHandler(creditMsg)
 
@@ -464,19 +460,18 @@ describe('Notices Module', function()
 			local intent = intents.createIntent(msg, {expirationTime = 4600000}, validAntToken)
 			local intentId = intent.intentId
 
-			local creditMsg = createMockMsg({
-				From = validAntToken,
-				Tags = {
-					Sender = validUser,
-					Quantity = '1',
-					['X-Intent-Id'] = intentId,
-					['X-Order-Action'] = 'Create-Order',
-					['X-Swap-Token'] = _G.ARIO_TOKEN_PROCESS_ID,
-					['X-Order-Type'] = 'fixed',
-					['X-Price'] = '1000',
-					['From-Module'] = TEST_MODULE_NOT_WHITELISTED,  -- Not whitelisted
-				},
-			})
+		local creditMsg = createMockMsg({
+			From = validAntToken,
+			Tags = {
+				Sender = validUser,
+				Quantity = '1',
+				['X-Intent-Id'] = intentId,
+				['X-Swap-Token'] = _G.ARIO_TOKEN_PROCESS_ID,
+				['X-Order-Type'] = 'fixed',
+				['X-Price'] = '1000',
+				['From-Module'] = TEST_MODULE_NOT_WHITELISTED,  -- Not whitelisted
+			},
+		})
 
 			notices.creditNoticeHandler(creditMsg)
 

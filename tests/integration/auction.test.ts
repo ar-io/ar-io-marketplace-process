@@ -319,7 +319,6 @@ describe('Auction Mechanisms', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Non-whitelisted!
         ],
         data: '',
@@ -379,7 +378,6 @@ describe('Auction Mechanisms', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',
