@@ -1111,5 +1111,203 @@ describe('Whitelist Management', function()
 				assert.is_false(success)
 			end)
 		end)
+
+		describe('getOrdersHandler', function()
+			local dominantToken1 = 'ANT_TOKEN_ID_12345678901234567890123456789012'
+			local dominantToken2 = 'ANT_TOKEN_ID_99999999999999999999999999999999'
+			local swapToken1 = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' -- ARIO
+			local swapToken2 = 'SWAP_TOKEN_ID_1234567890123456789012345678901'
+
+			before_each(function()
+				resetGlobals()
+
+				-- Create multiple pairs with orders for testing
+				-- Pair 1: dominantToken1 <-> swapToken1
+				_G.Orderbook[dominantToken1] = {
+					[swapToken1] = {
+						pair = { dominantToken1, swapToken1 },
+						orders = {
+							['order-1-1'] = {
+								id = 'order-1-1',
+								creator = 'creator-1',
+								quantity = '1000',
+								originalQuantity = '1000',
+								token = dominantToken1,
+								dominantToken = dominantToken1,
+								swapToken = swapToken1,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 1000,
+							},
+							['order-1-2'] = {
+								id = 'order-1-2',
+								creator = 'creator-1',
+								quantity = '2000',
+								originalQuantity = '2000',
+								token = dominantToken1,
+								dominantToken = dominantToken1,
+								swapToken = swapToken1,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 2000,
+							},
+						},
+					},
+					[swapToken2] = {
+						pair = { dominantToken1, swapToken2 },
+						orders = {
+							['order-1-3'] = {
+								id = 'order-1-3',
+								creator = 'creator-1',
+								quantity = '3000',
+								originalQuantity = '3000',
+								token = dominantToken1,
+								dominantToken = dominantToken1,
+								swapToken = swapToken2,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 3000,
+							},
+						},
+					},
+				}
+
+				-- Pair 2: dominantToken2 <-> swapToken1
+				_G.Orderbook[dominantToken2] = {
+					[swapToken1] = {
+						pair = { dominantToken2, swapToken1 },
+						orders = {
+							['order-2-1'] = {
+								id = 'order-2-1',
+								creator = 'creator-2',
+								quantity = '4000',
+								originalQuantity = '4000',
+								token = dominantToken2,
+								dominantToken = dominantToken2,
+								swapToken = swapToken1,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 4000,
+							},
+						},
+					},
+				}
+			end)
+
+			it('should filter by both dominantToken and swapToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = dominantToken1,
+						['Swap-Token'] = swapToken1,
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should only return orders from the specific pair
+				assert.are.equal(2, #data.items)
+				-- Verify both orders are present (order not guaranteed)
+				local orderIds = {}
+				for _, order in ipairs(data.items) do
+					orderIds[order.id] = true
+					assert.are.equal(dominantToken1, order.dominantToken)
+					assert.are.equal(swapToken1, order.swapToken)
+				end
+				assert.is_true(orderIds['order-1-1'])
+				assert.is_true(orderIds['order-1-2'])
+			end)
+
+			it('should filter by only dominantToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = dominantToken1,
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return all orders with dominantToken1 across all swapTokens
+				assert.are.equal(3, #data.items)
+				-- Verify all orders have the correct dominantToken
+				for _, order in ipairs(data.items) do
+					assert.are.equal(dominantToken1, order.dominantToken)
+				end
+			end)
+
+			it('should filter by only swapToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Swap-Token'] = swapToken1,
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return all orders with swapToken1 across all dominantTokens
+				assert.are.equal(3, #data.items)
+				-- Verify all orders have the correct swapToken
+				for _, order in ipairs(data.items) do
+					assert.are.equal(swapToken1, order.swapToken)
+				end
+			end)
+
+			it('should return all orders when no token filters are provided', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return all 4 orders
+				assert.are.equal(4, #data.items)
+			end)
+
+			it('should return empty array for non-existent dominantToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = 'NON_EXISTENT_TOKEN_123456789012345678901234',
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return empty array, not all orders
+				assert.are.equal(0, #data.items)
+			end)
+
+			it('should return empty array for non-existent swapToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Swap-Token'] = 'NON_EXISTENT_TOKEN_123456789012345678901234',
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return empty array, not all orders
+				assert.are.equal(0, #data.items)
+			end)
+
+			it('should return empty array for non-existent pair', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = dominantToken1,
+						['Swap-Token'] = 'NON_EXISTENT_TOKEN_123456789012345678901234',
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return empty array for non-existent pair
+				assert.are.equal(0, #data.items)
+			end)
+		end)
 	end)
 end)

@@ -393,10 +393,7 @@ function intents.createIntentHandler(msg)
 	local intent = intents.createIntent(msg, orderParams, antId)
 
 	-- Return intentId to user (handler wrapper will send as notice)
-	return json.encode({
-		['Intent-Id'] = intent.intentId,
-		Status = 'Success',
-	})
+	return json.encode(intent)
 end
 
 -- Handler: Get-Paginated-Intents

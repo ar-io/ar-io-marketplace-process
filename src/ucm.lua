@@ -746,7 +746,7 @@ function ucm.getOrdersHandler(msg)
 
 	local ordersArray = {}
 
-	-- If trading pair is specified, only look in that specific pair
+	-- If both dominantToken and swapToken are specified, only look in that specific pair
 	if dominantToken and swapToken then
 		local pair = ucm.getPair(dominantToken, swapToken)
 		if pair then
@@ -766,8 +766,48 @@ function ucm.getOrdersHandler(msg)
 				end
 			end
 		end
+	-- If only dominantToken is specified, search all swapTokens under that dominantToken
+	elseif dominantToken then
+		local swapTokens = Orderbook[dominantToken]
+		if swapTokens then
+			for _, pair in pairs(swapTokens) do
+				if idsFilter then
+					for orderId, order in pairs(pair.orders) do
+						if idsFilter[orderId] then
+							table.insert(ordersArray, order)
+						end
+					end
+				else
+					for _, order in pairs(pair.orders) do
+						if ucm.matchesStatusFilter(order, statusFilter) then
+							table.insert(ordersArray, order)
+						end
+					end
+				end
+			end
+		end
+	-- If only swapToken is specified, search that swapToken across all dominantTokens
+	elseif swapToken then
+		for _, swapTokens in pairs(Orderbook) do
+			local pair = swapTokens[swapToken]
+			if pair then
+				if idsFilter then
+					for orderId, order in pairs(pair.orders) do
+						if idsFilter[orderId] then
+							table.insert(ordersArray, order)
+						end
+					end
+				else
+					for _, order in pairs(pair.orders) do
+						if ucm.matchesStatusFilter(order, statusFilter) then
+							table.insert(ordersArray, order)
+						end
+					end
+				end
+			end
+		end
 	else
-		-- No pair specified, search all pairs
+		-- Neither dominantToken nor swapToken specified, search all pairs
 		-- If specific IDs are requested
 		if idsFilter then
 			-- Search for orders by ID
