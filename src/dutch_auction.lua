@@ -8,10 +8,28 @@ local ORDER_STATUSES = constants.ORDER_STATUSES
 local ORDER_TYPES = constants.ORDER_TYPES
 
 --- Prune an expired Dutch auction
---- @param order table The order to prune
-function dutch_auction.pruneExpiredAuction(order)
+--- @param order Order The order to prune
+--- @param pair Pair The pair containing the order
+--- @param dominantToken TokenId The dominant token ID
+--- @param swapToken TokenId The swap token ID
+--- @param msg Message The message context for transfers
+function dutch_auction.pruneExpiredAuction(order, pair, dominantToken, swapToken, msg)
+	
+	-- Mark order as expired
 	order.status = ORDER_STATUSES.EXPIRED
 	order.endedAt = order.expirationTime
+	
+	-- Return ANT to the creator (dutch auctions are always ANT sales)
+	local ucm = require('ucm')
+	ucm.transfer(order.creator, order.quantity, order.token, msg)
+	
+	-- Remove the order from the orderbook and index
+	local orderId = order.id
+	pair.orders[orderId] = nil
+	OrderIndex[orderId] = nil
+	
+	-- Prune the pair if it's now empty
+	ucm.pruneEmptyPair(dominantToken, swapToken)
 end
 
 function dutch_auction.calculateDecreaseStep(args)

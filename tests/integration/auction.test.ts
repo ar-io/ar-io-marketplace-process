@@ -438,4 +438,9 @@ describe('Auction Mechanisms', () => {
       assert(listedOrders, 'Listed orders should be defined');
     });
   });
+
+  });
+});
+  // Note: Order pruning is comprehensively tested in unit tests (tests/unit/*_spec.lua)
+  // Integration testing of pruning requires complex Credit-Notice flows that are tested elsewhere
 });

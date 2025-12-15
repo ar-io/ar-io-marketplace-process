@@ -337,4 +337,50 @@ describe('Dutch Auction', function()
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 	end)
+
+	describe('pruneExpiredAuction', function()
+		local dutch_auction = require('dutch_auction')
+
+		it('should mark order as expired and remove from orderbook', function()
+			_G.OrderIndex = {}
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['dutch-123'] = {
+								id = 'dutch-123',
+								status = 'active',
+								expirationTime = 2000,
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								orderType = 'dutch',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['dutch-123'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			local order = _G.Orderbook['ant-token']['ario-token'].orders['dutch-123']
+			local pair = _G.Orderbook['ant-token']['ario-token']
+
+			dutch_auction.pruneExpiredAuction(order, pair, 'ant-token', 'ario-token', {})
+
+			-- Order should be marked as expired
+			assert.are.equal('expired', order.status)
+			assert.are.equal(2000, order.endedAt)
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['dutch-123'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+	end)
 end)

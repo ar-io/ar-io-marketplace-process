@@ -1042,4 +1042,51 @@ describe('English Auction', function()
 			assert.are.equal('1', transfersSent[1].Tags.Quantity)
 		end)
 	end)
+
+	describe('pruneExpiredAuction', function()
+		local english_auction = require('english_auction')
+
+		it('should mark auction without bids as expired and remove from orderbook', function()
+			_G.OrderIndex = {}
+			_G.Orderbook = {
+				[ANT_TOKEN] = {
+					[ARIO_TOKEN] = {
+						orders = {
+							['english-123'] = {
+								id = 'english-123',
+								status = 'active',
+								expirationTime = 2000,
+								token = ANT_TOKEN,
+								creator = 'test-creator',
+								quantity = '1',
+								dominantToken = ANT_TOKEN,
+								swapToken = ARIO_TOKEN,
+								orderType = 'english',
+								price = '1000',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['english-123'] = {
+				dominantToken = ANT_TOKEN,
+				swapToken = ARIO_TOKEN,
+			}
+
+			local order = _G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['english-123']
+			local pair = _G.Orderbook[ANT_TOKEN][ARIO_TOKEN]
+
+			english_auction.pruneExpiredAuction(order, pair, ANT_TOKEN, ARIO_TOKEN, 3000, {})
+
+			-- Order should be marked as expired
+			assert.are.equal('expired', order.status)
+			assert.are.equal(2000, order.endedAt)
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['english-123'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook[ANT_TOKEN])
+		end)
+	end)
 end)

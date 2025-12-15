@@ -583,8 +583,9 @@ describe('ucm helpers', function()
 			assert.are.equal(10000, _G.Pruning.nextScheduledOrderbookPruning)
 		end)
 
-	it('should prune expired fixed price orders', function()
-		_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+		it('should prune expired fixed price orders and remove from orderbook', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
 
 			_G.Orderbook = {
 				['ant-token'] = {
@@ -597,16 +598,160 @@ describe('ucm helpers', function()
 								orderType = 'fixed',
 								dominantToken = 'ant-token',
 								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
 							},
 						},
 					},
 				},
 			}
 
+			_G.OrderIndex['expired-order'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
 			ucm.pruneOrderbook(2000, {})
 
-			-- Order should be marked as expired
-			assert.are.equal('expired', _G.Orderbook['ant-token']['ario-token'].orders['expired-order'].status)
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['expired-order'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should prune expired dutch auction orders and remove from orderbook', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
+
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['expired-dutch'] = {
+								id = 'expired-dutch',
+								status = 'active',
+								expirationTime = 1000,
+								orderType = 'dutch',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								price = '1000',
+								minimumPrice = '500',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['expired-dutch'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['expired-dutch'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should prune expired english auction without bids and remove from orderbook', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
+
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['expired-english'] = {
+								id = 'expired-english',
+								status = 'active',
+								expirationTime = 1000,
+								orderType = 'english',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								price = '1000',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['expired-english'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['expired-english'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should not prune pair if other orders remain', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
+
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['expired-order'] = {
+								id = 'expired-order',
+								status = 'active',
+								expirationTime = 1000,
+								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+							},
+							['active-order'] = {
+								id = 'active-order',
+								status = 'active',
+								expirationTime = 5000,
+								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['expired-order'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+			_G.OrderIndex['active-order'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Expired order should be removed
+			assert.is_nil(_G.Orderbook['ant-token']['ario-token'].orders['expired-order'])
+			assert.is_nil(_G.OrderIndex['expired-order'])
+			-- Active order should remain
+			assert.is_not_nil(_G.Orderbook['ant-token']['ario-token'].orders['active-order'])
+			assert.is_not_nil(_G.OrderIndex['active-order'])
+			-- Pair should NOT be pruned (still has active order)
+			assert.is_not_nil(_G.Orderbook['ant-token'])
+			assert.is_not_nil(_G.Orderbook['ant-token']['ario-token'])
 		end)
 
 		it('should reschedule next pruning for future expirations', function()

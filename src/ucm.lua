@@ -49,9 +49,14 @@ function ucm.scheduleNextOrderbookPruning(timestamp)
 		Pruning = { nextScheduledOrderbookPruning = nil }
 	end
 
-	-- Schedule if no prune scheduled or if this one is sooner
-	if not Pruning.nextScheduledOrderbookPruning or timestamp < Pruning.nextScheduledOrderbookPruning then
+	if not Pruning.nextScheduledOrderbookPruning then
 		Pruning.nextScheduledOrderbookPruning = timestamp
+	end
+
+	-- Schedule if no prune scheduled or if this one is sooner
+	if timestamp < Pruning.nextScheduledOrderbookPruning then
+		Pruning.nextScheduledOrderbookPruning = timestamp
+		print('Scheduled pruning for ' .. tostring(timestamp))
 	end
 end
 
@@ -62,11 +67,14 @@ end
 function ucm.pruneOrderbook(now, msg)
 	-- Return early if no pruning is scheduled or not time yet
 	if not Pruning or not Pruning.nextScheduledOrderbookPruning or now < Pruning.nextScheduledOrderbookPruning then
+		print('No pruning scheduled or not time yet')
 		return
 	end
 
 	-- Track the next earliest expiration for rescheduling
 	local nextExpiration = nil
+
+	print('Pruning orderbook')
 
 	-- Iterate through all orders and update expired ones
 	for dominantToken, swapTokens in pairs(Orderbook) do
@@ -81,10 +89,10 @@ function ucm.pruneOrderbook(now, msg)
 						if order.orderType == constants.ORDER_TYPES.ENGLISH then
 							english_auction.pruneExpiredAuction(order, pair, dominantToken, swapToken, now, msg)
 						elseif order.orderType == constants.ORDER_TYPES.DUTCH then
-							dutch_auction.pruneExpiredAuction(order)
+							dutch_auction.pruneExpiredAuction(order, pair, dominantToken, swapToken, msg)
 						else
 							-- Fixed price or other order types
-							fixed_price.pruneExpiredOrder(order)
+							fixed_price.pruneExpiredOrder(order, pair, dominantToken, swapToken, msg)
 						end
 					else
 						-- Track the next expiration

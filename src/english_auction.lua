@@ -221,9 +221,20 @@ function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapTok
 			order.status = constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
 		end
 	else
-		-- English auction without bids - mark as expired
+		-- English auction without bids - mark as expired and remove from orderbook
 		order.status = constants.ORDER_STATUSES.EXPIRED
 		order.endedAt = order.expirationTime
+		
+		-- Transfer ANT back to creator
+		local ucm = require('ucm')
+		ucm.transfer(order.creator, order.quantity, order.token, msg)
+		
+		-- Remove the order from the orderbook and index
+		pair.orders[order.id] = nil
+		OrderIndex[order.id] = nil
+		
+		-- Prune the pair if it's now empty
+		ucm.pruneEmptyPair(dominantToken, swapToken)
 	end
 end
 

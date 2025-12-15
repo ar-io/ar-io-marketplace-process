@@ -113,17 +113,107 @@ describe('fixed_price helpers', function()
 	end)
 
 	describe('pruneExpiredOrder', function()
-		it('should mark order as expired', function()
-			local order = {
-				id = 'order-123',
-				status = 'active',
-				expirationTime = 2000,
+		local testGlobals = require('test_globals')
+
+		before_each(function()
+			testGlobals.resetState()
+		end)
+
+		it('should mark order as expired and remove from orderbook', function()
+			_G.OrderIndex = {}
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['order-123'] = {
+								id = 'order-123',
+								status = 'active',
+								expirationTime = 2000,
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+							},
+						},
+					},
+				},
 			}
 
-			fixed_price.pruneExpiredOrder(order)
+			_G.OrderIndex['order-123'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
 
+			local order = _G.Orderbook['ant-token']['ario-token'].orders['order-123']
+			local pair = _G.Orderbook['ant-token']['ario-token']
+
+			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', {})
+
+			-- Order should be marked as expired
 			assert.are.equal('expired', order.status)
 			assert.are.equal(2000, order.endedAt)
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['order-123'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should not prune pair if other orders remain', function()
+			_G.OrderIndex = {}
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['order-123'] = {
+								id = 'order-123',
+								status = 'active',
+								expirationTime = 2000,
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+							},
+							['order-456'] = {
+								id = 'order-456',
+								status = 'active',
+								expirationTime = 5000,
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['order-123'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+			_G.OrderIndex['order-456'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			local order = _G.Orderbook['ant-token']['ario-token'].orders['order-123']
+			local pair = _G.Orderbook['ant-token']['ario-token']
+
+			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', {})
+
+			-- Expired order should be removed
+			assert.is_nil(_G.Orderbook['ant-token']['ario-token'].orders['order-123'])
+			assert.is_nil(_G.OrderIndex['order-123'])
+			-- Active order should remain
+			assert.is_not_nil(_G.Orderbook['ant-token']['ario-token'].orders['order-456'])
+			assert.is_not_nil(_G.OrderIndex['order-456'])
+			-- Pair should NOT be pruned
+			assert.is_not_nil(_G.Orderbook['ant-token'])
+			assert.is_not_nil(_G.Orderbook['ant-token']['ario-token'])
 		end)
 	end)
 
