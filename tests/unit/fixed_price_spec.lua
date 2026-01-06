@@ -124,6 +124,7 @@ describe('fixed_price helpers', function()
 			_G.Orderbook = {
 				['ant-token'] = {
 					['ario-token'] = {
+						pair = { 'ant-token', 'ario-token' },
 						orders = {
 							['order-123'] = {
 								id = 'order-123',
@@ -132,6 +133,9 @@ describe('fixed_price helpers', function()
 								token = 'ant-token',
 								creator = 'test-creator',
 								quantity = '1',
+								originalQuantity = '1',
+								dateCreated = 1000,
+								orderType = 'fixed',
 								dominantToken = 'ant-token',
 								swapToken = 'ario-token',
 							},
@@ -148,7 +152,7 @@ describe('fixed_price helpers', function()
 			local order = _G.Orderbook['ant-token']['ario-token'].orders['order-123']
 			local pair = _G.Orderbook['ant-token']['ario-token']
 
-			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', {})
+			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', { Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 2000, Tags = {}, Data = '' })
 
 			-- Order should be marked as expired
 			assert.are.equal('expired', order.status)
@@ -165,6 +169,7 @@ describe('fixed_price helpers', function()
 			_G.Orderbook = {
 				['ant-token'] = {
 					['ario-token'] = {
+						pair = { 'ant-token', 'ario-token' },
 						orders = {
 							['order-123'] = {
 								id = 'order-123',
@@ -173,6 +178,9 @@ describe('fixed_price helpers', function()
 								token = 'ant-token',
 								creator = 'test-creator',
 								quantity = '1',
+								originalQuantity = '1',
+								dateCreated = 1000,
+								orderType = 'fixed',
 								dominantToken = 'ant-token',
 								swapToken = 'ario-token',
 							},
@@ -183,6 +191,9 @@ describe('fixed_price helpers', function()
 								token = 'ant-token',
 								creator = 'test-creator',
 								quantity = '1',
+								originalQuantity = '1',
+								dateCreated = 1000,
+								orderType = 'fixed',
 								dominantToken = 'ant-token',
 								swapToken = 'ario-token',
 							},
@@ -203,7 +214,7 @@ describe('fixed_price helpers', function()
 			local order = _G.Orderbook['ant-token']['ario-token'].orders['order-123']
 			local pair = _G.Orderbook['ant-token']['ario-token']
 
-			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', {})
+			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', { Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 2000, Tags = {}, Data = '' })
 
 			-- Expired order should be removed
 			assert.is_nil(_G.Orderbook['ant-token']['ario-token'].orders['order-123'])

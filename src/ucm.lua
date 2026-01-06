@@ -95,7 +95,7 @@ function ucm.pruneOrderbook(now, msg)
 							fixed_price.pruneExpiredOrder(order, pair, dominantToken, swapToken, msg)
 						end
 					else
-						-- Track the next expiration
+						-- Track the next earliest expiration (minimum timestamp)
 						if not nextExpiration or expirationTime < nextExpiration then
 							nextExpiration = expirationTime
 						end
@@ -105,17 +105,20 @@ function ucm.pruneOrderbook(now, msg)
 		end
 	end
 
-	-- Schedule the next prune
+	-- Schedule the next prune for the earliest remaining expiration
 	Pruning.nextScheduledOrderbookPruning = nextExpiration
 end
 
 --- External token transfer (for ANT and other non-ARIO tokens, and ARIO withdrawals)
+--- Uses deferred send to ensure transfers happen after handler response messages
+--- This is critical for SDK compatibility - the SDK reads the first message as the response,
+--- so side-effect transfers (like pruning refunds) must be deferred to come after handler notices
 --- @param recipient Address The recipient address
 --- @param quantity BalanceAmount The amount to transfer
 --- @param token TokenId The token process ID
 --- @param handledMsg Message The original message context
 function ucm.transfer(recipient, quantity, token, handledMsg)
-	utils.Send(handledMsg, {
+	utils.deferredSend(handledMsg, {
 		Target = token,
 		Action = 'Transfer',
 		Tags = {

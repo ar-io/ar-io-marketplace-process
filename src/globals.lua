@@ -76,5 +76,10 @@ ARIOBalances = ARIOBalances or {}
 ---@type table<string, boolean> Dictionary mapping module name to boolean indicating if the module whitelisted
 WhitelistedModules = WhitelistedModules or {}
 
+--- Deferred send queue - stores messages to be sent after handler completes
+--- This ensures handler response messages are sent before any side-effect messages (like pruning transfers)
+--- @type table<{msg: Message, params: SendParams}> Dictionary mapping message ID to message and parameters
+DeferredSends = DeferredSends or {}
+
 
 return {}

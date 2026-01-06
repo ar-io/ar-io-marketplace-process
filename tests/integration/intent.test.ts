@@ -75,7 +75,7 @@ describe('Intent Workflow Tracking', () => {
       assert(result, 'Create intent result should be defined');
       assert.strictEqual(result.Action, 'Create-Intent-Notice');
       const data = JSON.parse(result.Data);
-      assert(data['Intent-Id'], 'Intent-Id should be returned');
+      assert(data.intentId, 'Intent-Id should be returned');
     });
 
     it('should fail to create intent without required parameters for Create-Order', async () => {
@@ -110,9 +110,9 @@ describe('Intent Workflow Tracking', () => {
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Create-Intent-Notice');
       const data = JSON.parse(result.Data);
-      assert(data['Intent-Id'], 'Intent-Id should be returned');
+      assert(data.intentId, 'Intent-Id should be returned');
       assert.strictEqual(
-        data['Intent-Id'],
+        data.intentId,
         '1',
         'First intent should have ID 1',
       );
@@ -192,7 +192,7 @@ describe('Intent Workflow Tracking', () => {
       });
 
       const createData = JSON.parse(createResult.Data);
-      const intentId = createData['Intent-Id'];
+      const intentId = createData.intentId;
 
       const result = await marketplaceProcess.getIntentById(intentId);
 
@@ -336,7 +336,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Verify intent starts as pending
       let intent = await marketplaceProcess.getIntentById(intentId);
@@ -509,7 +509,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Try to use the intent with a different sender
       const differentSender = 'different-sender'.padEnd(43, '2');
@@ -556,7 +556,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Try to send Credit-Notice with non-whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -615,7 +615,7 @@ describe('Credit-Notice Intent Resolution Workflow', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Send Credit-Notice with whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -715,7 +715,7 @@ describe('ANT Intent Resolution', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Set antProcessId manually (simulating ANT transfer without Credit-Notice due to crank issues)
       await marketplaceProcess.process.send({
@@ -781,7 +781,7 @@ describe('ANT Intent Resolution', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Set antProcessId manually (simulating ANT transfer without Credit-Notice)
       await marketplaceProcess.process.send({
@@ -822,7 +822,7 @@ describe('ANT Intent Resolution', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Mark intent as completed via Eval
       await marketplaceProcess.process.send({
@@ -866,7 +866,7 @@ describe('ANT Intent Resolution', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Mark intent as failed via Eval
       await marketplaceProcess.process.send({
@@ -910,7 +910,7 @@ describe('ANT Intent Resolution', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Mark intent as expired via Eval
       await marketplaceProcess.process.send({
@@ -954,7 +954,7 @@ describe('ANT Intent Resolution', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Set antProcessId and status to active via Eval (simulating stuck intent after ANT transfer)
       await marketplaceProcess.process.send({
@@ -992,7 +992,7 @@ describe('ANT Intent Resolution', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Set antProcessId and status to settling via Eval (simulating stuck intent)
       await marketplaceProcess.process.send({

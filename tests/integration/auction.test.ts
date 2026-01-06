@@ -229,7 +229,7 @@ describe('Auction Mechanisms', () => {
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Create-Intent-Notice');
       const data = JSON.parse(result.Data);
-      assert(data['Intent-Id'], 'Should return Intent-Id');
+      assert(data.intentId, 'Should return Intent-Id');
     });
 
     it('should validate required parameters for fixed price', async () => {
@@ -309,7 +309,7 @@ describe('Auction Mechanisms', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Try to send Credit-Notice with non-whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -368,7 +368,7 @@ describe('Auction Mechanisms', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Send Credit-Notice with whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -439,8 +439,6 @@ describe('Auction Mechanisms', () => {
     });
   });
 
-  });
-});
   // Note: Order pruning is comprehensively tested in unit tests (tests/unit/*_spec.lua)
   // Integration testing of pruning requires complex Credit-Notice flows that are tested elsewhere
 });

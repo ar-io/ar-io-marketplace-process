@@ -59,11 +59,15 @@ describe('UCM (Universal Content Marketplace)', () => {
     );
   });
 
-  describe('Create-Order (ARIO Buy Orders)', () => {
-    it('should create a fixed-price ARIO buy order using internal balance', async () => {
+  describe('Create-Order (ARIO Buy Orders - Immediate Matching)', () => {
+    // NOTE: Per ADR-000, ARIO buy orders don't create orderbook entries.
+    // They must match against existing ANT sell orders immediately.
+    // These tests verify the correct error behavior when no matching order exists.
+
+    it('should fail when no matching ANT sell order exists (fixed)', async () => {
       const antId = 'test-ant-to-buy-'.padEnd(43, '1');
 
-      // Create order to buy ANT with ARIO from internal balance
+      // Try to buy ANT with ARIO - should fail because no ANT sell order exists
       const result = await marketplaceProcess.createOrder({
         swapToken: antId,
         quantity: '1000000000', // 1 ARIO (in mARIO)
@@ -73,24 +77,19 @@ describe('UCM (Universal Content Marketplace)', () => {
       });
 
       assert(result, 'Result should be defined');
-
-      // If it's an error response, check what went wrong
-      if (result.Action === 'Invalid-Create-Order-Notice') {
-        assert.fail(`Order creation failed: ${result.Data}`);
-      }
-
-      assert.strictEqual(result.Action, 'Create-Order-Notice');
-
-      const data = JSON.parse(result.Data);
-      assert.strictEqual(data.Status, 'Success');
-      assert(data['Order-Id'], 'Order-Id should be returned');
+      // Per ADR-000: ARIO orders match immediately, can't create orderbook entry
+      assert.strictEqual(
+        result.Action,
+        'Invalid-Create-Order-Notice',
+        'Should fail when no matching ANT sell order exists',
+      );
       assert(
-        data.Message.includes('ARIO order created'),
-        'Should confirm order creation',
+        result.Data.includes('No matching orders'),
+        'Error should mention no matching orders: ' + result.Data,
       );
     });
 
-    it('should create a dutch auction ARIO buy order', async () => {
+    it('should fail when no matching ANT sell order exists (dutch)', async () => {
       const antId = 'test-ant-dutch-'.padEnd(43, '2');
 
       const result = await marketplaceProcess.createOrder({
@@ -104,14 +103,19 @@ describe('UCM (Universal Content Marketplace)', () => {
       });
 
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Create-Order-Notice');
-
-      const data = JSON.parse(result.Data);
-      assert.strictEqual(data.Status, 'Success');
-      assert(data['Order-Id'], 'Order-Id should be returned');
+      // Per ADR-000: ARIO orders match immediately, can't create orderbook entry
+      assert.strictEqual(
+        result.Action,
+        'Invalid-Create-Order-Notice',
+        'Should fail when no matching ANT sell order exists',
+      );
+      assert(
+        result.Data.includes('No matching'),
+        'Error should mention no matching orders: ' + result.Data,
+      );
     });
 
-    it('should create an english auction ARIO buy order', async () => {
+    it('should fail when no matching ANT sell order exists (english)', async () => {
       const antId = 'test-ant-english-'.padEnd(43, '3');
 
       const result = await marketplaceProcess.createOrder({
@@ -123,11 +127,17 @@ describe('UCM (Universal Content Marketplace)', () => {
       });
 
       assert(result, 'Result should be defined');
-      assert.strictEqual(result.Action, 'Create-Order-Notice');
-
-      const data = JSON.parse(result.Data);
-      assert.strictEqual(data.Status, 'Success');
-      assert(data['Order-Id'], 'Order-Id should be returned');
+      // Per ADR-000: ARIO orders match immediately, can't create orderbook entry
+      assert.strictEqual(
+        result.Action,
+        'Invalid-Create-Order-Notice',
+        'Should fail when no matching ANT sell order exists',
+      );
+      // English auctions return "English auction not found" when no order exists
+      assert(
+        result.Data.includes('not found') || result.Data.includes('No matching'),
+        'Error should mention auction not found: ' + result.Data,
+      );
     });
 
     it('should fail without required parameters', async () => {
@@ -254,7 +264,7 @@ describe('UCM (Universal Content Marketplace)', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Try to send Credit-Notice with non-whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -313,7 +323,7 @@ describe('UCM (Universal Content Marketplace)', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Send Credit-Notice with whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({

@@ -92,21 +92,21 @@ function english_auction.returnLosingBids(order, winningBidder, msg)
 
 			if bint(amount) > 0 then
 				-- Transfer bid back to bidder's available balance
-				balances.unlockBalanceFromOrder(order.id, bidder, bidder, amount)
+		balances.unlockBalanceFromOrder(order.id, bidder, bidder, amount)
 
-				-- Notify bidder
-				utils.Send(msg, {
-					Target = bidder,
-					Action = 'Bid-Returned',
-					Tags = {
-						Status = 'Success',
-						['Order-Id'] = order.id,
-						Amount = amount,
-						Message = 'Your bid has been returned as the auction ended',
-					},
-				})
-			end
+		-- Notify bidder
+		utils.Send(msg, {
+			Target = bidder,
+			Action = 'Bid-Returned',
+			Tags = {
+				Status = 'Success',
+				['Order-Id'] = order.id,
+				Amount = amount,
+				Message = 'Your bid has been returned as the auction ended',
+			},
+			})
 		end
+	end
 	end
 end
 
