@@ -1455,4 +1455,92 @@ describe('Whitelist Management', function()
 			end)
 		end)
 	end)
+
+	describe('withdrawFeesHandler', function()
+		local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+
+		before_each(function()
+			testGlobals.resetState()
+			_G.ARIO_TOKEN_PROCESS_ID = 'ario-token-process-1234567890123456789012'
+		end)
+
+		it('should reject non-owner callers', function()
+			_G.AccruedFeesAmount = '1000'
+
+			local msg = testGlobals.mockMsg({
+				From = 'unauthorized-caller-12345678901234567890123',
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local success, err = pcall(function()
+				ucm.withdrawFeesHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('Unauthorized'))
+		end)
+
+		it('should reject when no fees available', function()
+			_G.AccruedFeesAmount = '0'
+
+			local msg = testGlobals.mockMsg({
+				From = PROCESS_OWNER,
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local success, err = pcall(function()
+				ucm.withdrawFeesHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('No fees available'))
+		end)
+
+		it('should successfully withdraw fees for owner', function()
+			_G.AccruedFeesAmount = '5000000000' -- 5 ARIO in mARIO
+
+			local msg = testGlobals.mockMsg({
+				From = PROCESS_OWNER,
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local result = ucm.withdrawFeesHandler(msg)
+			local data = json.decode(result)
+
+			-- Should return success response
+			assert.are.equal('Success', data.Status)
+			assert.are.equal('Fees withdrawn', data.Message)
+			assert.are.equal('5000000000', data.Amount)
+
+			-- Fees should be reset
+			assert.are.equal('0', _G.AccruedFeesAmount)
+
+			-- Should have sent Transfer message
+			assert.is_true(#_G.sentMessages >= 1)
+			local transferMsg = _G.sentMessages[1]
+			assert.are.equal('Transfer', transferMsg.Action)
+			assert.are.equal(_G.ARIO_TOKEN_PROCESS_ID, transferMsg.Target)
+			assert.are.equal(PROCESS_OWNER, transferMsg.Tags.Recipient)
+			assert.are.equal('5000000000', transferMsg.Tags.Quantity)
+		end)
+
+		it('should withdraw exact fee amount', function()
+			_G.AccruedFeesAmount = '123456789' -- Arbitrary amount
+
+			local msg = testGlobals.mockMsg({
+				From = PROCESS_OWNER,
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local result = ucm.withdrawFeesHandler(msg)
+			local data = json.decode(result)
+
+			assert.are.equal('123456789', data.Amount)
+			assert.are.equal('0', _G.AccruedFeesAmount)
+		end)
+	end)
 end)
