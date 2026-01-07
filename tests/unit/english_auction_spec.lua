@@ -1044,13 +1044,12 @@ describe('English Auction', function()
 	end)
 
 	describe('pruneExpiredAuction', function()
-		local english_auction = require('english_auction')
-
 		it('should mark auction without bids as expired and remove from orderbook', function()
 			_G.OrderIndex = {}
 			_G.Orderbook = {
 				[ANT_TOKEN] = {
 					[ARIO_TOKEN] = {
+						pair = { ANT_TOKEN, ARIO_TOKEN },
 						orders = {
 							['english-123'] = {
 								id = 'english-123',
@@ -1059,6 +1058,8 @@ describe('English Auction', function()
 								token = ANT_TOKEN,
 								creator = 'test-creator',
 								quantity = '1',
+								originalQuantity = '1',
+								dateCreated = 1000,
 								dominantToken = ANT_TOKEN,
 								swapToken = ARIO_TOKEN,
 								orderType = 'english',
@@ -1077,7 +1078,7 @@ describe('English Auction', function()
 			local order = _G.Orderbook[ANT_TOKEN][ARIO_TOKEN].orders['english-123']
 			local pair = _G.Orderbook[ANT_TOKEN][ARIO_TOKEN]
 
-			english_auction.pruneExpiredAuction(order, pair, ANT_TOKEN, ARIO_TOKEN, 3000, {})
+			english_auction.pruneExpiredAuction(order, pair, ANT_TOKEN, ARIO_TOKEN, 3000, { Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 3000, Tags = {}, Data = '' })
 
 			-- Order should be marked as expired
 			assert.are.equal('expired', order.status)

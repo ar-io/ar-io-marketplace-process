@@ -14,21 +14,16 @@ local ORDER_TYPES = constants.ORDER_TYPES
 --- @param swapToken TokenId The swap token ID
 --- @param msg Message The message context for transfers
 function fixed_price.pruneExpiredOrder(order, pair, dominantToken, swapToken, msg)
-	local balances = require('balances')
-	
 	-- Mark order as expired
 	order.status = ORDER_STATUSES.EXPIRED
 	order.endedAt = order.expirationTime
-	
 	-- Return ANT to the creator (fixed price orders are always ANT sales)
 	local ucm = require('ucm')
 	ucm.transfer(order.creator, order.quantity, order.token, msg)
-	
 	-- Remove the order from the orderbook and index
 	local orderId = order.id
 	pair.orders[orderId] = nil
 	OrderIndex[orderId] = nil
-	
 	-- Prune the pair if it's now empty
 	ucm.pruneEmptyPair(dominantToken, swapToken)
 end

@@ -135,7 +135,8 @@ describe('UCM (Universal Content Marketplace)', () => {
       );
       // English auctions return "English auction not found" when no order exists
       assert(
-        result.Data.includes('not found') || result.Data.includes('No matching'),
+        result.Data.includes('not found') ||
+          result.Data.includes('No matching'),
         'Error should mention auction not found: ' + result.Data,
       );
     });

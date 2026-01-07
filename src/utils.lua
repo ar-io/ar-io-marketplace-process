@@ -11,7 +11,6 @@ local utils = {}
 function utils.deferredSend(msg, sendParams)
 	-- Validate message structure
 	utils.validateMessage(sendParams)
-	
 	-- Store the message and params for later sending
 	table.insert(DeferredSends, { msg = msg, params = sendParams })
 end
@@ -22,7 +21,6 @@ function utils.flushDeferredSends()
 	for _, deferred in ipairs(DeferredSends) do
 		utils.Send(deferred.msg, deferred.params)
 	end
-	
 	-- Clear the queue
 	DeferredSends = {}
 end

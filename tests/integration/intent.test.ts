@@ -111,11 +111,7 @@ describe('Intent Workflow Tracking', () => {
       assert.strictEqual(result.Action, 'Create-Intent-Notice');
       const data = JSON.parse(result.Data);
       assert(data.intentId, 'Intent-Id should be returned');
-      assert.strictEqual(
-        data.intentId,
-        '1',
-        'First intent should have ID 1',
-      );
+      assert.strictEqual(data.intentId, '1', 'First intent should have ID 1');
     });
   });
 
