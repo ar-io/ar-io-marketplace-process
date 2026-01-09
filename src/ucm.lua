@@ -876,13 +876,15 @@ function ucm.unwhitelistModule(moduleId)
 end
 
 function ucm.whitelistModuleHandler(msg)
+	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can whitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
-    ucm.whitelistModule(moduleId)
+	ucm.whitelistModule(moduleId)
 	return json.encode(WhitelistedModules)
 end
 
 function ucm.unwhitelistModuleHandler(msg)
+	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can unwhitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
 	ucm.unwhitelistModule(moduleId)

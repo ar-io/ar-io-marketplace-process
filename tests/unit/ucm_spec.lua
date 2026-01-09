@@ -1200,8 +1200,12 @@ describe('Whitelist Management', function()
 		end)
 
 		describe('whitelistModuleHandler', function()
+			local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+
 			it('should whitelist via message handler', function()
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {
 						['Module-Id'] = TEST_MODULE_ID,
 					},
@@ -1216,6 +1220,8 @@ describe('Whitelist Management', function()
 
 			it('should require Module-Id tag', function()
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {},
 				})
 
@@ -1228,10 +1234,14 @@ describe('Whitelist Management', function()
 		end)
 
 		describe('unwhitelistModuleHandler', function()
+			local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+
 			it('should unwhitelist via message handler', function()
 				ucm.whitelistModule(TEST_MODULE_ID)
 
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {
 						['Module-Id'] = TEST_MODULE_ID,
 					},
@@ -1246,6 +1256,8 @@ describe('Whitelist Management', function()
 
 			it('should require Module-Id tag', function()
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {},
 				})
 
@@ -1541,6 +1553,64 @@ describe('Whitelist Management', function()
 
 			assert.are.equal('123456789', data.Amount)
 			assert.are.equal('0', _G.AccruedFeesAmount)
+		end)
+	end)
+
+	describe('whitelistModuleHandler authorization', function()
+		local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+		local VALID_MODULE_ID = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10'
+
+		before_each(function()
+			testGlobals.resetState()
+		end)
+
+		it('should reject non-owner callers', function()
+			local msg = testGlobals.mockMsg({
+				From = 'unauthorized-caller-12345678901234567890123',
+				Owner = PROCESS_OWNER,
+				Tags = {
+					Action = 'Whitelist-Module',
+					['Module-Id'] = VALID_MODULE_ID,
+				},
+			})
+
+			local success, err = pcall(function()
+				ucm.whitelistModuleHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('Unauthorized'))
+		end)
+	end)
+
+	describe('unwhitelistModuleHandler authorization', function()
+		local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+		local VALID_MODULE_ID = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10'
+
+		before_each(function()
+			testGlobals.resetState()
+			-- Pre-whitelist the module for unwhitelist tests
+			_G.WhitelistedModules[VALID_MODULE_ID] = true
+		end)
+
+		it('should reject non-owner callers', function()
+			local msg = testGlobals.mockMsg({
+				From = 'unauthorized-caller-12345678901234567890123',
+				Owner = PROCESS_OWNER,
+				Tags = {
+					Action = 'Unwhitelist-Module',
+					['Module-Id'] = VALID_MODULE_ID,
+				},
+			})
+
+			local success, err = pcall(function()
+				ucm.unwhitelistModuleHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('Unauthorized'))
+			-- Module should still be whitelisted
+			assert.is_true(_G.WhitelistedModules[VALID_MODULE_ID])
 		end)
 	end)
 end)
