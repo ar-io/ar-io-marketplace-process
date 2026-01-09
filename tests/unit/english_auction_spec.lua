@@ -10,7 +10,7 @@ describe('English Auction', function()
 
 	-- Token IDs for testing
 	local ANT_TOKEN = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10'
-	local ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+	local ARIO_TOKEN = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE'
 
 	local transfers = {}
 	local sentMessages = {}
@@ -53,7 +53,7 @@ describe('English Auction', function()
 			ucm.createOrder({
 				orderId = 'ant-sell-order',
 			dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-			swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+			swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 			sender = 'ant-seller',
 			quantity = '1',
 			price = '500000000000',
@@ -81,7 +81,7 @@ describe('English Auction', function()
 			ucm.createOrder({
 				orderId = 'ant-sell-order',
 				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+				swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 		sender = 'ant-seller',
 		quantity = '1',
 		price = '500000000000',
@@ -103,7 +103,7 @@ describe('English Auction', function()
 				ucm.createOrder({
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				sender = 'ant-seller',
 				quantity = '1',
 				price = '500000000000',
@@ -127,7 +127,7 @@ describe('English Auction', function()
 				ucm.createOrder({
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				sender = 'ant-seller',
 				quantity = '1',
 				price = '500000000000',
@@ -151,7 +151,7 @@ describe('English Auction', function()
 				ucm.createOrder({
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-			swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+			swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 			sender = 'ant-seller',
 			quantity = '1',
 			createdAt = 1735689600000,
@@ -173,7 +173,7 @@ describe('English Auction', function()
 				ucm.createOrder({
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 			sender = 'ant-seller',
 			quantity = '1',
 			price = '-500',
@@ -196,7 +196,7 @@ describe('English Auction', function()
 				ucm.createOrder({
 					orderId = 'ant-sell-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				sender = 'ant-seller',
 				quantity = '2', -- Should be 1 for ANT
 				price = '500000000000',
@@ -251,7 +251,7 @@ describe('English Auction', function()
 		local success = pcall(function()
 			ucm.createOrder({
 				orderId = 'bid-1',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+				dominantToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 			sender = 'bidder-1',
 			quantity = '-100', -- Negative
@@ -259,7 +259,7 @@ describe('English Auction', function()
 			blockheight = 123456790,
 		orderType = 'english',
 		requestedOrderId = 'auction-1',
-		msg = { Id = 'test-msg-8', Owner = 'bidder-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '-100' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+		msg = { Id = 'test-msg-8', Owner = 'bidder-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '-100' }, From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' },
 		})
 		end)
 

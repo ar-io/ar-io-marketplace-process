@@ -11,7 +11,7 @@ describe('ucm helpers', function()
 	local function resetGlobals()
 		_G.Orderbook = {}
 		_G.OrderIndex = {}
-		_G.ARIO_TOKEN_PROCESS_ID = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+		_G.ARIO_TOKEN_PROCESS_ID = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE'
 	end
 
 	before_each(function()
@@ -1260,7 +1260,7 @@ describe('Whitelist Management', function()
 		describe('getOrdersHandler', function()
 			local dominantToken1 = 'ANT_TOKEN_ID_12345678901234567890123456789012'
 			local dominantToken2 = 'ANT_TOKEN_ID_99999999999999999999999999999999'
-			local swapToken1 = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' -- ARIO
+			local swapToken1 = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' -- ARIO
 			local swapToken2 = 'SWAP_TOKEN_ID_1234567890123456789012345678901'
 
 			before_each(function()

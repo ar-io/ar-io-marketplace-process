@@ -8,7 +8,7 @@ describe('Dutch Auction', function()
 
 	-- Token IDs for testing
 	local ANT_TOKEN = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10'
-	local ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+	local ARIO_TOKEN = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE'
 
 	local transfers = {}
 	local sentMessages = {}
@@ -60,7 +60,7 @@ describe('Dutch Auction', function()
 			ucm.createOrder({
 				orderId = 'ant-sell-order',
 				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10', -- ANT
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA', -- ARIO
+				swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE', -- ARIO
 				sender = 'ant-seller',
 				quantity = '1',
 				price = '500000000000',
@@ -158,7 +158,7 @@ describe('Dutch Auction', function()
 			end
 			ucm.createOrder({
 				orderId = 'ario-buy-order',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA', -- ARIO
+				dominantToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE', -- ARIO
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10', -- ANT
 				sender = 'ario-buyer',
 				quantity = '500000000000', -- Paying 500B ARIO
@@ -166,7 +166,7 @@ describe('Dutch Auction', function()
 			blockheight = 123456790,
 			orderType = 'dutch',
 			requestedOrderId = 'ant-sell-order',
-			msg = { Id = 'test-msg-2', Owner = 'buyer-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '500000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+			msg = { Id = 'test-msg-2', Owner = 'buyer-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '500000000000' }, From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' },
 		})
 
 			print('DEBUG: Orderbook after buy order')
@@ -258,7 +258,7 @@ describe('Dutch Auction', function()
 			-- New price: 500B - 100B = 400B
 			ucm.createOrder({
 				orderId = 'ario-buy-order-2',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+				dominantToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 				sender = 'ario-buyer-2',
 				quantity = '400000000000', -- Paying reduced price
@@ -266,7 +266,7 @@ describe('Dutch Auction', function()
 			blockheight = 123456791,
 			orderType = 'dutch',
 			requestedOrderId = 'ant-sell-order',
-			msg = { Id = 'test-msg-3', Owner = 'buyer-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '400000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
+			msg = { Id = 'test-msg-3', Owner = 'buyer-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '400000000000' }, From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' },
 		})
 
 		-- Validate transfers occurred (only ANT transfer, ARIO goes to internal balance)
@@ -288,7 +288,7 @@ describe('Dutch Auction', function()
 				ucm.createOrder({
 					orderId = 'invalid-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 					sender = 'test-sender',
 					quantity = '1',
 					price = '500000000000',
@@ -315,7 +315,7 @@ describe('Dutch Auction', function()
 				ucm.createOrder({
 					orderId = 'invalid-order-2',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 					sender = 'test-sender',
 					quantity = '1',
 					price = '500000000000',

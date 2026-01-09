@@ -406,7 +406,7 @@ describe('Notices Module', function()
 			-- Whitelist only the first module
 			testGlobals.whitelistTestModule(TEST_MODULE_WHITELISTED)
 			-- Set ARIO token to match global
-			_G.ARIO_TOKEN_PROCESS_ID = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+			_G.ARIO_TOKEN_PROCESS_ID = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE'
 		end)
 
 		it('should create ANT order when module is whitelisted', function()
