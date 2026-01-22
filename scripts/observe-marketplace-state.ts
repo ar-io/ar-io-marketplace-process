@@ -74,15 +74,19 @@ async function sendSlackNotification(issues: Array<{ antId: string } & AntIssue>
 			const issueDetails: string[] = [];
 			if (issue.notInAntRegistry) issueDetails.push('Not in registry');
 			if (issue.badCu) issueDetails.push(`Bad CU (${issue.badCu.cuName}: ${issue.badCu.status})`);
-			if (issue.notOwnedByMarketplace) issueDetails.push(`Not owned by marketplace (owner: ${issue.notOwnedByMarketplace.owner})`);
+			if (issue.notOwnedByMarketplace) issueDetails.push(`Not owned by marketplace (owner: <${SCAN_URL}/${issue.notOwnedByMarketplace.owner}|${issue.notOwnedByMarketplace.owner?.slice(0, 8)}...>)`);
 			if (issue.escrowIssue) issueDetails.push(`Escrow: ${issue.escrowIssue}`);
 			if (issue.unknownError) issueDetails.push('Unknown error');
+			if (issue.hasAssociatedArNSName === false) issueDetails.push('No associated ArNS name');
+
+			const arnsLabel = issue.arnsName ? ` (${issue.arnsName})` : '';
+			const antLink = `<${SCAN_URL}/${issue.antId}|${issue.antId.slice(0, 8)}...${arnsLabel}>`;
 
 			blocks.push({
 				type: 'section',
 				text: {
 					type: 'mrkdwn',
-					text: `*ANT:* \`${issue.antId}\`\n${issueDetails.join(', ')}`,
+					text: `*ANT:* ${antLink}\n${issueDetails.join(', ')}`,
 				},
 			});
 		}
@@ -139,8 +143,12 @@ type AntIssue = {
 		status: number;
 		statusText: string;
 		antId: string;
-	}
+	};
+	hasAssociatedArNSName?: boolean;
+	arnsName?: string;
 };
+
+const SCAN_URL = 'https://scan.ar.io/#/entity';
 
 const concurrencyLimit = plimit(10);
 const paginationLimit = 1000;
@@ -342,6 +350,34 @@ async function observeMarketplaceState() {
 				antIssueMapping.set(result.antId, {...antIssueMapping.get(result.antId), escrowIssue: "order active but is not owned by the marketplace process"});
 			}
 			continue;
+		}
+	}
+
+	// Query ArNS records for ANTs with issues to get associated names
+	const antIdsWithIssues = Array.from(antIssueMapping.keys());
+	if (antIdsWithIssues.length > 0) {
+		spinner.start(`Looking up ArNS names for ${antIdsWithIssues.length} ANTs with issues...`);
+		try {
+			const arnsRecords = await ario.getArNSRecords({filters: { processId: antIdsWithIssues }});
+			const processIdToArnsName = new Map<string, string>();
+			
+			// Build a map of processId -> arnsName
+			for (const record of arnsRecords.items) {
+				processIdToArnsName.set(record.processId, record.name);
+			}
+
+			// Update issue mapping with ArNS name info
+			for (const antId of antIdsWithIssues) {
+				const arnsName = processIdToArnsName.get(antId);
+				if (arnsName) {
+					antIssueMapping.set(antId, {...antIssueMapping.get(antId), hasAssociatedArNSName: true, arnsName});
+				} else {
+					antIssueMapping.set(antId, {...antIssueMapping.get(antId), hasAssociatedArNSName: false});
+				}
+			}
+			spinner.succeed(`Found ArNS names for ${processIdToArnsName.size} of ${antIdsWithIssues.length} ANTs`);
+		} catch (error) {
+			spinner.fail(`Failed to lookup ArNS names: ${error}`);
 		}
 	}
 
