@@ -5,6 +5,117 @@ import plimit from 'p-limit'
 import kleur from 'kleur';
 import ora, { type Ora } from 'ora';
 
+const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+
+type SlackBlock = {
+	type: string;
+	text?: { type: string; text: string; emoji?: boolean };
+	fields?: { type: string; text: string }[];
+};
+
+async function sendSlackNotification(issues: Array<{ antId: string } & AntIssue>): Promise<void> {
+	if (!SLACK_WEBHOOK_URL) {
+		console.log(kleur.yellow('SLACK_WEBHOOK_URL not set, skipping Slack notification'));
+		return;
+	}
+
+	const blocks: SlackBlock[] = [
+		{
+			type: 'header',
+			text: {
+				type: 'plain_text',
+				text: issues.length > 0 ? '⚠️ Marketplace ANT Issues Detected' : '✅ Marketplace State Healthy',
+				emoji: true,
+			},
+		},
+		{
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				text: `*Marketplace Process:* \`${marketplaceProcessId}\`\n*Timestamp:* ${new Date().toISOString()}`,
+			},
+		},
+	];
+
+	if (issues.length > 0) {
+		blocks.push({
+			type: 'section',
+			text: {
+				type: 'mrkdwn',
+				text: `*Total Issues Found:* ${issues.length}`,
+			},
+		});
+
+		// Group issues by type for summary
+		const issuesByType = {
+			notInAntRegistry: issues.filter(i => i.notInAntRegistry).length,
+			badCu: issues.filter(i => i.badCu).length,
+			notOwnedByMarketplace: issues.filter(i => i.notOwnedByMarketplace).length,
+			escrowIssue: issues.filter(i => i.escrowIssue).length,
+			unknownError: issues.filter(i => i.unknownError).length,
+		};
+
+		blocks.push({
+			type: 'section',
+			fields: [
+				{ type: 'mrkdwn', text: `*Not in Registry:* ${issuesByType.notInAntRegistry}` },
+				{ type: 'mrkdwn', text: `*Bad CU:* ${issuesByType.badCu}` },
+				{ type: 'mrkdwn', text: `*Not Owned by Marketplace:* ${issuesByType.notOwnedByMarketplace}` },
+				{ type: 'mrkdwn', text: `*Escrow Issues:* ${issuesByType.escrowIssue}` },
+				{ type: 'mrkdwn', text: `*Unknown Errors:* ${issuesByType.unknownError}` },
+			],
+		});
+
+		// Add details for first few issues (limit to avoid message size issues)
+		const maxDetailsToShow = 5;
+		const issuesToShow = issues.slice(0, maxDetailsToShow);
+		
+		for (const issue of issuesToShow) {
+			const issueDetails: string[] = [];
+			if (issue.notInAntRegistry) issueDetails.push('Not in registry');
+			if (issue.badCu) issueDetails.push(`Bad CU (${issue.badCu.cuName}: ${issue.badCu.status})`);
+			if (issue.notOwnedByMarketplace) issueDetails.push(`Not owned by marketplace (owner: ${issue.notOwnedByMarketplace.owner})`);
+			if (issue.escrowIssue) issueDetails.push(`Escrow: ${issue.escrowIssue}`);
+			if (issue.unknownError) issueDetails.push('Unknown error');
+
+			blocks.push({
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					text: `*ANT:* \`${issue.antId}\`\n${issueDetails.join(', ')}`,
+				},
+			});
+		}
+
+		if (issues.length > maxDetailsToShow) {
+			blocks.push({
+				type: 'section',
+				text: {
+					type: 'mrkdwn',
+					text: `_...and ${issues.length - maxDetailsToShow} more issues_`,
+				},
+			});
+		}
+	}
+
+	const payload = {
+		blocks,
+		text: issues.length > 0 
+			? `⚠️ Marketplace ANT Issues: ${issues.length} issues detected` 
+			: '✅ Marketplace State Healthy',
+	};
+
+	const response = await fetch(SLACK_WEBHOOK_URL, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload),
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to send Slack notification: ${response.status} ${response.statusText}`);
+	}
+}
+
 type AntIssue = {
 	notInAntRegistry?: boolean;
 	isOrder?: boolean;
@@ -234,20 +345,22 @@ async function observeMarketplaceState() {
 		}
 	}
 
-	if (antIssueMapping.size > 0) {
-		spinner.warn(`Found ${antIssueMapping.size} ANTs with issues`);
-		console.log(kleur.yellow(JSON.stringify(Array.from(antIssueMapping.entries()).map(([antId, issue]) => ({antId, ...issue})), null, 2)));
+	const issues = Array.from(antIssueMapping.entries()).map(([antId, issue]) => ({antId, ...issue}));
+
+	if (issues.length > 0) {
+		spinner.warn(`Found ${issues.length} ANTs with issues`);
+		console.log(kleur.yellow(JSON.stringify(issues, null, 2)));
 	} else {
 		spinner.succeed('No ANT issues found');
 	}
 
-
-
-
-	// create report with the following information:
-	// - ants that are owned by the marketplace process but not in the orderbook or intents - these are problem ants that need to be investigated
-	// - investigate the state of the ant, search for the most recent transfer to the marketplace process
-	// - get the cu number the ant is on and do a head request to check if the cu is bad
-	// - use the cranking verifier 
+	// Send Slack notification
+	spinner.start('Sending Slack notification...');
+	try {
+		await sendSlackNotification(issues);
+		spinner.succeed('Slack notification sent');
+	} catch (error) {
+		spinner.fail(`Failed to send Slack notification: ${error}`);
+	}
 }
 observeMarketplaceState();

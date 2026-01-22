@@ -1,0 +1,30 @@
+name: Marketplace State Observer
+
+on:
+    workflow_dispatch:
+    schedule:
+        # Run every hour
+        - cron: "0 * * * *"
+
+jobs:
+    observe:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version-file: ".nvmrc"
+                  cache: "pnpm"
+
+            - run: pnpm install --frozen-lockfile
+
+            - name: Observe Marketplace State
+              run: pnpm observe
+              env:
+                  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
