@@ -110,15 +110,12 @@ function ucm.pruneOrderbook(now, msg)
 end
 
 --- External token transfer (for ANT and other non-ARIO tokens, and ARIO withdrawals)
---- Uses deferred send to ensure transfers happen after handler response messages
---- This is critical for SDK compatibility - the SDK reads the first message as the response,
---- so side-effect transfers (like pruning refunds) must be deferred to come after handler notices
 --- @param recipient Address The recipient address
 --- @param quantity BalanceAmount The amount to transfer
 --- @param token TokenId The token process ID
 --- @param handledMsg Message The original message context
 function ucm.transfer(recipient, quantity, token, handledMsg)
-	utils.deferredSend(handledMsg, {
+	utils.Send(handledMsg, {
 		Target = token,
 		Action = 'Transfer',
 		Tags = {

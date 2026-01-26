@@ -99,22 +99,13 @@ for _, module_name in ipairs(modules_to_load) do
 				return data
 			end
 
-			-- Mock deferredSend to immediately send in unit tests
-			-- This is necessary because unit tests call handlers directly (not through createHandler wrapper)
-			-- so onAfterHandler (which flushes deferred sends) never gets called
-			local mockDeferredSend = function(msg, sendParams)
-				return mockSend(msg, sendParams)
-			end
-
 			-- Apply mocks to both the module return value and global utils
 			result.Send = mockSend
-			result.deferredSend = mockDeferredSend
 			if _G.utils then
 				_G.utils.Send = mockSend
-				_G.utils.deferredSend = mockDeferredSend
 			end
 
-			print('  ✓ Added Send and deferredSend mocks to utils')
+			print('  ✓ Added Send mock to utils')
 		end
 	else
 		print('  ✗ Failed to load: ' .. module_name .. ' - ' .. tostring(result))

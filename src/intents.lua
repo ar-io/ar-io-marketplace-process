@@ -169,9 +169,9 @@ function intents.failIntent(intentId, reason, msg)
 	-- Use resolveIntent to handle pruning logic centrally
 	local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
 
-	-- Send Intent-Resolved notice AFTER pruning succeeds (deferred to ensure handler response is first)
+	-- Send Intent-Resolved notice
 	if success and resolvedIntent and msg then
-		_utils.deferredSend(msg, {
+		_utils.Send(msg, {
 			Target = resolvedIntent.initiator,
 			Action = 'Intent-Resolved',
 			['Intent-Id'] = tostring(resolvedIntent.intentId),

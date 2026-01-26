@@ -5,26 +5,6 @@ local constants = require('constants')
 
 local utils = {}
 
---- Queue a message to be sent after the handler completes
---- @param msg Message The original message context
---- @param sendParams SendParams The parameters to pass to ao.send
-function utils.deferredSend(msg, sendParams)
-	-- Validate message structure
-	utils.validateMessage(sendParams)
-	-- Store the message and params for later sending
-	table.insert(DeferredSends, { msg = msg, params = sendParams })
-end
-
---- Send all deferred messages (called from onAfterHandler)
-function utils.flushDeferredSends()
-	-- Process all deferred sends
-	for _, deferred in ipairs(DeferredSends) do
-		utils.Send(deferred.msg, deferred.params)
-	end
-	-- Clear the queue
-	DeferredSends = {}
-end
-
 --- Add forwarded tags (X-* tags) from one message to another
 --- @param oldMsg table The source message
 --- @param newMsg table The destination message
@@ -988,10 +968,6 @@ function utils.onAfterHandler(msg, tagValue, handlerStatus, handlerRes)
 	if resultNotice then
 		utils.Send(msg, resultNotice)
 	end
-
-	-- Flush all deferred sends after the handler response is sent
-	-- This ensures the handler's response message is always first, then side-effects follow
-	utils.flushDeferredSends()
 
 	return handlerRes
 end

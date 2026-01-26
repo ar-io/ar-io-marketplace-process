@@ -249,6 +249,27 @@ export class MarketplaceProcess {
         };
       }
 
+      // First, check for error messages (Order-Error, Validation-Error, etc.)
+      const errorMessage = result.Messages?.find((m: any) =>
+        m.Tags?.find(
+          (t: any) =>
+            t.name === 'Action' &&
+            (t.value === 'Order-Error' || t.value === 'Validation-Error'),
+        ),
+      );
+
+      if (errorMessage) {
+        const errorData =
+          errorMessage.Data ||
+          errorMessage.Tags?.find((t: any) => t.name === 'Error')?.value ||
+          'Unknown error';
+        return {
+          Action: 'Invalid-Create-Order-Notice',
+          Data: errorData,
+          Tags: { Error: 'Create-Order-Error' },
+        };
+      }
+
       // Find the response message with Action: 'Create-Order-Notice'
       const responseMessage = result.Messages?.find((m: any) =>
         m.Tags?.find(

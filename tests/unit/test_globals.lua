@@ -52,7 +52,6 @@ return {
 		_G.ARIOBalances = {}
 		_G.IntentCounter = "0"
 		_G.WhitelistedModules = {}
-		_G.DeferredSends = {} -- Clear deferred sends queue
 		-- Clear the array instead of replacing to maintain reference
 		while #_G.sentMessages > 0 do
 			table.remove(_G.sentMessages)
@@ -99,13 +98,5 @@ return {
 	whitelistTestModule = function(moduleId)
 		_G.WhitelistedModules = _G.WhitelistedModules or {}
 		_G.WhitelistedModules[moduleId] = true
-	end,
-
-	-- Utility to flush deferred sends in tests (since onAfterHandler isn't called in unit tests)
-	flushDeferredSends = function()
-		local utils = require('utils')
-		if utils.flushDeferredSends then
-			utils.flushDeferredSends()
-		end
 	end,
 }
