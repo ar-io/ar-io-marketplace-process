@@ -452,15 +452,15 @@ describe('English Auction', function()
 			end)
 
 		it('should reject bid not meeting minimum increment', function()
-			-- Current bid: 1000000000000, new bid: 1000500000000 (0.5 ARIO increment)
-			local isValid, err = english_auction.validateBidAmount('1000500000000', '1000000000000', nil)
+			-- Current bid: 1000000 (1 ARIO), new bid: 1500000 (1.5 ARIO, only 0.5 ARIO increment)
+			local isValid, err = english_auction.validateBidAmount('1500000', '1000000', nil)
 			assert.is_false(isValid)
 			assert.are.equal('The next bid must be at least 1 ARIO higher than the current highest bid', err)
 		end)
 
 		it('should accept bid meeting minimum increment', function()
-			-- Current bid: 1000000000000, new bid: 1001000000000 (exactly 1 ARIO increment)
-			local isValid, err = english_auction.validateBidAmount('1001000000000', '1000000000000', nil)
+			-- Current bid: 1000000 (1 ARIO), new bid: 2000000 (2 ARIO, exactly 1 ARIO increment)
+			local isValid, err = english_auction.validateBidAmount('2000000', '1000000', nil)
 			assert.is_true(isValid)
 			assert.is_nil(err)
 		end)
@@ -557,7 +557,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-123',
 			quantity = '1',
-			price = '1000000000', -- 1 ARIO minimum
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -566,7 +566,7 @@ describe('English Auction', function()
 			})
 
 			-- Setup bidder balance
-			ARIOBalances['bidder-1'] = {balance = '10000000000', orders = {}} -- 10 ARIO
+			ARIOBalances['bidder-1'] = {balance = '10000000000', orders = {}} -- 10,000 ARIO
 
 			local msg = {
 				From = 'bidder-1',
@@ -606,7 +606,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-123',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -665,7 +665,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-123',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -726,7 +726,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-123',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -782,7 +782,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-123',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -817,7 +817,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-123',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum starting price
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -825,8 +825,8 @@ describe('English Auction', function()
 			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
 		})
 
-			ARIOBalances['bidder-1'] = {balance = '10000000000', orders = {}}
-			ARIOBalances['bidder-2'] = {balance = '10000000000', orders = {}}
+			ARIOBalances['bidder-1'] = {balance = '10000000', orders = {}} -- 10 ARIO
+			ARIOBalances['bidder-2'] = {balance = '10000000', orders = {}} -- 10 ARIO
 
 			-- First bid
 			local msg1 = {
@@ -834,7 +834,7 @@ describe('English Auction', function()
 				Timestamp = 1500000,
 				Tags = {
 					['Order-Id'] = 'auction-increment',
-					['Bid-Amount'] = '2000000000', -- 2 ARIO
+					['Bid-Amount'] = '2000000', -- 2 ARIO
 				},
 			}
 			english_auction.bidOnEnglishAuctionHandler(msg1)
@@ -845,7 +845,7 @@ describe('English Auction', function()
 				Timestamp = 1600000,
 				Tags = {
 					['Order-Id'] = 'auction-increment',
-					['Bid-Amount'] = '2500000000', -- Only 0.5 ARIO more
+					['Bid-Amount'] = '2500000', -- Only 0.5 ARIO more
 				},
 			}
 
@@ -868,7 +868,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-123',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -912,7 +912,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-456',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -969,7 +969,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'creator-789',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',
@@ -1006,7 +1006,7 @@ describe('English Auction', function()
 			swapToken = ARIO_TOKEN,
 			sender = 'seller-999',
 			quantity = '1',
-			price = '1000000000',
+			price = '1000000', -- 1 ARIO minimum
 			createdAt = 1000000,
 			blockheight = 123456,
 			orderType = 'english',

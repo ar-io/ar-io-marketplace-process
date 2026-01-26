@@ -59,7 +59,7 @@ describe('Notices Module', function()
 
 	describe('creditNoticeHandler - Validation', function()
 		before_each(function()
-			-- Fund users for listing fees (1 ARIO = 1000000000 mARIO)
+			-- Fund users for listing fees (1 ARIO = 1000000 mARIO)
 			ARIOBalances['user-123'] = { balance = '10000000000', orders = {} }
 			ARIOBalances['user-456'] = { balance = '10000000000', orders = {} }
 			ARIOBalances['user-123-1234567890123456789012345678901234567890'] = { balance = '10000000000', orders = {} }

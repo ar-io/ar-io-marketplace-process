@@ -365,7 +365,7 @@ describe('ucm helpers', function()
 			end
 
 			-- Give user and seller some ARIO balance
-			_G.ARIOBalances['test-user'] = {balance = '10000000000', orders = {}} -- 10 ARIO
+			_G.ARIOBalances['test-user'] = {balance = '10000000000', orders = {}} -- 10,000 ARIO
 			_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}} -- ANT seller
 		end)
 

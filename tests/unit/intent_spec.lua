@@ -18,7 +18,7 @@ describe('Intent Management', function()
 	describe('createIntent', function()
 		it('should create an intent with correct structure', function()
 			-- Setup balance for listing fee
-			ARIOBalances['user-address-abc'] = {balance = '10000000000', orders = {}} -- 10 ARIO
+			ARIOBalances['user-address-abc'] = {balance = '10000000000', orders = {}} -- 10,000 ARIO
 
 			local msg = {
 				Id = 'test-intent-123',

@@ -68,7 +68,7 @@ constants.QUANTITY = {
 
 -- Auction and bidding constants
 constants.AUCTION = {
-	MINIMUM_BID_INCREMENT = '1000000000', -- Minimum bid increment in ARIO (1 ARIO = 1000000000 mARIO)
+	MINIMUM_BID_INCREMENT = '1000000', -- Minimum bid increment: 1 ARIO (1 ARIO = 1000000 mARIO)
 }
 
 -- Intent status constants
