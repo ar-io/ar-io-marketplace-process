@@ -56,7 +56,7 @@ describe('English Auction', function()
 			swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 			sender = 'ant-seller',
 			quantity = '1',
-			price = '500000000000',
+			price = '500000000', -- 500 ARIO
 			createdAt = 1735689600000,
 			blockheight = 123456789,
 			orderType = 'english',
@@ -74,7 +74,7 @@ describe('English Auction', function()
 			assert.is_not_nil(order)
 			assert.are.equal('ant-sell-order', order.id)
 			assert.are.equal('english', order.orderType)
-			assert.are.equal('500000000000', order.price)
+			assert.are.equal('500000000', order.price) -- 500 ARIO
 		end)
 
 		it('should allow order without expiration time', function()
@@ -84,7 +84,7 @@ describe('English Auction', function()
 				swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 		sender = 'ant-seller',
 		quantity = '1',
-		price = '500000000000',
+		price = '500000000', -- 500 ARIO
 		createdAt = 1735689600000,
 		blockheight = 123456789,
 		orderType = 'english',
@@ -106,7 +106,7 @@ describe('English Auction', function()
 					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				sender = 'ant-seller',
 				quantity = '1',
-				price = '500000000000',
+				price = '500000000', -- 500 ARIO
 				createdAt = 1735689600000,
 				blockheight = 123456789,
 				orderType = 'english',
@@ -130,7 +130,7 @@ describe('English Auction', function()
 					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				sender = 'ant-seller',
 				quantity = '1',
-				price = '500000000000',
+				price = '500000000', -- 500 ARIO
 			createdAt = 1735689600000,
 			msg = { Id = 'test-msg-4', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			blockheight = 123456789,
@@ -199,7 +199,7 @@ describe('English Auction', function()
 					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				sender = 'ant-seller',
 				quantity = '2', -- Should be 1 for ANT
-				price = '500000000000',
+				price = '500000000', -- 500 ARIO
 				createdAt = 1735689600000,
 				blockheight = 123456789,
 			orderType = 'english',
@@ -231,7 +231,7 @@ describe('English Auction', function()
 							swapToken = ARIO_TOKEN,
 							quantity = '1',
 							originalQuantity = '1',
-							price = '1000000000000',
+							price = '1000000000', -- 1000 ARIO
 							orderType = 'english',
 							dateCreated = 1735689600000,
 							expirationTime = 1736035200000,
@@ -286,7 +286,7 @@ describe('English Auction', function()
 							swapToken = ARIO_TOKEN,
 							quantity = '1',
 							originalQuantity = '1',
-							price = '1000000000000',
+							price = '1000000000', -- 1000 ARIO
 							orderType = 'english',
 							dateCreated = 1735689600000,
 							expirationTime = 1736035200000,
@@ -305,7 +305,7 @@ describe('English Auction', function()
 
 		-- Setup bidder's ARIO balance
 		_G.ARIOBalances['bidder-1'] = {
-			balance = '2000000000000', -- 2000 ARIO available
+			balance = '2000000000', -- 2000 ARIO available
 			orders = {},
 		}
 
@@ -317,7 +317,7 @@ describe('English Auction', function()
 			Timestamp = 1735689601000,
 			Tags = {
 				['Order-Id'] = 'auction-1',
-				['Bid-Amount'] = '1100000000000',
+				['Bid-Amount'] = '1100000000', -- 1100 ARIO
 			},
 		}
 
@@ -330,7 +330,7 @@ describe('English Auction', function()
 		---@diagnostic disable-next-line: need-check-nil
 		assert.are.equal('bidder-1', highestBid.bidder)
 		---@diagnostic disable-next-line: need-check-nil
-		assert.are.equal('1100000000000', highestBid.amount)
+		assert.are.equal('1100000000', highestBid.amount) -- 1100 ARIO
 	-- Should be added to order.bids
 	assert.is_not_nil(auction.bids)
 	assert.is_true(auction.bids['bidder-1'])
@@ -351,7 +351,7 @@ describe('English Auction', function()
 							swapToken = ARIO_TOKEN,
 							quantity = '1',
 							originalQuantity = '1',
-							price = '1000000000000',
+							price = '1000000000', -- 1000 ARIO
 							orderType = 'english',
 							dateCreated = 1735689600000,
 							expirationTime = 1736035200000,
@@ -372,13 +372,13 @@ describe('English Auction', function()
 		_G.ARIOBalances['bidder-1'] = {
 			balance = '0',
 			orders = {
-				['auction-1'] = '1100000000000', -- First bid: 1100 ARIO
+				['auction-1'] = '1100000000', -- First bid: 1100 ARIO
 			},
 		}
 
 		-- Setup second bidder's ARIO balance
 		_G.ARIOBalances['bidder-2'] = {
-			balance = '2000000000000', -- 2000 ARIO available
+			balance = '2000000000', -- 2000 ARIO available
 			orders = {},
 		}
 
@@ -390,7 +390,7 @@ describe('English Auction', function()
 			Timestamp = 1735689602000,
 			Tags = {
 				['Order-Id'] = 'auction-1',
-				['Bid-Amount'] = '1101000000000', -- Exactly 1 ARIO more
+				['Bid-Amount'] = '1101000000', -- Exactly 1 ARIO more (1101 ARIO)
 			},
 		}
 
@@ -403,7 +403,7 @@ describe('English Auction', function()
 		---@diagnostic disable-next-line: need-check-nil
 		assert.are.equal('bidder-2', highestBid.bidder)
 		---@diagnostic disable-next-line: need-check-nil
-		assert.are.equal('1101000000000', highestBid.amount)
+		assert.are.equal('1101000000', highestBid.amount) -- 1101 ARIO
 	end)
 	end)
 
@@ -573,7 +573,7 @@ describe('English Auction', function()
 				Timestamp = 1500000,
 				Tags = {
 					['Order-Id'] = 'auction-balance-1',
-					['Bid-Amount'] = '2000000000', -- 2 ARIO
+					['Bid-Amount'] = '2000000', -- 2 ARIO
 				},
 			}
 
@@ -581,11 +581,11 @@ describe('English Auction', function()
 			local resultData = json.decode(result)
 
 			assert.are.equal('Success', resultData.Status)
-			assert.are.equal('2000000000', resultData['Bid-Amount'])
+			assert.are.equal('2000000', resultData['Bid-Amount']) -- 2 ARIO
 			assert.is_true(resultData['Is-Highest-Bid'])
 
 		-- Balance should be reduced
-		assert.are.equal('8000000000', ARIOBalances['bidder-1'].balance)
+		assert.are.equal('9998000000', ARIOBalances['bidder-1'].balance) -- 10,000 - 2 = 9,998 ARIO
 
 	-- Order should have bid
 	---@type Order
@@ -593,7 +593,7 @@ describe('English Auction', function()
 	local highestBid = english_auction.getHighestBid(order.id)
 	assert.is_not_nil(highestBid)
 	---@diagnostic disable-next-line: need-check-nil
-	assert.are.equal('2000000000', highestBid.amount)
+	assert.are.equal('2000000', highestBid.amount) -- 2 ARIO
 	---@diagnostic disable-next-line: need-check-nil
 	assert.are.equal('bidder-1', highestBid.bidder)
 		end)
@@ -614,7 +614,7 @@ describe('English Auction', function()
 			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
 		})
 
-			ARIOBalances['bidder-2'] = {balance = '20000000000', orders = {}} -- 20 ARIO
+			ARIOBalances['bidder-2'] = {balance = '20000000000', orders = {}} -- 20,000 ARIO
 
 			-- Place initial bid
 			local msg1 = {
@@ -622,12 +622,12 @@ describe('English Auction', function()
 				Timestamp = 1500000,
 				Tags = {
 					['Order-Id'] = 'auction-delta-1',
-					['Bid-Amount'] = '2000000000', -- 2 ARIO
+					['Bid-Amount'] = '2000000', -- 2 ARIO
 				},
 			}
 		english_auction.bidOnEnglishAuctionHandler(msg1)
 
-		assert.are.equal('18000000000', ARIOBalances['bidder-2'].balance)
+		assert.are.equal('19998000000', ARIOBalances['bidder-2'].balance) -- 20,000 - 2 = 19,998 ARIO
 
 		-- Increase bid to 5 ARIO (delta of 3 ARIO)
 			local msg2 = {
@@ -635,18 +635,18 @@ describe('English Auction', function()
 				Timestamp = 1600000,
 				Tags = {
 					['Order-Id'] = 'auction-delta-1',
-					['Bid-Amount'] = '5000000000', -- 5 ARIO
+					['Bid-Amount'] = '5000000', -- 5 ARIO
 				},
 			}
 			local result = english_auction.bidOnEnglishAuctionHandler(msg2)
 			local resultData = json.decode(result)
 
 			assert.are.equal('Success', resultData.Status)
-			assert.are.equal('5000000000', resultData['Bid-Amount'])
-			assert.are.equal('3000000000', resultData['Delta-Amount'])
+			assert.are.equal('5000000', resultData['Bid-Amount']) -- 5 ARIO
+			assert.are.equal('3000000', resultData['Delta-Amount']) -- 3 ARIO delta
 
 		-- Balance should be reduced by delta only
-		assert.are.equal('15000000000', ARIOBalances['bidder-2'].balance)
+		assert.are.equal('19995000000', ARIOBalances['bidder-2'].balance) -- 19,998 - 3 = 19,995 ARIO
 
 	-- Order should have updated bid
 	---@type Order
@@ -654,7 +654,7 @@ describe('English Auction', function()
 	local highestBid = english_auction.getHighestBid(order.id)
 	assert.is_not_nil(highestBid)
 	---@diagnostic disable-next-line: need-check-nil
-	assert.are.equal('5000000000', highestBid.amount)
+	assert.are.equal('5000000', highestBid.amount) -- 5 ARIO
 		end)
 
 	it('should keep all bids until auction ends (no immediate returns)', function()
@@ -682,11 +682,11 @@ describe('English Auction', function()
 				Timestamp = 1500000,
 				Tags = {
 					['Order-Id'] = 'auction-refund-1',
-					['Bid-Amount'] = '2000000000',
+					['Bid-Amount'] = '2000000', -- 2 ARIO
 				},
 		}
 		english_auction.bidOnEnglishAuctionHandler(msg1)
-		assert.are.equal('8000000000', ARIOBalances['bidder-a'].balance)
+		assert.are.equal('9998000000', ARIOBalances['bidder-a'].balance) -- 10,000 - 2 = 9,998 ARIO
 
 		-- Bidder B outbids with higher amount (must be at least 1 ARIO more)
 			local msg2 = {
@@ -694,19 +694,19 @@ describe('English Auction', function()
 				Timestamp = 1600000,
 				Tags = {
 					['Order-Id'] = 'auction-refund-1',
-					['Bid-Amount'] = '4000000000', -- Exceeds minimum increment
+					['Bid-Amount'] = '4000000', -- 4 ARIO (Exceeds minimum increment)
 				},
 			}
 			english_auction.bidOnEnglishAuctionHandler(msg2)
 
 		-- Bidder A's available balance should be reduced (bid kept locked until auction ends)
-		assert.are.equal('8000000000', ARIOBalances['bidder-a'].balance)
+		assert.are.equal('9998000000', ARIOBalances['bidder-a'].balance) -- 10,000 - 2 = 9,998 ARIO
 		-- Bidder B should have reduced available balance
-		assert.are.equal('6000000000', ARIOBalances['bidder-b'].balance)
+		assert.are.equal('9996000000', ARIOBalances['bidder-b'].balance) -- 10,000 - 4 = 9,996 ARIO
 
 		-- Both bids should be in locked balances
-		assert.are.equal('2000000000', ARIOBalances['bidder-a'].orders['auction-refund-1'])
-		assert.are.equal('4000000000', ARIOBalances['bidder-b'].orders['auction-refund-1'])
+		assert.are.equal('2000000', ARIOBalances['bidder-a'].orders['auction-refund-1']) -- 2 ARIO
+		assert.are.equal('4000000', ARIOBalances['bidder-b'].orders['auction-refund-1']) -- 4 ARIO
 
 	-- Order should have bidder B as highest
 	---@type Order
@@ -714,7 +714,7 @@ describe('English Auction', function()
 	local highestBid = english_auction.getHighestBid(order.id)
 	assert.is_not_nil(highestBid)
 	---@diagnostic disable-next-line: need-check-nil
-	assert.are.equal('4000000000', highestBid.amount)
+	assert.are.equal('4000000', highestBid.amount) -- 4 ARIO
 	---@diagnostic disable-next-line: need-check-nil
 	assert.are.equal('bidder-b', highestBid.bidder)
 		end)
@@ -734,14 +734,14 @@ describe('English Auction', function()
 			msg = { Id = 'test-msg-ant', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = {}, From = ANT_TOKEN },
 		})
 
-			ARIOBalances['poor-bidder'] = {balance = '500000000', orders = {}} -- Only 0.5 ARIO
+			ARIOBalances['poor-bidder'] = {balance = '500000', orders = {}} -- Only 0.5 ARIO
 
 			local msg = {
 				From = 'poor-bidder',
 				Timestamp = 1500000,
 				Tags = {
 					['Order-Id'] = 'auction-poor-1',
-					['Bid-Amount'] = '2000000000', -- Need 2 ARIO
+					['Bid-Amount'] = '2000000', -- 2 ARIO -- Need 2 ARIO
 				},
 			}
 
@@ -762,7 +762,7 @@ describe('English Auction', function()
 				Timestamp = 1500000,
 				Tags = {
 					['Order-Id'] = 'nonexistent-order',
-					['Bid-Amount'] = '2000000000',
+					['Bid-Amount'] = '2000000', -- 2 ARIO
 				},
 			}
 
@@ -797,7 +797,7 @@ describe('English Auction', function()
 				Timestamp = 2500000, -- After expiration
 				Tags = {
 					['Order-Id'] = 'auction-expired',
-					['Bid-Amount'] = '2000000000',
+					['Bid-Amount'] = '2000000', -- 2 ARIO
 				},
 			}
 
@@ -927,7 +927,7 @@ describe('English Auction', function()
 				Timestamp = 1500000,
 				Tags = {
 					['Order-Id'] = 'auction-with-bids',
-					['Bid-Amount'] = '2000000000',
+					['Bid-Amount'] = '2000000', -- 2 ARIO
 				},
 			}
 			english_auction.bidOnEnglishAuctionHandler(bidMsg)

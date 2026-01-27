@@ -29,8 +29,8 @@ describe('Dutch Auction', function()
 
 		-- Setup ARIO balances for buyers/sellers
 		_G.ARIOBalances = _G.ARIOBalances or {}
-		_G.ARIOBalances['ario-buyer'] = {balance = '1000000000000', orders = {}} -- 1000 ARIO
-		_G.ARIOBalances['ario-buyer-2'] = {balance = '1000000000000', orders = {}} -- 1000 ARIO
+		_G.ARIOBalances['ario-buyer'] = {balance = '1000000000', orders = {}} -- 1000 ARIO
+		_G.ARIOBalances['ario-buyer-2'] = {balance = '1000000000', orders = {}} -- 1000 ARIO
 		_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}}
 
 		-- Wrap ao.send to track messages and transfers (avoid duplicate field error)
@@ -63,12 +63,12 @@ describe('Dutch Auction', function()
 				swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE', -- ARIO
 				sender = 'ant-seller',
 				quantity = '1',
-				price = '500000000000',
+				price = '500000000', -- 500 ARIO
 				createdAt = 1735689600000,
 				blockheight = 123456789,
 				orderType = 'dutch',
 				expirationTime = 1736035200000,
-				minimumPrice = '100000000000',
+				minimumPrice = '100000000', -- 100 ARIO
 				decreaseInterval = 86400000,
 				msg = { Id = 'test-msg-1', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			})
@@ -95,8 +95,8 @@ describe('Dutch Auction', function()
 			assert.are.equal('ant-sell-order', order.id)
 			assert.are.equal('ant-seller', order.creator)
 			assert.are.equal('1', order.quantity)
-			assert.are.equal('500000000000', order.price)
-			assert.are.equal('100000000000', order.minimumPrice)
+			assert.are.equal('500000000', order.price) -- 500 ARIO
+			assert.are.equal('100000000', order.minimumPrice) -- 100 ARIO
 			assert.are.equal('86400000', order.decreaseInterval)
 			assert.are.equal('dutch', order.orderType)
 			assert.is_not_nil(order.decreaseStep)
@@ -118,12 +118,12 @@ describe('Dutch Auction', function()
 							swapToken = ARIO_TOKEN,
 							quantity = '1',
 							originalQuantity = '1',
-							price = '500000000000',
+							price = '500000000', -- 500 ARIO
 							dateCreated = 1735689600000,
 							expirationTime = 1736035200000,
-							minimumPrice = '100000000000',
+							minimumPrice = '100000000', -- 100 ARIO
 							decreaseInterval = '86400000',
-							decreaseStep = '100000000000',
+							decreaseStep = '100000000', -- 100 ARIO per interval
 							orderType = 'dutch',
 							status = 'active',
 						},
@@ -161,12 +161,12 @@ describe('Dutch Auction', function()
 				dominantToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE', -- ARIO
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10', -- ANT
 				sender = 'ario-buyer',
-				quantity = '500000000000', -- Paying 500B ARIO
+				quantity = '500000000', -- Paying 500 ARIO
 				createdAt = 1735689600000, -- Same timestamp, so price hasn't decreased yet
 			blockheight = 123456790,
 			orderType = 'dutch',
 			requestedOrderId = 'ant-sell-order',
-			msg = { Id = 'test-msg-2', Owner = 'buyer-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '500000000000' }, From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' },
+			msg = { Id = 'test-msg-2', Owner = 'buyer-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '500000000' }, From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' },
 		})
 
 			print('DEBUG: Orderbook after buy order')
@@ -203,7 +203,7 @@ describe('Dutch Auction', function()
 			assert.are.equal('ario-buyer', transfers[1].recipient)
 
 		-- Check that seller received ARIO in internal balance (after 0.5% fee)
-		local expectedArioToSeller = '497500000000' -- 500B * 995/1000 = 497.5B
+		local expectedArioToSeller = '497500000' -- 500 ARIO * 995/1000 = 497.5 ARIO
 		assert.is_not_nil(ARIOBalances['ant-seller'])
 		assert.are.equal(expectedArioToSeller, ARIOBalances['ant-seller'].balance)
 
@@ -235,12 +235,12 @@ describe('Dutch Auction', function()
 								swapToken = ARIO_TOKEN,
 								quantity = '1',
 								originalQuantity = '1',
-								price = '500000000000',
+								price = '500000000', -- 500 ARIO
 								dateCreated = 1735689600000,
 								expirationTime = 1736035200000,
-								minimumPrice = '100000000000',
+								minimumPrice = '100000000', -- 100 ARIO
 								decreaseInterval = '86400000', -- 1 day
-								decreaseStep = '100000000000', -- Decreases by 100B per day
+								decreaseStep = '100000000', -- Decreases by 100 ARIO per day
 								orderType = 'dutch',
 								status = 'active',
 							},
@@ -261,12 +261,12 @@ describe('Dutch Auction', function()
 				dominantToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 				sender = 'ario-buyer-2',
-				quantity = '400000000000', -- Paying reduced price
+				quantity = '400000000', -- Paying 400 ARIO (reduced price)
 				createdAt = 1735776000000, -- 1 day later (86400000ms)
 			blockheight = 123456791,
 			orderType = 'dutch',
 			requestedOrderId = 'ant-sell-order',
-			msg = { Id = 'test-msg-3', Owner = 'buyer-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '400000000000' }, From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' },
+			msg = { Id = 'test-msg-3', Owner = 'buyer-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '400000000' }, From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' },
 		})
 
 		-- Validate transfers occurred (only ANT transfer, ARIO goes to internal balance)
@@ -276,7 +276,7 @@ describe('Dutch Auction', function()
 		assert.are.equal('1', transfers[1].quantity)
 
 	-- Check that seller received ARIO in internal balance (after 0.5% fee)
-	local expectedArioToSeller = '398000000000' -- 400B * 995/1000 = 398B
+	local expectedArioToSeller = '398000000' -- 400 ARIO * 995/1000 = 398 ARIO
 	assert.is_not_nil(ARIOBalances['ant-seller'])
 	assert.are.equal(expectedArioToSeller, ARIOBalances['ant-seller'].balance)
 	end)
@@ -291,7 +291,7 @@ describe('Dutch Auction', function()
 					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 					sender = 'test-sender',
 					quantity = '1',
-					price = '500000000000',
+					price = '500000000', -- 500 ARIO
 					createdAt = 1735689600000,
 					blockheight = 123456789,
 					orderType = 'dutch',
@@ -318,12 +318,12 @@ describe('Dutch Auction', function()
 					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 					sender = 'test-sender',
 					quantity = '1',
-					price = '500000000000',
+					price = '500000000', -- 500 ARIO
 					createdAt = 1735689600000,
 					blockheight = 123456789,
 					orderType = 'dutch',
 				expirationTime = 1736035200000,
-				minimumPrice = '100000000000',
+				minimumPrice = '100000000', -- 100 ARIO
 				-- decreaseInterval missing
 				msg = { Id = 'test-msg-5', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
 			})

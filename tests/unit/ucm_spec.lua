@@ -384,7 +384,7 @@ describe('ucm helpers', function()
 							creator = 'ant-seller',
 							token = antToken,
 							dateCreated = 1000,
-							price = '1000000000', -- 1 ARIO
+							price = '1000000', -- 1 ARIO
 							orderType = 'fixed',
 							status = 'active',
 							dominantToken = antToken,
@@ -405,7 +405,7 @@ describe('ucm helpers', function()
 			['Block-Height'] = 100,
 			Tags = {
 				['Swap-Token'] = antToken,
-				Quantity = '1000000000', -- 1 ARIO
+				Quantity = '1000000', -- 1 ARIO
 				['Order-Type'] = 'fixed',
 			},
 		}
@@ -415,7 +415,7 @@ describe('ucm helpers', function()
 			local resultData = require('json').decode(result)
 
 			-- Assert: Balance should be deducted
-			assert.are.equal('9000000000', _G.ARIOBalances['test-user'].balance) -- 10 - 1 = 9 ARIO
+			assert.are.equal('9999000000', _G.ARIOBalances['test-user'].balance) -- 10,000 - 1 = 9,999 ARIO
 
 			-- Assert: Seller should receive ARIO to their internal balance (minus fee)
 			local sellerBalance = balances.getBalance('ant-seller')
@@ -426,7 +426,7 @@ describe('ucm helpers', function()
 		end)
 
 		it('should fail when user has insufficient internal ARIO balance', function()
-			-- User has 10 ARIO, tries to spend 20 ARIO
+			-- User has 10,000 ARIO, tries to spend 20,000 ARIO
 			local antToken = string.rep('2', 43) -- 43 character ANT process ID
 			_G.Orderbook[antToken] = {
 				[_G.ARIO_TOKEN_PROCESS_ID] = {
@@ -440,7 +440,7 @@ describe('ucm helpers', function()
 							creator = 'ant-seller',
 							token = antToken,
 							dateCreated = 1000,
-							price = '20000000000', -- 20 ARIO
+							price = '20000000000', -- 20,000 ARIO
 							orderType = 'fixed',
 							status = 'active',
 							dominantToken = antToken,
@@ -457,7 +457,7 @@ describe('ucm helpers', function()
 			['Block-Height'] = 100,
 			Tags = {
 				['Swap-Token'] = antToken,
-				Quantity = '20000000000', -- 20 ARIO (more than user has)
+				Quantity = '20000000000', -- 20,000 ARIO (more than user has)
 				['Order-Type'] = 'fixed',
 			},
 		}
@@ -489,7 +489,7 @@ describe('ucm helpers', function()
 							creator = 'ant-seller',
 							token = antToken,
 							dateCreated = 1000,
-							price = '500000000', -- 0.5 ARIO
+							price = '500000', -- 0.5 ARIO
 							orderType = 'fixed',
 							status = 'active',
 							dominantToken = antToken,
@@ -506,7 +506,7 @@ describe('ucm helpers', function()
 			['Block-Height'] = 100,
 			Tags = {
 				['Swap-Token'] = antToken,
-				Quantity = '500000000', -- 0.5 ARIO
+				Quantity = '500000', -- 0.5 ARIO
 				['Order-Type'] = 'fixed',
 			},
 		}
@@ -1511,7 +1511,7 @@ describe('Whitelist Management', function()
 		end)
 
 		it('should successfully withdraw fees for owner', function()
-			_G.AccruedFeesAmount = '5000000000' -- 5 ARIO in mARIO
+			_G.AccruedFeesAmount = '5000000' -- 5 ARIO in mARIO
 
 			local msg = testGlobals.mockMsg({
 				From = PROCESS_OWNER,
@@ -1525,7 +1525,7 @@ describe('Whitelist Management', function()
 			-- Should return success response
 			assert.are.equal('Success', data.Status)
 			assert.are.equal('Fees withdrawn', data.Message)
-			assert.are.equal('5000000000', data.Amount)
+			assert.are.equal('5000000', data.Amount) -- 5 ARIO
 
 			-- Fees should be reset
 			assert.are.equal('0', _G.AccruedFeesAmount)
@@ -1536,7 +1536,7 @@ describe('Whitelist Management', function()
 			assert.are.equal('Transfer', transferMsg.Action)
 			assert.are.equal(_G.ARIO_TOKEN_PROCESS_ID, transferMsg.Target)
 			assert.are.equal(PROCESS_OWNER, transferMsg.Tags.Recipient)
-			assert.are.equal('5000000000', transferMsg.Tags.Quantity)
+			assert.are.equal('5000000', transferMsg.Tags.Quantity) -- 5 ARIO
 		end)
 
 		it('should withdraw exact fee amount', function()

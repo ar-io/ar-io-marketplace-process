@@ -54,7 +54,7 @@ describe('Auction Mechanisms', () => {
     });
 
     await marketplaceProcess.depositArio(
-      '200000000000', // 200 ARIO for listing fees (7 days = 168 hours × 1 ARIO/hour)
+      '200000000', // 200 ARIO for listing fees (7 days = 168 hours × 1 ARIO/hour)
       TEST_ARIO_TOKEN,
       TEST_SENDER,
     );

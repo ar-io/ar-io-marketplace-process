@@ -70,9 +70,9 @@ describe('UCM (Universal Content Marketplace)', () => {
       // Try to buy ANT with ARIO - should fail because no ANT sell order exists
       const result = await marketplaceProcess.createOrder({
         swapToken: antId,
-        quantity: '1000000000', // 1 ARIO (in mARIO)
+        quantity: '1000000', // 1 ARIO (in mARIO)
         orderType: 'fixed',
-        price: '1000000000',
+        price: '1000000', // 1 ARIO
         expirationTime: (STUB_TIMESTAMP + 86400000).toString(), // 24 hours
       });
 
@@ -94,10 +94,10 @@ describe('UCM (Universal Content Marketplace)', () => {
 
       const result = await marketplaceProcess.createOrder({
         swapToken: antId,
-        quantity: '5000000000', // 5 ARIO
+        quantity: '5000000', // 5 ARIO
         orderType: 'dutch',
-        price: '5000000000', // Starting price: 5 ARIO
-        minimumPrice: '2000000000', // Minimum: 2 ARIO
+        price: '5000000', // Starting price: 5 ARIO
+        minimumPrice: '2000000', // Minimum: 2 ARIO
         decreaseInterval: '3600000', // Decrease every hour
         expirationTime: (STUB_TIMESTAMP + 604800000).toString(), // 7 days
       });
@@ -120,9 +120,9 @@ describe('UCM (Universal Content Marketplace)', () => {
 
       const result = await marketplaceProcess.createOrder({
         swapToken: antId,
-        quantity: '3000000000', // 3 ARIO
+        quantity: '3000000', // 3 ARIO
         orderType: 'english',
-        price: '1000000000', // Starting bid: 1 ARIO
+        price: '1000000', // Starting bid: 1 ARIO
         expirationTime: (STUB_TIMESTAMP + 86400000).toString(), // 24 hours
       });
 
