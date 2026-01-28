@@ -670,7 +670,7 @@ function ucm.withdrawFeesHandler(msg)
 	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can withdraw fees')
 
 	local amount = utils.getAccruedFees()
-	assert(amount and tonumber(amount) > 0, 'No fees available to withdraw')
+	assert(amount and bint(amount) > 0, 'No fees available to withdraw')
 
 	-- transfer fees to requester
 	-- Note: Withdraw-Fees does not use intent tracking as it's an admin operation
