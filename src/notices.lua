@@ -156,7 +156,7 @@ function notices.creditNoticeHandler(msg)
 
 	-- Protect order creation to catch unexpected runtime errors
 	-- Note: refundAndNotifyError calls within createOrder will throw errors that are caught here
-	local ok, res = pcall(function()
+	local ok, _ = pcall(function()
 		ucm.createOrder(orderArgs)
 	end)
 	if not ok then
