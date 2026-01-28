@@ -19,7 +19,7 @@ describe('Balance Management', function()
 		end)
 
 		it('should increase existing balance', function()
-			ARIOBalances['user-456'] = {balance = '500', orders = {}}
+			ARIOBalances['user-456'] = { balance = '500', orders = {} }
 			balances.increaseBalance('user-456', '300')
 
 			assert.are.equal('800', ARIOBalances['user-456'].balance)
@@ -36,14 +36,14 @@ describe('Balance Management', function()
 
 	describe('reduceBalance', function()
 		it('should reduce balance', function()
-			ARIOBalances['user-123'] = {balance = '1000', orders = {}}
+			ARIOBalances['user-123'] = { balance = '1000', orders = {} }
 			balances.reduceBalance('user-123', '300')
 
 			assert.are.equal('700', ARIOBalances['user-123'].balance)
 		end)
 
 		it('should fail if insufficient balance', function()
-			ARIOBalances['user-456'] = {balance = '100', orders = {}}
+			ARIOBalances['user-456'] = { balance = '100', orders = {} }
 
 			local success, _ = pcall(function()
 				balances.reduceBalance('user-456', '200')
@@ -53,7 +53,7 @@ describe('Balance Management', function()
 		end)
 
 		it('should fail with invalid quantity', function()
-			ARIOBalances['user-789'] = {balance = '1000', orders = {}}
+			ARIOBalances['user-789'] = { balance = '1000', orders = {} }
 
 			local success, _ = pcall(function()
 				balances.reduceBalance('user-789', '-100')
@@ -65,8 +65,8 @@ describe('Balance Management', function()
 
 	describe('transfer', function()
 		it('should transfer from one address to another', function()
-			ARIOBalances['user-from'] = {balance = '1000', orders = {}}
-			ARIOBalances['user-to'] = {balance = '500', orders = {}}
+			ARIOBalances['user-from'] = { balance = '1000', orders = {} }
+			ARIOBalances['user-to'] = { balance = '500', orders = {} }
 
 			local result = balances.transfer('user-to', 'user-from', '300', true)
 
@@ -76,7 +76,7 @@ describe('Balance Management', function()
 		end)
 
 		it('should fail if insufficient balance', function()
-			ARIOBalances['user-poor'] = {balance = '100', orders = {}}
+			ARIOBalances['user-poor'] = { balance = '100', orders = {} }
 
 			local success, _ = pcall(function()
 				balances.transfer('user-rich', 'user-poor', '200', true)
@@ -86,7 +86,7 @@ describe('Balance Management', function()
 		end)
 
 		it('should fail for self-transfer', function()
-			ARIOBalances['user-self'] = {balance = '1000', orders = {}}
+			ARIOBalances['user-self'] = { balance = '1000', orders = {} }
 
 			local success, _ = pcall(function()
 				balances.transfer('user-self', 'user-self', '100', true)
@@ -98,14 +98,14 @@ describe('Balance Management', function()
 
 	describe('walletHasSufficientBalance', function()
 		it('should return true for sufficient balance', function()
-			ARIOBalances['user-123'] = {balance = '1000', orders = {}}
+			ARIOBalances['user-123'] = { balance = '1000', orders = {} }
 
 			assert.is_true(balances.walletHasSufficientBalance('user-123', '500'))
 			assert.is_true(balances.walletHasSufficientBalance('user-123', '1000'))
 		end)
 
 		it('should return false for insufficient balance', function()
-			ARIOBalances['user-456'] = {balance = '100', orders = {}}
+			ARIOBalances['user-456'] = { balance = '100', orders = {} }
 
 			assert.is_false(balances.walletHasSufficientBalance('user-456', '200'))
 		end)
@@ -117,7 +117,7 @@ describe('Balance Management', function()
 
 	describe('getBalance', function()
 		it('should return balance for existing address', function()
-			ARIOBalances['user-123'] = {balance = '1500', orders = {}}
+			ARIOBalances['user-123'] = { balance = '1500', orders = {} }
 
 			local balance = balances.getBalance('user-123')
 
@@ -181,7 +181,7 @@ describe('Balance Management', function()
 		end)
 
 		it('should reduce balance and send direct transfer (no intent)', function()
-			ARIOBalances['user-withdraw'] = {balance = '10000', orders = {}}
+			ARIOBalances['user-withdraw'] = { balance = '10000', orders = {} }
 
 			local msg = {
 				From = 'user-withdraw',
@@ -218,7 +218,7 @@ describe('Balance Management', function()
 		end)
 
 		it('should support custom recipient', function()
-			ARIOBalances['user-withdraw'] = {balance = '10000', orders = {}}
+			ARIOBalances['user-withdraw'] = { balance = '10000', orders = {} }
 
 			local msg = {
 				From = 'user-withdraw',
@@ -244,7 +244,7 @@ describe('Balance Management', function()
 		end)
 
 		it('should fail with insufficient balance', function()
-			ARIOBalances['user-poor'] = {balance = '100', orders = {}}
+			ARIOBalances['user-poor'] = { balance = '100', orders = {} }
 
 			local msg = {
 				From = 'user-poor',
@@ -274,8 +274,8 @@ describe('Balance Management', function()
 		before_each(function()
 			-- Reset state and give bidders some balance
 			testGlobals.resetState()
-			ARIOBalances[bidder1] = {balance = '10000', orders = {}}
-			ARIOBalances[bidder2] = {balance = '20000', orders = {}}
+			ARIOBalances[bidder1] = { balance = '10000', orders = {} }
+			ARIOBalances[bidder2] = { balance = '20000', orders = {} }
 		end)
 
 		describe('lockBalanceForOrder', function()
@@ -433,7 +433,7 @@ describe('Balance Management', function()
 		describe('getUserBalanceBreakdown', function()
 			it('should return available, locked, and total', function()
 				-- Setup: user starts with 5000, locks 1500
-				ARIOBalances[bidder1] = {balance = '5000', orders = {}}
+				ARIOBalances[bidder1] = { balance = '5000', orders = {} }
 
 				-- Lock some balance
 				balances.lockBalanceForOrder(orderId, bidder1, '1500')
@@ -445,7 +445,7 @@ describe('Balance Management', function()
 			end)
 
 			it('should handle user with no locked balance', function()
-				ARIOBalances[bidder1] = {balance = '10000', orders = {}}
+				ARIOBalances[bidder1] = { balance = '10000', orders = {} }
 
 				local breakdown = balances.getUserBalanceBreakdown(bidder1)
 				assert.are.equal('10000', breakdown.available)
@@ -453,16 +453,15 @@ describe('Balance Management', function()
 				assert.are.equal('10000', breakdown.total)
 			end)
 
-		it('should handle user with no balance at all', function()
-			-- Clear balance set by before_each
-			ARIOBalances[bidder1] = nil
+			it('should handle user with no balance at all', function()
+				-- Clear balance set by before_each
+				ARIOBalances[bidder1] = nil
 
-			local breakdown = balances.getUserBalanceBreakdown(bidder1)
-			assert.are.equal('0', breakdown.available)
-			assert.are.equal('0', breakdown.locked)
-			assert.are.equal('0', breakdown.total)
-		end)
+				local breakdown = balances.getUserBalanceBreakdown(bidder1)
+				assert.are.equal('0', breakdown.available)
+				assert.are.equal('0', breakdown.locked)
+				assert.are.equal('0', breakdown.total)
+			end)
 		end)
 	end)
 end)
-

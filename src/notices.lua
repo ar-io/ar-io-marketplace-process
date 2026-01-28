@@ -11,15 +11,15 @@ function notices.creditNoticeHandler(msg)
 	-- NOTE: this could be expanded in the future for more tokens
 	if msg.Tags['X-Action'] == constants.ACTIONS.DEPOSIT then
 		local isArioNotice = _utils.isArioToken(msg.From)
-		assert(isArioNotice, "Deposit must be from ARIO")
+		assert(isArioNotice, 'Deposit must be from ARIO')
 		balances.handleDeposit(msg)
 		return
 	end
 
 	local sender = msg.Tags.Sender
 	local quantity = msg.Tags.Quantity
-	assert(sender, "Sender is required")
-	assert(quantity, "Quantity is required")
+	assert(sender, 'Sender is required')
+	assert(quantity, 'Quantity is required')
 
 	-- Helper function to handle invalid transfers
 	-- Only accept ARIO as fees, refund anything else (like ANT tokens)
@@ -77,7 +77,11 @@ function notices.creditNoticeHandler(msg)
 	if not _utils.isArioToken(msg.From) then
 		if msg.From ~= intent.antProcessId then
 			-- Fail the intent and refund the ANT
-			intents.failIntent(msg.Tags['X-Intent-Id'], 'ANT process ID does not match intent. Expected: ' .. tostring(intent.antProcessId), msg)
+			intents.failIntent(
+				msg.Tags['X-Intent-Id'],
+				'ANT process ID does not match intent. Expected: ' .. tostring(intent.antProcessId),
+				msg
+			)
 			handleInvalidTransfer('ANT process ID does not match intent. Expected: ' .. tostring(intent.antProcessId))
 			return
 		end

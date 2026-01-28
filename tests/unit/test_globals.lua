@@ -30,13 +30,14 @@ print('✓ Test mocks created (ao, Handlers)')
 
 -- Mock utils functions that are needed for testing
 _G.utils = _G.utils or {}
-_G.utils.isValidAddress = _G.utils.isValidAddress or function(address, allowUnsafe)
-	-- Simple mock: just check if address is a string and non-empty
-	if allowUnsafe then
-		return type(address) == 'string' and #address > 0
+_G.utils.isValidAddress = _G.utils.isValidAddress
+	or function(address, allowUnsafe)
+		-- Simple mock: just check if address is a string and non-empty
+		if allowUnsafe then
+			return type(address) == 'string' and #address > 0
+		end
+		return type(address) == 'string' and #address > 40
 	end
-	return type(address) == 'string' and #address > 40
-end
 
 -- Track sent messages for assertions
 _G.sentMessages = {}
@@ -50,7 +51,7 @@ return {
 		_G.Pruning = { nextScheduledOrderbookPruning = nil, nextScheduledIntentsPruning = nil }
 		_G.AccruedFeesAmount = '0'
 		_G.ARIOBalances = {}
-		_G.IntentCounter = "0"
+		_G.IntentCounter = '0'
 		_G.WhitelistedModules = {}
 		-- Clear the array instead of replacing to maintain reference
 		while #_G.sentMessages > 0 do

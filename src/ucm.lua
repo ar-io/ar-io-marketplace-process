@@ -230,7 +230,12 @@ function ucm.validateOrderParams(args)
 	-- 2. Validate ARIO is in trade (marketplace requirement)
 	local isArioValid, arioError = utils.validateArioInTrade(args.dominantToken, args.swapToken)
 	if not isArioValid then
-		utils.refundAndNotifyError(args.msg, args.sender, arioError or 'Invalid trade - ARIO must be involved', 'Order-Error')
+		utils.refundAndNotifyError(
+			args.msg,
+			args.sender,
+			arioError or 'Invalid trade - ARIO must be involved',
+			'Order-Error'
+		)
 		return
 	end
 
@@ -243,7 +248,11 @@ function ucm.validateOrderParams(args)
 	-- 4. Check order type is supported
 	if
 		not args.orderType
-		or (args.orderType ~= constants.ORDER_TYPES.FIXED and args.orderType ~= constants.ORDER_TYPES.DUTCH and args.orderType ~= constants.ORDER_TYPES.ENGLISH)
+		or (
+			args.orderType ~= constants.ORDER_TYPES.FIXED
+			and args.orderType ~= constants.ORDER_TYPES.DUTCH
+			and args.orderType ~= constants.ORDER_TYPES.ENGLISH
+		)
 	then
 		utils.refundAndNotifyError(args.msg, args.sender, 'Order type must be "fixed" or "dutch" or "english"')
 		return
@@ -408,7 +417,6 @@ function ucm.createOrder(args)
 		ucm.handleArioOrderAuctions(args, validPair, pair)
 		return
 	end
-
 end
 
 --- Handler: Create-Order (for ARIO orders via direct message using internal balance)
@@ -515,7 +523,10 @@ function ucm.cancelOrderHandler(msg)
 
 	-- Block cancellation of English auctions that have bids
 	assert(
-		not (currentOrderEntry.orderType == constants.ORDER_TYPES.ENGLISH and english_auction.getHighestBid(currentOrderEntry.id)),
+		not (
+				currentOrderEntry.orderType == constants.ORDER_TYPES.ENGLISH
+				and english_auction.getHighestBid(currentOrderEntry.id)
+			),
 		'You cannot cancel an English auction that has bids'
 	)
 

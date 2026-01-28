@@ -152,7 +152,13 @@ describe('fixed_price helpers', function()
 			local order = _G.Orderbook['ant-token']['ario-token'].orders['order-123']
 			local pair = _G.Orderbook['ant-token']['ario-token']
 
-			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', { Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 2000, Tags = {}, Data = '' })
+			fixed_price.pruneExpiredOrder(
+				order,
+				pair,
+				'ant-token',
+				'ario-token',
+				{ Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 2000, Tags = {}, Data = '' }
+			)
 
 			-- Order should be marked as expired
 			assert.are.equal('expired', order.status)
@@ -214,7 +220,13 @@ describe('fixed_price helpers', function()
 			local order = _G.Orderbook['ant-token']['ario-token'].orders['order-123']
 			local pair = _G.Orderbook['ant-token']['ario-token']
 
-			fixed_price.pruneExpiredOrder(order, pair, 'ant-token', 'ario-token', { Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 2000, Tags = {}, Data = '' })
+			fixed_price.pruneExpiredOrder(
+				order,
+				pair,
+				'ant-token',
+				'ario-token',
+				{ Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 2000, Tags = {}, Data = '' }
+			)
 
 			-- Expired order should be removed
 			assert.is_nil(_G.Orderbook['ant-token']['ario-token'].orders['order-123'])
@@ -237,8 +249,8 @@ describe('fixed_price helpers', function()
 		end)
 
 		it('should create ANT sell order in orderbook', function()
-			local validPair = {'ant-token-456', 'ario-token-123'}
-			local pair = {orders = {}}
+			local validPair = { 'ant-token-456', 'ario-token-123' }
+			local pair = { orders = {} }
 			local args = {
 				orderId = 'order-123',
 				quantity = '1',
@@ -270,17 +282,17 @@ describe('fixed_price helpers', function()
 			assert.are.equal('ant-token-456', OrderIndex['order-123'].dominantToken)
 			assert.are.equal('ario-token-123', OrderIndex['order-123'].swapToken)
 
-		-- Check success message was sent
-		assert.is_true(#testGlobals.sentMessages > 0)
-		---@type SendParams
-		local successMsg = testGlobals.sentMessages[1]
-		assert.are.equal('Order-Success', successMsg.Action)
-		assert.are.equal('order-123', successMsg.Tags['Order-Id'])
+			-- Check success message was sent
+			assert.is_true(#testGlobals.sentMessages > 0)
+			---@type SendParams
+			local successMsg = testGlobals.sentMessages[1]
+			assert.are.equal('Order-Success', successMsg.Action)
+			assert.are.equal('order-123', successMsg.Tags['Order-Id'])
 		end)
 
 		it('should handle order without expiration time', function()
-			local validPair = {'ant-token-456', 'ario-token-123'}
-			local pair = {orders = {}}
+			local validPair = { 'ant-token-456', 'ario-token-123' }
+			local pair = { orders = {} }
 			local args = {
 				orderId = 'order-456',
 				quantity = '1',
@@ -312,7 +324,7 @@ describe('fixed_price helpers', function()
 		end)
 
 		it('should execute immediate match with matching sell order', function()
-			local validPair = {'ant-token-456', 'ario-token-123'}
+			local validPair = { 'ant-token-456', 'ario-token-123' }
 			local pair = {
 				pair = validPair,
 				orders = {
@@ -327,14 +339,14 @@ describe('fixed_price helpers', function()
 						orderType = 'fixed',
 						dominantToken = 'ant-token-456',
 						swapToken = 'ario-token-123',
-					}
-				}
+					},
+				},
 			}
 
 			-- Give buyer ARIO balance (need to cover price + fee)
 			ARIOBalances['buyer-123'] = {
 				balance = '10000',
-				orders = {}
+				orders = {},
 			}
 
 			local args = {
@@ -360,31 +372,31 @@ describe('fixed_price helpers', function()
 			-- Seller should have received ARIO minus 0.5% maker fee (5000 * 0.995 = 4975)
 			assert.are.equal('4975', balances.getBalance('seller-123'))
 
-		-- Success message should be sent
-		---@type SendParams|nil
-		local successMsg = nil
-		for _, msg in ipairs(testGlobals.sentMessages) do
-			if msg.Action == 'Order-Success' then
-				successMsg = msg
-				break
+			-- Success message should be sent
+			---@type SendParams|nil
+			local successMsg = nil
+			for _, msg in ipairs(testGlobals.sentMessages) do
+				if msg.Action == 'Order-Success' then
+					successMsg = msg
+					break
+				end
 			end
-		end
-		assert.is_not_nil(successMsg)
-		---@cast successMsg SendParams
-		assert.are.equal('buy-order-1', successMsg.Tags['Order-Id'])
+			assert.is_not_nil(successMsg)
+			---@cast successMsg SendParams
+			assert.are.equal('buy-order-1', successMsg.Tags['Order-Id'])
 		end)
 
 		it('should return error if no matching orders found', function()
-			local validPair = {'ant-token-456', 'ario-token-123'}
+			local validPair = { 'ant-token-456', 'ario-token-123' }
 			local pair = {
 				pair = validPair,
-				orders = {} -- No sell orders
+				orders = {}, -- No sell orders
 			}
 
 			-- Give buyer ARIO balance
 			ARIOBalances['buyer-123'] = {
 				balance = '10000',
-				orders = {}
+				orders = {},
 			}
 
 			local args = {
@@ -399,17 +411,17 @@ describe('fixed_price helpers', function()
 				msg = testGlobals.mockMsg({}),
 			}
 
-		-- Should throw error when no matching order found
-		local success = pcall(function()
-			fixed_price.handleAntOrder(args, validPair, pair)
-		end)
+			-- Should throw error when no matching order found
+			local success = pcall(function()
+				fixed_price.handleAntOrder(args, validPair, pair)
+			end)
 
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-	assert.is_true(success)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+			assert.is_true(success)
 		end)
 
 		it('should skip orders with insufficient buyer balance', function()
-			local validPair = {'ant-token-456', 'ario-token-123'}
+			local validPair = { 'ant-token-456', 'ario-token-123' }
 			local pair = {
 				pair = validPair,
 				orders = {
@@ -434,14 +446,14 @@ describe('fixed_price helpers', function()
 						orderType = 'fixed',
 						dominantToken = 'ant-token-456',
 						swapToken = 'ario-token-123',
-					}
-				}
+					},
+				},
 			}
 
 			-- Give buyer limited ARIO balance (can't afford first order)
 			ARIOBalances['buyer-123'] = {
 				balance = '5000',
-				orders = {}
+				orders = {},
 			}
 
 			local args = {
@@ -467,7 +479,7 @@ describe('fixed_price helpers', function()
 		end)
 
 		it('should skip non-active orders', function()
-			local validPair = {'ant-token-456', 'ario-token-123'}
+			local validPair = { 'ant-token-456', 'ario-token-123' }
 			local pair = {
 				pair = validPair,
 				orders = {
@@ -482,14 +494,14 @@ describe('fixed_price helpers', function()
 						dominantToken = 'ant-token-456',
 						swapToken = 'ario-token-123',
 						expirationTime = 2000, -- Expiration time
-					}
-				}
+					},
+				},
 			}
 
 			-- Give buyer ARIO balance
 			ARIOBalances['buyer-123'] = {
 				balance = '10000',
-				orders = {}
+				orders = {},
 			}
 
 			local args = {
@@ -504,13 +516,13 @@ describe('fixed_price helpers', function()
 				msg = testGlobals.mockMsg({}),
 			}
 
-		-- Should throw error when order is expired (skipped in matching)
-		local success = pcall(function()
-			fixed_price.handleAntOrder(args, validPair, pair)
-		end)
+			-- Should throw error when order is expired (skipped in matching)
+			local success = pcall(function()
+				fixed_price.handleAntOrder(args, validPair, pair)
+			end)
 
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-	assert.is_true(success)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+			assert.is_true(success)
 		end)
 	end)
 end)
