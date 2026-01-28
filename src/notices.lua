@@ -155,7 +155,6 @@ function notices.creditNoticeHandler(msg)
 	local ok, res = pcall(function()
 		ucm.createOrder(orderArgs)
 	end)
-	print(tostring(res))
 	if not ok then
 		-- Error occurred - it was already handled by refundAndNotifyError which sends error notice
 		-- Just return without double-handling
