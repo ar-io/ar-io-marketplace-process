@@ -32,7 +32,7 @@ constants.FEE = {
 	FACTOR_DENOMINATOR = 1000,
 	AMOUNT_NUMERATOR = 5, -- Fee amount = amount * 5 / 10000 (0.05%)
 	AMOUNT_DENOMINATOR = 10000,
-	LISTING_FEE_ARIO = '1000000000', -- 1 ARIO = 1000000000 mARIO
+	LISTING_FEE_ARIO = '1000000', -- 1 ARIO = 1000000 mARIO
 	LISTING_FEE_MULTIPLIER_HOURS = 1, -- 1 hour is one listing fee (1 ARIO per hour)
 }
 
@@ -68,7 +68,7 @@ constants.QUANTITY = {
 
 -- Auction and bidding constants
 constants.AUCTION = {
-	MINIMUM_BID_INCREMENT = '1000000000', -- Minimum bid increment in ARIO (1 ARIO = 1000000000 mARIO)
+	MINIMUM_BID_INCREMENT = '1000000', -- Minimum bid increment: 1 ARIO (1 ARIO = 1000000 mARIO)
 }
 
 -- Intent status constants

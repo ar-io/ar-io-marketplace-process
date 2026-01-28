@@ -109,6 +109,39 @@ describe('Info', () => {
       'arioTokenProcess should be a string',
     );
 
+    // Validate fees info
+    assert(info.fees, 'Fees should be defined');
+    assert.strictEqual(
+      typeof info.fees.listingFeePerHour,
+      'string',
+      'listingFeePerHour should be a string',
+    );
+    assert.strictEqual(
+      typeof info.fees.saleTaxNumerator,
+      'number',
+      'saleTaxNumerator should be a number',
+    );
+    assert.strictEqual(
+      typeof info.fees.saleTaxDenominator,
+      'number',
+      'saleTaxDenominator should be a number',
+    );
+    assert.strictEqual(
+      info.fees.listingFeePerHour,
+      '1000000',
+      'listingFeePerHour should be 1 ARIO (1000000 mARIO)',
+    );
+    assert.strictEqual(
+      info.fees.saleTaxNumerator,
+      5,
+      'saleTaxNumerator should be 5',
+    );
+    assert.strictEqual(
+      info.fees.saleTaxDenominator,
+      10000,
+      'saleTaxDenominator should be 10000 (0.05% tax)',
+    );
+
     // Verify initial state values
     assert.strictEqual(
       info.activity.totalOrders,

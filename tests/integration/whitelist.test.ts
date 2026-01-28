@@ -43,10 +43,10 @@ describe('Module Whitelist Management', () => {
   });
 
   beforeEach(async () => {
-    // Reset WhitelistedModules before each test
+    // Reset WhitelistedModules and Intents before each test
     await ao_mock.message({
       processId: marketplaceProcess.process.processId,
-      data: `WhitelistedModules = {}`,
+      data: `WhitelistedModules = {}; Intents = {}`,
       tags: [
         { name: 'Action', value: 'Eval' },
         { name: 'From', value: PROCESS_OWNER },
@@ -234,7 +234,7 @@ describe('Module Whitelist Management', () => {
         expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
-      const intentId = JSON.parse(intentResult.Data)['Intent-Id'];
+      const intentId = JSON.parse(intentResult.Data).intentId;
       assert.ok(intentId, 'Intent should be created');
 
       // Try to send Credit-Notice with non-whitelisted module (no modules whitelisted yet)
@@ -245,7 +245,6 @@ describe('Module Whitelist Management', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Not whitelisted!
         ],
         data: '',
@@ -302,7 +301,7 @@ describe('Module Whitelist Management', () => {
         expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
-      const intentId = JSON.parse(intentResult.Data)['Intent-Id'];
+      const intentId = JSON.parse(intentResult.Data).intentId;
       assert.ok(intentId, 'Intent should be created');
 
       // Send Credit-Notice with whitelisted module
@@ -313,7 +312,6 @@ describe('Module Whitelist Management', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',
@@ -371,7 +369,7 @@ describe('Module Whitelist Management', () => {
         expirationTime: (STUB_TIMESTAMP + 3600000).toString(),
       });
 
-      const intentId = JSON.parse(intentResult.Data)['Intent-Id'];
+      const intentId = JSON.parse(intentResult.Data).intentId;
       assert.ok(intentId, 'Intent should be created');
 
       // Try to send Credit-Notice with module that was just removed
@@ -382,7 +380,6 @@ describe('Module Whitelist Management', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // No longer whitelisted!
         ],
         data: '',

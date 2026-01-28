@@ -59,6 +59,100 @@ describe('UCM (Universal Content Marketplace)', () => {
     );
   });
 
+  describe('Create-Order (ARIO Buy Orders - Immediate Matching)', () => {
+    // NOTE: Per ADR-000, ARIO buy orders don't create orderbook entries.
+    // They must match against existing ANT sell orders immediately.
+    // These tests verify the correct error behavior when no matching order exists.
+
+    it('should fail when no matching ANT sell order exists (fixed)', async () => {
+      const antId = 'test-ant-to-buy-'.padEnd(43, '1');
+
+      // Try to buy ANT with ARIO - should fail because no ANT sell order exists
+      const result = await marketplaceProcess.createOrder({
+        swapToken: antId,
+        quantity: '1000000', // 1 ARIO (in mARIO)
+        orderType: 'fixed',
+        price: '1000000', // 1 ARIO
+        expirationTime: (STUB_TIMESTAMP + 86400000).toString(), // 24 hours
+      });
+
+      assert(result, 'Result should be defined');
+      // Per ADR-000: ARIO orders match immediately, can't create orderbook entry
+      assert.strictEqual(
+        result.Action,
+        'Invalid-Create-Order-Notice',
+        'Should fail when no matching ANT sell order exists',
+      );
+      assert(
+        result.Data.includes('No matching orders'),
+        'Error should mention no matching orders: ' + result.Data,
+      );
+    });
+
+    it('should fail when no matching ANT sell order exists (dutch)', async () => {
+      const antId = 'test-ant-dutch-'.padEnd(43, '2');
+
+      const result = await marketplaceProcess.createOrder({
+        swapToken: antId,
+        quantity: '5000000', // 5 ARIO
+        orderType: 'dutch',
+        price: '5000000', // Starting price: 5 ARIO
+        minimumPrice: '2000000', // Minimum: 2 ARIO
+        decreaseInterval: '3600000', // Decrease every hour
+        expirationTime: (STUB_TIMESTAMP + 604800000).toString(), // 7 days
+      });
+
+      assert(result, 'Result should be defined');
+      // Per ADR-000: ARIO orders match immediately, can't create orderbook entry
+      assert.strictEqual(
+        result.Action,
+        'Invalid-Create-Order-Notice',
+        'Should fail when no matching ANT sell order exists',
+      );
+      assert(
+        result.Data.includes('No matching'),
+        'Error should mention no matching orders: ' + result.Data,
+      );
+    });
+
+    it('should fail when no matching ANT sell order exists (english)', async () => {
+      const antId = 'test-ant-english-'.padEnd(43, '3');
+
+      const result = await marketplaceProcess.createOrder({
+        swapToken: antId,
+        quantity: '3000000', // 3 ARIO
+        orderType: 'english',
+        price: '1000000', // Starting bid: 1 ARIO
+        expirationTime: (STUB_TIMESTAMP + 86400000).toString(), // 24 hours
+      });
+
+      assert(result, 'Result should be defined');
+      // Per ADR-000: ARIO orders match immediately, can't create orderbook entry
+      assert.strictEqual(
+        result.Action,
+        'Invalid-Create-Order-Notice',
+        'Should fail when no matching ANT sell order exists',
+      );
+      // English auctions return "English auction not found" when no order exists
+      assert(
+        result.Data.includes('not found') ||
+          result.Data.includes('No matching'),
+        'Error should mention auction not found: ' + result.Data,
+      );
+    });
+
+    it('should fail without required parameters', async () => {
+      const result = await marketplaceProcess.createOrder({
+        swapToken: 'test-ant-'.padEnd(43, '4'),
+        quantity: '', // Empty quantity
+      });
+
+      assert(result, 'Result should be defined');
+      assert.strictEqual(result.Action, 'Invalid-Create-Order-Notice');
+      assert(result.Tags?.Error, 'Should have Error tag');
+    });
+  });
+
   describe('Get-Orders with flexible filtering', () => {
     it('should return empty orders for non-existent pair using getOrdersByPair', async () => {
       const result = await marketplaceProcess.getOrdersByPair(
@@ -171,7 +265,7 @@ describe('UCM (Universal Content Marketplace)', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Try to send Credit-Notice with non-whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -181,7 +275,6 @@ describe('UCM (Universal Content Marketplace)', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Non-whitelisted!
         ],
         data: '',
@@ -231,7 +324,7 @@ describe('UCM (Universal Content Marketplace)', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Send Credit-Notice with whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -241,7 +334,6 @@ describe('UCM (Universal Content Marketplace)', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',

@@ -39,7 +39,7 @@ function english_auction.getHighestBid(orderId)
 
 	return {
 		bidder = highestBidder,
-		amount = tostring(highestAmount)
+		amount = tostring(highestAmount),
 	}
 end
 
@@ -159,8 +159,7 @@ function english_auction.handleAntOrder(args)
 	local highestBidInfo = english_auction.getHighestBid(targetOrder.id)
 	local currentHighestBid = highestBidInfo and highestBidInfo.amount or nil
 
-	local isValidBid, bidError =
-		english_auction.validateBidAmount(bidAmount, currentHighestBid, minimumStartingPrice)
+	local isValidBid, bidError = english_auction.validateBidAmount(bidAmount, currentHighestBid, minimumStartingPrice)
 
 	if not isValidBid then
 		utils.refundAndNotifyError(args.msg, args.sender, bidError, 'Validation-Error')
@@ -185,9 +184,9 @@ function english_auction.handleAntOrder(args)
 			Handler = 'Create-Order',
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
-		['Bid-Amount'] = tostring(bidAmount), -- Use the quantity sent by user
-		Message = 'Bid placed successfully on English auction!',
-		['Order-Type'] = ORDER_TYPES.ENGLISH,
+			['Bid-Amount'] = tostring(bidAmount), -- Use the quantity sent by user
+			Message = 'Bid placed successfully on English auction!',
+			['Order-Type'] = ORDER_TYPES.ENGLISH,
 		},
 	})
 end
@@ -221,9 +220,17 @@ function english_auction.pruneExpiredAuction(order, pair, dominantToken, swapTok
 			order.status = constants.ORDER_STATUSES.READY_FOR_SETTLEMENT
 		end
 	else
-		-- English auction without bids - mark as expired
+		-- English auction without bids - mark as expired and remove from orderbook
 		order.status = constants.ORDER_STATUSES.EXPIRED
 		order.endedAt = order.expirationTime
+		-- Transfer ANT back to creator
+		local ucm = require('ucm')
+		ucm.transfer(order.creator, order.quantity, order.token, msg)
+		-- Remove the order from the orderbook and index
+		pair.orders[order.id] = nil
+		OrderIndex[order.id] = nil
+		-- Prune the pair if it's now empty
+		ucm.pruneEmptyPair(dominantToken, swapToken)
 	end
 end
 
@@ -323,9 +330,9 @@ function english_auction.settleAuction(args)
 			Tags = {
 				Status = 'Success',
 				['Order-Id'] = orderId,
-			Winner = winningBidder,
-			['Winning-Bid'] = winningBid,
-			Message = 'Auction settled successfully!',
+				Winner = winningBidder,
+				['Winning-Bid'] = winningBid,
+				Message = 'Auction settled successfully!',
 			},
 		})
 	end
@@ -353,18 +360,18 @@ function english_auction.handleArioOrder(args, validPair, pair)
 		id = args.orderId,
 		quantity = tostring(args.quantity),
 		originalQuantity = tostring(args.quantity),
-	creator = args.sender,
-	token = args.dominantToken,
-	dateCreated = args.createdAt,
-	price = args.price and tostring(args.price),
-	expirationTime = args.expirationTime,
-	orderType = ORDER_TYPES.ENGLISH,
-	status = ORDER_STATUSES.ACTIVE,
-	-- Initialize English auction specific fields
-	bids = {}, -- Track all bidders for this auction
-	dominantToken = validPair[1],
-	swapToken = validPair[2],
-}
+		creator = args.sender,
+		token = args.dominantToken,
+		dateCreated = args.createdAt,
+		price = args.price and tostring(args.price),
+		expirationTime = args.expirationTime,
+		orderType = ORDER_TYPES.ENGLISH,
+		status = ORDER_STATUSES.ACTIVE,
+		-- Initialize English auction specific fields
+		bids = {}, -- Track all bidders for this auction
+		dominantToken = validPair[1],
+		swapToken = validPair[2],
+	}
 
 	-- Schedule pruning for expiration if needed
 	if args.expirationTime then
@@ -382,13 +389,13 @@ function english_auction.handleArioOrder(args, validPair, pair)
 			Handler = 'Create-Order',
 			['Dominant-Token'] = args.dominantToken,
 			['Swap-Token'] = args.swapToken,
-		Quantity = tostring(args.quantity),
-	Price = args.price and tostring(args.price),
-	Message = 'ARIO order added to orderbook for English auction!',
-	['Order-Type'] = ORDER_TYPES.ENGLISH,
-	['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
-	},
-})
+			Quantity = tostring(args.quantity),
+			Price = args.price and tostring(args.price),
+			Message = 'ARIO order added to orderbook for English auction!',
+			['Order-Type'] = ORDER_TYPES.ENGLISH,
+			['Expiration-Time'] = args.expirationTime and tostring(args.expirationTime),
+		},
+	})
 end
 
 --- Handler for bidding on English auctions using internal ARIO balance.
@@ -462,11 +469,8 @@ function english_auction.bidOnEnglishAuctionHandler(msg)
 
 	-- Validate new bid amount meets requirements
 	local minimumStartingPrice = order.price
-	local isValidBid, bidError = english_auction.validateBidAmount(
-		tostring(newBidAmount),
-		currentHighestBid,
-		minimumStartingPrice
-	)
+	local isValidBid, bidError =
+		english_auction.validateBidAmount(tostring(newBidAmount), currentHighestBid, minimumStartingPrice)
 	assert(isValidBid, bidError or 'Invalid bid amount')
 
 	-- Check if bidder has sufficient balance for delta

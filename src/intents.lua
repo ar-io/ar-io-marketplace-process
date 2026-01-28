@@ -169,7 +169,7 @@ function intents.failIntent(intentId, reason, msg)
 	-- Use resolveIntent to handle pruning logic centrally
 	local success, resolvedIntent = intents.resolveIntent(intentId, os.time())
 
-	-- Send Intent-Resolved notice AFTER pruning succeeds
+	-- Send Intent-Resolved notice
 	if success and resolvedIntent and msg then
 		_utils.Send(msg, {
 			Target = resolvedIntent.initiator,
@@ -338,9 +338,11 @@ function intents.createIntentHandler(msg)
 	for _, intent in pairs(Intents) do
 		if intent.antProcessId == antId then
 			-- Only block if intent is in non-terminal state
-			if intent.status == constants.INTENT_STATUSES.PENDING or
-			   intent.status == constants.INTENT_STATUSES.ACTIVE or
-			   intent.status == constants.INTENT_STATUSES.SETTLING then
+			if
+				intent.status == constants.INTENT_STATUSES.PENDING
+				or intent.status == constants.INTENT_STATUSES.ACTIVE
+				or intent.status == constants.INTENT_STATUSES.SETTLING
+			then
 				error('An intent already exists for this ANT ID. Intent ID: ' .. intent.intentId)
 			end
 		end
@@ -374,8 +376,10 @@ function intents.createIntentHandler(msg)
 	assert(expTime > msg.Timestamp, 'X-Intent-Expiration-Time must be in the future')
 
 	local maxExpiration = msg.Timestamp + constants.LISTING.MAX_EXPIRATION_MS
-	assert(expTime <= maxExpiration,
-		'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration))
+	assert(
+		expTime <= maxExpiration,
+		'X-Intent-Expiration-Time cannot exceed 30 days from now. Maximum allowed: ' .. tostring(maxExpiration)
+	)
 
 	-- Validate order type-specific parameters
 	if orderType == 'dutch' then
@@ -393,10 +397,7 @@ function intents.createIntentHandler(msg)
 	local intent = intents.createIntent(msg, orderParams, antId)
 
 	-- Return intentId to user (handler wrapper will send as notice)
-	return json.encode({
-		['Intent-Id'] = intent.intentId,
-		Status = 'Success',
-	})
+	return json.encode(intent)
 end
 
 -- Handler: Get-Paginated-Intents
@@ -440,9 +441,9 @@ function intents.pushANTIntentResolutionHandler(msg)
 
 	-- Validate intent is in pushable state
 	assert(
-		intent.status == constants.INTENT_STATUSES.PENDING or
-		intent.status == constants.INTENT_STATUSES.ACTIVE or
-		intent.status == constants.INTENT_STATUSES.SETTLING,
+		intent.status == constants.INTENT_STATUSES.PENDING
+			or intent.status == constants.INTENT_STATUSES.ACTIVE
+			or intent.status == constants.INTENT_STATUSES.SETTLING,
 		'Intent is not in a pushable state. Current status: ' .. intent.status
 	)
 
@@ -450,12 +451,12 @@ function intents.pushANTIntentResolutionHandler(msg)
 	local expectedInitiator = intent.initiator
 
 	-- Check if sender is authorized (3 authorities: initiator, Owner, or IntentPushingAuthority)
-	local isAuthorized = msg.From == expectedInitiator or
-	                     msg.From == Owner or
-	                     msg.From == IntentPushingAuthority
+	local isAuthorized = msg.From == expectedInitiator or msg.From == Owner or msg.From == IntentPushingAuthority
 
-	assert(isAuthorized,
-		'Unauthorized to push intent resolution. Only intent initiator, process owner, or intent pushing authority can push.')
+	assert(
+		isAuthorized,
+		'Unauthorized to push intent resolution. Only intent initiator, process owner, or intent pushing authority can push.'
+	)
 
 	-- Get ANT process ID from intent (set during Create-Intent)
 	local antId = intent.antProcessId
@@ -463,13 +464,12 @@ function intents.pushANTIntentResolutionHandler(msg)
 
 	_utils.Send(msg, {
 		Target = antId,
-		Action = "State",
+		Action = 'State',
 		Tags = {
 			['X-Intent-Id'] = intentId,
-		}
+		},
 	})
 end
-
 
 -- Handler: State-Notice - Creates order after validating ANT ownership
 function intents.stateNoticeHandler(msg)

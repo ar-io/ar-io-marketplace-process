@@ -54,7 +54,7 @@ describe('Auction Mechanisms', () => {
     });
 
     await marketplaceProcess.depositArio(
-      '200000000000', // 200 ARIO for listing fees (7 days = 168 hours × 1 ARIO/hour)
+      '200000000', // 200 ARIO for listing fees (7 days = 168 hours × 1 ARIO/hour)
       TEST_ARIO_TOKEN,
       TEST_SENDER,
     );
@@ -229,7 +229,7 @@ describe('Auction Mechanisms', () => {
       assert(result, 'Result should be defined');
       assert.strictEqual(result.Action, 'Create-Intent-Notice');
       const data = JSON.parse(result.Data);
-      assert(data['Intent-Id'], 'Should return Intent-Id');
+      assert(data.intentId, 'Should return Intent-Id');
     });
 
     it('should validate required parameters for fixed price', async () => {
@@ -309,7 +309,7 @@ describe('Auction Mechanisms', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Try to send Credit-Notice with non-whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -319,7 +319,6 @@ describe('Auction Mechanisms', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_NOT_WHITELISTED }, // Non-whitelisted!
         ],
         data: '',
@@ -369,7 +368,7 @@ describe('Auction Mechanisms', () => {
       });
 
       const intentData = JSON.parse(intentResult.Data);
-      const intentId = intentData['Intent-Id'];
+      const intentId = intentData.intentId;
 
       // Send Credit-Notice with whitelisted module
       const creditMsg = await marketplaceProcess.process.ao.message({
@@ -379,7 +378,6 @@ describe('Auction Mechanisms', () => {
           { name: 'Sender', value: TEST_SENDER },
           { name: 'Quantity', value: '1' },
           { name: 'X-Intent-Id', value: intentId },
-          { name: 'X-Order-Action', value: 'Create-Order' },
           { name: 'From-Module', value: TEST_ANT_MODULE_WHITELISTED }, // Whitelisted!
         ],
         data: '',
@@ -440,4 +438,7 @@ describe('Auction Mechanisms', () => {
       assert(listedOrders, 'Listed orders should be defined');
     });
   });
+
+  // Note: Order pruning is comprehensively tested in unit tests (tests/unit/*_spec.lua)
+  // Integration testing of pruning requires complex Credit-Notice flows that are tested elsewhere
 });

@@ -11,7 +11,7 @@ describe('ucm helpers', function()
 	local function resetGlobals()
 		_G.Orderbook = {}
 		_G.OrderIndex = {}
-		_G.ARIO_TOKEN_PROCESS_ID = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+		_G.ARIO_TOKEN_PROCESS_ID = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE'
 	end
 
 	before_each(function()
@@ -115,54 +115,54 @@ describe('ucm helpers', function()
 		end)
 
 		it('should reject quantity not equal to 1', function()
-		local args = {
-			quantity = '2',
-			sender = 'test-sender',
-			msg = { Tags = { Quantity = '2' }, From = 'token-process-id' },
-		}
+			local args = {
+				quantity = '2',
+				sender = 'test-sender',
+				msg = { Tags = { Quantity = '2' }, From = 'token-process-id' },
+			}
 
-	local success = pcall(function()
-		ucm.validateAntDominantOrder(args, validPair)
-	end)
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-	assert.is_true(success)
-	assert.are.equal(2, #sentMessages) -- Transfer (refund) + Validation-Error
-		assert.are.equal('Transfer', sentMessages[1].Action)
-		assert.are.equal('Validation-Error', sentMessages[2].Action)
+			local success = pcall(function()
+				ucm.validateAntDominantOrder(args, validPair)
+			end)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+			assert.is_true(success)
+			assert.are.equal(2, #sentMessages) -- Transfer (refund) + Validation-Error
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal('Validation-Error', sentMessages[2].Action)
 		end)
 
 		it('should reject missing price', function()
 			local args = {
 				quantity = '1',
-			sender = 'test-sender',
-			msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
-		}
+				sender = 'test-sender',
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
+			}
 
-	local success = pcall(function()
-		ucm.validateAntDominantOrder(args, validPair)
-	end)
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-	assert.is_true(success)
-	assert.are.equal(2, #sentMessages)
-		assert.are.equal('Transfer', sentMessages[1].Action)
-		assert.are.equal('Validation-Error', sentMessages[2].Action)
-	end)
+			local success = pcall(function()
+				ucm.validateAntDominantOrder(args, validPair)
+			end)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+			assert.is_true(success)
+			assert.are.equal(2, #sentMessages)
+			assert.are.equal('Transfer', sentMessages[1].Action)
+			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		end)
 
-	it('should reject invalid price', function()
+		it('should reject invalid price', function()
 			local args = {
 				quantity = '1',
 				price = '0',
 				sender = 'test-sender',
-			createdAt = 1000,
-			msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
-		}
+				createdAt = 1000,
+				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
+			}
 
-	local success = pcall(function()
-		ucm.validateAntDominantOrder(args, validPair)
-	end)
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true
-	assert.is_true(success)
-	end)
+			local success = pcall(function()
+				ucm.validateAntDominantOrder(args, validPair)
+			end)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true
+			assert.is_true(success)
+		end)
 
 		it('should accept valid ANT order', function()
 			local args = {
@@ -192,9 +192,9 @@ describe('ucm helpers', function()
 			end
 		end)
 
-	it('should accept valid ARIO order', function()
-		local args = {
-			sender = 'test-sender',
+		it('should accept valid ARIO order', function()
+			local args = {
+				sender = 'test-sender',
 				msg = { Tags = { Quantity = '1000' }, From = 'token-process-id' },
 			}
 
@@ -225,12 +225,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-	local success = pcall(function()
-		return ucm.validateOrderParams(args)
-	end)
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-	assert.is_true(success)
-	end)
+			local success = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+			assert.is_true(success)
+		end)
 
 		it('should reject trade without ARIO', function()
 			local args = {
@@ -242,12 +242,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-	local success = pcall(function()
-		return ucm.validateOrderParams(args)
-	end)
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-	assert.is_true(success)
-	end)
+			local success = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+			assert.is_true(success)
+		end)
 
 		it('should reject invalid quantity', function()
 			local args = {
@@ -259,12 +259,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '0' }, From = 'token-process-id' },
 			}
 
-	local success = pcall(function()
-		return ucm.validateOrderParams(args)
-	end)
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-	assert.is_true(success)
-	end)
+			local success = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+			assert.is_true(success)
+		end)
 
 		it('should reject invalid order type', function()
 			local args = {
@@ -276,12 +276,12 @@ describe('ucm helpers', function()
 				msg = { Tags = { Quantity = '1' }, From = 'token-process-id' },
 			}
 
-	local success = pcall(function()
-		return ucm.validateOrderParams(args)
-	end)
-	-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
-	assert.is_true(success)
-	end)
+			local success = pcall(function()
+				return ucm.validateOrderParams(args)
+			end)
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but error notice is sent)
+			assert.is_true(success)
+		end)
 
 		it('should accept valid fixed order', function()
 			local args = {
@@ -365,8 +365,8 @@ describe('ucm helpers', function()
 			end
 
 			-- Give user and seller some ARIO balance
-			_G.ARIOBalances['test-user'] = {balance = '10000000000', orders = {}} -- 10 ARIO
-			_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}} -- ANT seller
+			_G.ARIOBalances['test-user'] = { balance = '10000000000', orders = {} } -- 10,000 ARIO
+			_G.ARIOBalances['ant-seller'] = { balance = '0', orders = {} } -- ANT seller
 		end)
 
 		it('should use internal ARIO balance for buying ANT (no Credit-Notice needed)', function()
@@ -374,8 +374,8 @@ describe('ucm helpers', function()
 			local antToken = string.rep('1', 43) -- 43 character ANT process ID
 			_G.Orderbook[antToken] = {
 				[_G.ARIO_TOKEN_PROCESS_ID] = {
-					pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
-					Pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					pair = { antToken, _G.ARIO_TOKEN_PROCESS_ID },
+					Pair = { antToken, _G.ARIO_TOKEN_PROCESS_ID },
 					orders = {
 						['ant-sell-order'] = {
 							id = 'ant-sell-order',
@@ -384,7 +384,7 @@ describe('ucm helpers', function()
 							creator = 'ant-seller',
 							token = antToken,
 							dateCreated = 1000,
-							price = '1000000000', -- 1 ARIO
+							price = '1000000', -- 1 ARIO
 							orderType = 'fixed',
 							status = 'active',
 							dominantToken = antToken,
@@ -398,24 +398,24 @@ describe('ucm helpers', function()
 				swapToken = _G.ARIO_TOKEN_PROCESS_ID,
 			}
 
-		local msg = {
-			Id = 'buy-order-123',
-			From = 'test-user',
-			Timestamp = 2000,
-			['Block-Height'] = 100,
-			Tags = {
-				['Swap-Token'] = antToken,
-				Quantity = '1000000000', -- 1 ARIO
-				['Order-Type'] = 'fixed',
-			},
-		}
+			local msg = {
+				Id = 'buy-order-123',
+				From = 'test-user',
+				Timestamp = 2000,
+				['Block-Height'] = 100,
+				Tags = {
+					['Swap-Token'] = antToken,
+					Quantity = '1000000', -- 1 ARIO
+					['Order-Type'] = 'fixed',
+				},
+			}
 
 			-- Act: User buys ANT using internal ARIO balance
 			local result = ucm.createOrderHandler(msg)
 			local resultData = require('json').decode(result)
 
 			-- Assert: Balance should be deducted
-			assert.are.equal('9000000000', _G.ARIOBalances['test-user'].balance) -- 10 - 1 = 9 ARIO
+			assert.are.equal('9999000000', _G.ARIOBalances['test-user'].balance) -- 10,000 - 1 = 9,999 ARIO
 
 			-- Assert: Seller should receive ARIO to their internal balance (minus fee)
 			local sellerBalance = balances.getBalance('ant-seller')
@@ -426,12 +426,12 @@ describe('ucm helpers', function()
 		end)
 
 		it('should fail when user has insufficient internal ARIO balance', function()
-			-- User has 10 ARIO, tries to spend 20 ARIO
+			-- User has 10,000 ARIO, tries to spend 20,000 ARIO
 			local antToken = string.rep('2', 43) -- 43 character ANT process ID
 			_G.Orderbook[antToken] = {
 				[_G.ARIO_TOKEN_PROCESS_ID] = {
-					pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
-					Pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					pair = { antToken, _G.ARIO_TOKEN_PROCESS_ID },
+					Pair = { antToken, _G.ARIO_TOKEN_PROCESS_ID },
 					orders = {
 						['expensive-ant'] = {
 							id = 'expensive-ant',
@@ -440,7 +440,7 @@ describe('ucm helpers', function()
 							creator = 'ant-seller',
 							token = antToken,
 							dateCreated = 1000,
-							price = '20000000000', -- 20 ARIO
+							price = '20000000000', -- 20,000 ARIO
 							orderType = 'fixed',
 							status = 'active',
 							dominantToken = antToken,
@@ -450,17 +450,17 @@ describe('ucm helpers', function()
 				},
 			}
 
-		local msg = {
-			Id = 'buy-order-fail',
-			From = 'test-user',
-			Timestamp = 2000,
-			['Block-Height'] = 100,
-			Tags = {
-				['Swap-Token'] = antToken,
-				Quantity = '20000000000', -- 20 ARIO (more than user has)
-				['Order-Type'] = 'fixed',
-			},
-		}
+			local msg = {
+				Id = 'buy-order-fail',
+				From = 'test-user',
+				Timestamp = 2000,
+				['Block-Height'] = 100,
+				Tags = {
+					['Swap-Token'] = antToken,
+					Quantity = '20000000000', -- 20,000 ARIO (more than user has)
+					['Order-Type'] = 'fixed',
+				},
+			}
 
 			local success, err = pcall(function()
 				ucm.createOrderHandler(msg)
@@ -479,8 +479,8 @@ describe('ucm helpers', function()
 			local antToken = string.rep('3', 43) -- 43 character ANT process ID
 			_G.Orderbook[antToken] = {
 				[_G.ARIO_TOKEN_PROCESS_ID] = {
-					pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
-					Pair = {antToken, _G.ARIO_TOKEN_PROCESS_ID},
+					pair = { antToken, _G.ARIO_TOKEN_PROCESS_ID },
+					Pair = { antToken, _G.ARIO_TOKEN_PROCESS_ID },
 					orders = {
 						['simple-ant'] = {
 							id = 'simple-ant',
@@ -489,7 +489,7 @@ describe('ucm helpers', function()
 							creator = 'ant-seller',
 							token = antToken,
 							dateCreated = 1000,
-							price = '500000000', -- 0.5 ARIO
+							price = '500000', -- 0.5 ARIO
 							orderType = 'fixed',
 							status = 'active',
 							dominantToken = antToken,
@@ -499,17 +499,17 @@ describe('ucm helpers', function()
 				},
 			}
 
-		local msg = {
-			Id = 'buy-order-no-intent',
-			From = 'test-user',
-			Timestamp = 2000,
-			['Block-Height'] = 100,
-			Tags = {
-				['Swap-Token'] = antToken,
-				Quantity = '500000000', -- 0.5 ARIO
-				['Order-Type'] = 'fixed',
-			},
-		}
+			local msg = {
+				Id = 'buy-order-no-intent',
+				From = 'test-user',
+				Timestamp = 2000,
+				['Block-Height'] = 100,
+				Tags = {
+					['Swap-Token'] = antToken,
+					Quantity = '500000', -- 0.5 ARIO
+					['Order-Type'] = 'fixed',
+				},
+			}
 
 			-- Initialize empty Intents table
 			_G.Intents = {}
@@ -583,8 +583,9 @@ describe('ucm helpers', function()
 			assert.are.equal(10000, _G.Pruning.nextScheduledOrderbookPruning)
 		end)
 
-	it('should prune expired fixed price orders', function()
-		_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+		it('should prune expired fixed price orders and remove from orderbook', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
 
 			_G.Orderbook = {
 				['ant-token'] = {
@@ -597,16 +598,160 @@ describe('ucm helpers', function()
 								orderType = 'fixed',
 								dominantToken = 'ant-token',
 								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
 							},
 						},
 					},
 				},
 			}
 
+			_G.OrderIndex['expired-order'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
 			ucm.pruneOrderbook(2000, {})
 
-			-- Order should be marked as expired
-			assert.are.equal('expired', _G.Orderbook['ant-token']['ario-token'].orders['expired-order'].status)
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['expired-order'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should prune expired dutch auction orders and remove from orderbook', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
+
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['expired-dutch'] = {
+								id = 'expired-dutch',
+								status = 'active',
+								expirationTime = 1000,
+								orderType = 'dutch',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								price = '1000',
+								minimumPrice = '500',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['expired-dutch'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['expired-dutch'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should prune expired english auction without bids and remove from orderbook', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
+
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['expired-english'] = {
+								id = 'expired-english',
+								status = 'active',
+								expirationTime = 1000,
+								orderType = 'english',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								price = '1000',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['expired-english'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['expired-english'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
+		end)
+
+		it('should not prune pair if other orders remain', function()
+			_G.Pruning = { nextScheduledOrderbookPruning = 2000 }
+			_G.OrderIndex = {}
+
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['expired-order'] = {
+								id = 'expired-order',
+								status = 'active',
+								expirationTime = 1000,
+								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+							},
+							['active-order'] = {
+								id = 'active-order',
+								status = 'active',
+								expirationTime = 5000,
+								orderType = 'fixed',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['expired-order'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+			_G.OrderIndex['active-order'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			ucm.pruneOrderbook(2000, {})
+
+			-- Expired order should be removed
+			assert.is_nil(_G.Orderbook['ant-token']['ario-token'].orders['expired-order'])
+			assert.is_nil(_G.OrderIndex['expired-order'])
+			-- Active order should remain
+			assert.is_not_nil(_G.Orderbook['ant-token']['ario-token'].orders['active-order'])
+			assert.is_not_nil(_G.OrderIndex['active-order'])
+			-- Pair should NOT be pruned (still has active order)
+			assert.is_not_nil(_G.Orderbook['ant-token'])
+			assert.is_not_nil(_G.Orderbook['ant-token']['ario-token'])
 		end)
 
 		it('should reschedule next pruning for future expirations', function()
@@ -641,7 +786,7 @@ describe('ucm helpers', function()
 			_G.Orderbook = {
 				['ant-token'] = {
 					['ario-token'] = {
-						pair = {'ant-token', 'ario-token'},
+						pair = { 'ant-token', 'ario-token' },
 						orders = {},
 					},
 				},
@@ -650,7 +795,7 @@ describe('ucm helpers', function()
 			local pair = ucm.getPair('ant-token', 'ario-token')
 			assert.is_not_nil(pair)
 			if pair then
-				assert.are.same({'ant-token', 'ario-token'}, pair.pair)
+				assert.are.same({ 'ant-token', 'ario-token' }, pair.pair)
 			end
 		end)
 
@@ -729,10 +874,10 @@ describe('ucm helpers', function()
 		end)
 	end)
 
-describe('cancelOrderHandler', function()
-	before_each(function()
-		testGlobals.resetState()
-		testGlobals.setArioTokenId('ario-token-123')
+	describe('cancelOrderHandler', function()
+		before_each(function()
+			testGlobals.resetState()
+			testGlobals.setArioTokenId('ario-token-123')
 		end)
 
 		it('should cancel order and return balance', function()
@@ -764,14 +909,14 @@ describe('cancelOrderHandler', function()
 			local msg = testGlobals.mockMsg({
 				From = 'user-123',
 				Tags = {
-			['Order-Id'] = 'order-123',
-		},
-	})
+					['Order-Id'] = 'order-123',
+				},
+			})
 
-	ucm.cancelOrderHandler(msg)
+			ucm.cancelOrderHandler(msg)
 
-	-- Order should be removed
-	assert.is_nil(_G.OrderIndex['order-123'])
+			-- Order should be removed
+			assert.is_nil(_G.OrderIndex['order-123'])
 
 			-- Pair should be pruned (empty) - dominant token level should be removed
 			assert.is_nil(_G.Orderbook['ant-token'])
@@ -830,10 +975,10 @@ describe('cancelOrderHandler', function()
 		end)
 	end)
 
-describe('infoHandler', function()
-	before_each(function()
-		testGlobals.resetState()
-		testGlobals.setArioTokenId('ario-token-123')
+	describe('infoHandler', function()
+		before_each(function()
+			testGlobals.resetState()
+			testGlobals.setArioTokenId('ario-token-123')
 		end)
 
 		it('should return marketplace info', function()
@@ -862,59 +1007,59 @@ describe('infoHandler', function()
 			assert.are.equal(1, info.ucm.totalPairs)
 		end)
 
-	it('should handle empty orderbook', function()
-		_G.Orderbook = {}
+		it('should handle empty orderbook', function()
+			_G.Orderbook = {}
 
-		local msg = testGlobals.mockMsg({})
-		local result = ucm.infoHandler(msg)
-		local info = json.decode(result)
+			local msg = testGlobals.mockMsg({})
+			local result = ucm.infoHandler(msg)
+			local info = json.decode(result)
 
-		assert.are.equal(0, info.activity.totalOrders)
-		assert.are.equal(0, info.ucm.totalPairs)
-	end)
+			assert.are.equal(0, info.activity.totalOrders)
+			assert.are.equal(0, info.ucm.totalPairs)
+		end)
 
-	it('should include whitelistedModules as array in response', function()
-		-- Add some whitelisted modules
-		_G.WhitelistedModules = {
-			['drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'] = true,
-			['another-module-1234567890123456789012345678'] = true,
-		}
+		it('should include whitelistedModules as array in response', function()
+			-- Add some whitelisted modules
+			_G.WhitelistedModules = {
+				['drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'] = true,
+				['another-module-1234567890123456789012345678'] = true,
+			}
 
-		local msg = testGlobals.mockMsg({})
-		local result = ucm.infoHandler(msg)
-		local info = json.decode(result)
+			local msg = testGlobals.mockMsg({})
+			local result = ucm.infoHandler(msg)
+			local info = json.decode(result)
 
-		assert.is_not_nil(info.whitelistedModules)
-		assert.are.equal('table', type(info.whitelistedModules))
-		assert.are.equal(2, #info.whitelistedModules)
+			assert.is_not_nil(info.whitelistedModules)
+			assert.are.equal('table', type(info.whitelistedModules))
+			assert.are.equal(2, #info.whitelistedModules)
 
-		-- Check that both modules are in the array
-		local hasModule1 = false
-		local hasModule2 = false
-		for _, moduleId in ipairs(info.whitelistedModules) do
-			if moduleId == 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8' then
-				hasModule1 = true
+			-- Check that both modules are in the array
+			local hasModule1 = false
+			local hasModule2 = false
+			for _, moduleId in ipairs(info.whitelistedModules) do
+				if moduleId == 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8' then
+					hasModule1 = true
+				end
+				if moduleId == 'another-module-1234567890123456789012345678' then
+					hasModule2 = true
+				end
 			end
-			if moduleId == 'another-module-1234567890123456789012345678' then
-				hasModule2 = true
-			end
-		end
-		assert.is_true(hasModule1)
-		assert.is_true(hasModule2)
+			assert.is_true(hasModule1)
+			assert.is_true(hasModule2)
+		end)
+
+		it('should return empty array for whitelistedModules when none exist', function()
+			_G.WhitelistedModules = {}
+
+			local msg = testGlobals.mockMsg({})
+			local result = ucm.infoHandler(msg)
+			local info = json.decode(result)
+
+			assert.is_not_nil(info.whitelistedModules)
+			assert.are.equal('table', type(info.whitelistedModules))
+			assert.are.equal(0, #info.whitelistedModules)
+		end)
 	end)
-
-	it('should return empty array for whitelistedModules when none exist', function()
-		_G.WhitelistedModules = {}
-
-		local msg = testGlobals.mockMsg({})
-		local result = ucm.infoHandler(msg)
-		local info = json.decode(result)
-
-		assert.is_not_nil(info.whitelistedModules)
-		assert.are.equal('table', type(info.whitelistedModules))
-		assert.are.equal(0, #info.whitelistedModules)
-	end)
-end)
 
 	describe('matchesStatusFilter', function()
 		it('should match ALL filter', function()
@@ -948,10 +1093,10 @@ end)
 		end)
 	end)
 
-describe('getOrderHandler', function()
-	before_each(function()
-		testGlobals.resetState()
-	end)
+	describe('getOrderHandler', function()
+		before_each(function()
+			testGlobals.resetState()
+		end)
 
 		it('should return order by ID', function()
 			_G.Orderbook = {
@@ -1001,12 +1146,12 @@ describe('getOrderHandler', function()
 		end)
 	end)
 
-describe('Whitelist Management', function()
-	local TEST_MODULE_ID = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
+	describe('Whitelist Management', function()
+		local TEST_MODULE_ID = 'drhsJZSyX8InDsd5EAfQDTgdKnD_wvjddHKY3KDPdf8'
 
-	before_each(function()
-		testGlobals.resetState()
-	end)
+		before_each(function()
+			testGlobals.resetState()
+		end)
 
 		describe('whitelistModule', function()
 			it('should add module to whitelist', function()
@@ -1055,8 +1200,12 @@ describe('Whitelist Management', function()
 		end)
 
 		describe('whitelistModuleHandler', function()
+			local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+
 			it('should whitelist via message handler', function()
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {
 						['Module-Id'] = TEST_MODULE_ID,
 					},
@@ -1071,6 +1220,8 @@ describe('Whitelist Management', function()
 
 			it('should require Module-Id tag', function()
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {},
 				})
 
@@ -1083,10 +1234,14 @@ describe('Whitelist Management', function()
 		end)
 
 		describe('unwhitelistModuleHandler', function()
+			local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+
 			it('should unwhitelist via message handler', function()
 				ucm.whitelistModule(TEST_MODULE_ID)
 
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {
 						['Module-Id'] = TEST_MODULE_ID,
 					},
@@ -1101,6 +1256,8 @@ describe('Whitelist Management', function()
 
 			it('should require Module-Id tag', function()
 				local msg = testGlobals.mockMsg({
+					From = PROCESS_OWNER,
+					Owner = PROCESS_OWNER,
 					Tags = {},
 				})
 
@@ -1110,6 +1267,350 @@ describe('Whitelist Management', function()
 
 				assert.is_false(success)
 			end)
+		end)
+
+		describe('getOrdersHandler', function()
+			local dominantToken1 = 'ANT_TOKEN_ID_12345678901234567890123456789012'
+			local dominantToken2 = 'ANT_TOKEN_ID_99999999999999999999999999999999'
+			local swapToken1 = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE' -- ARIO
+			local swapToken2 = 'SWAP_TOKEN_ID_1234567890123456789012345678901'
+
+			before_each(function()
+				resetGlobals()
+
+				-- Create multiple pairs with orders for testing
+				-- Pair 1: dominantToken1 <-> swapToken1
+				_G.Orderbook[dominantToken1] = {
+					[swapToken1] = {
+						pair = { dominantToken1, swapToken1 },
+						orders = {
+							['order-1-1'] = {
+								id = 'order-1-1',
+								creator = 'creator-1',
+								quantity = '1000',
+								originalQuantity = '1000',
+								token = dominantToken1,
+								dominantToken = dominantToken1,
+								swapToken = swapToken1,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 1000,
+							},
+							['order-1-2'] = {
+								id = 'order-1-2',
+								creator = 'creator-1',
+								quantity = '2000',
+								originalQuantity = '2000',
+								token = dominantToken1,
+								dominantToken = dominantToken1,
+								swapToken = swapToken1,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 2000,
+							},
+						},
+					},
+					[swapToken2] = {
+						pair = { dominantToken1, swapToken2 },
+						orders = {
+							['order-1-3'] = {
+								id = 'order-1-3',
+								creator = 'creator-1',
+								quantity = '3000',
+								originalQuantity = '3000',
+								token = dominantToken1,
+								dominantToken = dominantToken1,
+								swapToken = swapToken2,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 3000,
+							},
+						},
+					},
+				}
+
+				-- Pair 2: dominantToken2 <-> swapToken1
+				_G.Orderbook[dominantToken2] = {
+					[swapToken1] = {
+						pair = { dominantToken2, swapToken1 },
+						orders = {
+							['order-2-1'] = {
+								id = 'order-2-1',
+								creator = 'creator-2',
+								quantity = '4000',
+								originalQuantity = '4000',
+								token = dominantToken2,
+								dominantToken = dominantToken2,
+								swapToken = swapToken1,
+								orderType = 'fixed',
+								status = 'active',
+								dateCreated = 4000,
+							},
+						},
+					},
+				}
+			end)
+
+			it('should filter by both dominantToken and swapToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = dominantToken1,
+						['Swap-Token'] = swapToken1,
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should only return orders from the specific pair
+				assert.are.equal(2, #data.items)
+				-- Verify both orders are present (order not guaranteed)
+				local orderIds = {}
+				for _, order in ipairs(data.items) do
+					orderIds[order.id] = true
+					assert.are.equal(dominantToken1, order.dominantToken)
+					assert.are.equal(swapToken1, order.swapToken)
+				end
+				assert.is_true(orderIds['order-1-1'])
+				assert.is_true(orderIds['order-1-2'])
+			end)
+
+			it('should filter by only dominantToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = dominantToken1,
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return all orders with dominantToken1 across all swapTokens
+				assert.are.equal(3, #data.items)
+				-- Verify all orders have the correct dominantToken
+				for _, order in ipairs(data.items) do
+					assert.are.equal(dominantToken1, order.dominantToken)
+				end
+			end)
+
+			it('should filter by only swapToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Swap-Token'] = swapToken1,
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return all orders with swapToken1 across all dominantTokens
+				assert.are.equal(3, #data.items)
+				-- Verify all orders have the correct swapToken
+				for _, order in ipairs(data.items) do
+					assert.are.equal(swapToken1, order.swapToken)
+				end
+			end)
+
+			it('should return all orders when no token filters are provided', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return all 4 orders
+				assert.are.equal(4, #data.items)
+			end)
+
+			it('should return empty array for non-existent dominantToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = 'NON_EXISTENT_TOKEN_123456789012345678901234',
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return empty array, not all orders
+				assert.are.equal(0, #data.items)
+			end)
+
+			it('should return empty array for non-existent swapToken', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Swap-Token'] = 'NON_EXISTENT_TOKEN_123456789012345678901234',
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return empty array, not all orders
+				assert.are.equal(0, #data.items)
+			end)
+
+			it('should return empty array for non-existent pair', function()
+				local msg = testGlobals.mockMsg({
+					Tags = {
+						['Dominant-Token'] = dominantToken1,
+						['Swap-Token'] = 'NON_EXISTENT_TOKEN_123456789012345678901234',
+					},
+				})
+
+				local result = ucm.getOrdersHandler(msg)
+				local data = json.decode(result)
+
+				-- Should return empty array for non-existent pair
+				assert.are.equal(0, #data.items)
+			end)
+		end)
+	end)
+
+	describe('withdrawFeesHandler', function()
+		local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+
+		before_each(function()
+			testGlobals.resetState()
+			_G.ARIO_TOKEN_PROCESS_ID = 'ario-token-process-1234567890123456789012'
+		end)
+
+		it('should reject non-owner callers', function()
+			_G.AccruedFeesAmount = '1000'
+
+			local msg = testGlobals.mockMsg({
+				From = 'unauthorized-caller-12345678901234567890123',
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local success, err = pcall(function()
+				ucm.withdrawFeesHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('Unauthorized'))
+		end)
+
+		it('should reject when no fees available', function()
+			_G.AccruedFeesAmount = '0'
+
+			local msg = testGlobals.mockMsg({
+				From = PROCESS_OWNER,
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local success, err = pcall(function()
+				ucm.withdrawFeesHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('No fees available'))
+		end)
+
+		it('should successfully withdraw fees for owner', function()
+			_G.AccruedFeesAmount = '5000000' -- 5 ARIO in mARIO
+
+			local msg = testGlobals.mockMsg({
+				From = PROCESS_OWNER,
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local result = ucm.withdrawFeesHandler(msg)
+			local data = json.decode(result)
+
+			-- Should return success response
+			assert.are.equal('Success', data.Status)
+			assert.are.equal('Fees withdrawn', data.Message)
+			assert.are.equal('5000000', data.Amount) -- 5 ARIO
+
+			-- Fees should be reset
+			assert.are.equal('0', _G.AccruedFeesAmount)
+
+			-- Should have sent Transfer message
+			assert.is_true(#_G.sentMessages >= 1)
+			local transferMsg = _G.sentMessages[1]
+			assert.are.equal('Transfer', transferMsg.Action)
+			assert.are.equal(_G.ARIO_TOKEN_PROCESS_ID, transferMsg.Target)
+			assert.are.equal(PROCESS_OWNER, transferMsg.Tags.Recipient)
+			assert.are.equal('5000000', transferMsg.Tags.Quantity) -- 5 ARIO
+		end)
+
+		it('should withdraw exact fee amount', function()
+			_G.AccruedFeesAmount = '123456789' -- Arbitrary amount
+
+			local msg = testGlobals.mockMsg({
+				From = PROCESS_OWNER,
+				Owner = PROCESS_OWNER,
+				Tags = { Action = 'Withdraw-Fees' },
+			})
+
+			local result = ucm.withdrawFeesHandler(msg)
+			local data = json.decode(result)
+
+			assert.are.equal('123456789', data.Amount)
+			assert.are.equal('0', _G.AccruedFeesAmount)
+		end)
+	end)
+
+	describe('whitelistModuleHandler authorization', function()
+		local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+		local VALID_MODULE_ID = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10'
+
+		before_each(function()
+			testGlobals.resetState()
+		end)
+
+		it('should reject non-owner callers', function()
+			local msg = testGlobals.mockMsg({
+				From = 'unauthorized-caller-12345678901234567890123',
+				Owner = PROCESS_OWNER,
+				Tags = {
+					Action = 'Whitelist-Module',
+					['Module-Id'] = VALID_MODULE_ID,
+				},
+			})
+
+			local success, err = pcall(function()
+				ucm.whitelistModuleHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('Unauthorized'))
+		end)
+	end)
+
+	describe('unwhitelistModuleHandler authorization', function()
+		local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+		local VALID_MODULE_ID = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10'
+
+		before_each(function()
+			testGlobals.resetState()
+			-- Pre-whitelist the module for unwhitelist tests
+			_G.WhitelistedModules[VALID_MODULE_ID] = true
+		end)
+
+		it('should reject non-owner callers', function()
+			local msg = testGlobals.mockMsg({
+				From = 'unauthorized-caller-12345678901234567890123',
+				Owner = PROCESS_OWNER,
+				Tags = {
+					Action = 'Unwhitelist-Module',
+					['Module-Id'] = VALID_MODULE_ID,
+				},
+			})
+
+			local success, err = pcall(function()
+				ucm.unwhitelistModuleHandler(msg)
+			end)
+
+			assert.is_false(success)
+			assert.is_truthy(err:match('Unauthorized'))
+			-- Module should still be whitelisted
+			assert.is_true(_G.WhitelistedModules[VALID_MODULE_ID])
 		end)
 	end)
 end)

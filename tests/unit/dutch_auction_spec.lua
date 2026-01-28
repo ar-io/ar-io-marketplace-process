@@ -8,7 +8,7 @@ describe('Dutch Auction', function()
 
 	-- Token IDs for testing
 	local ANT_TOKEN = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10'
-	local ARIO_TOKEN = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+	local ARIO_TOKEN = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE'
 
 	local transfers = {}
 	local sentMessages = {}
@@ -29,9 +29,9 @@ describe('Dutch Auction', function()
 
 		-- Setup ARIO balances for buyers/sellers
 		_G.ARIOBalances = _G.ARIOBalances or {}
-		_G.ARIOBalances['ario-buyer'] = {balance = '1000000000000', orders = {}} -- 1000 ARIO
-		_G.ARIOBalances['ario-buyer-2'] = {balance = '1000000000000', orders = {}} -- 1000 ARIO
-		_G.ARIOBalances['ant-seller'] = {balance = '0', orders = {}}
+		_G.ARIOBalances['ario-buyer'] = { balance = '1000000000', orders = {} } -- 1000 ARIO
+		_G.ARIOBalances['ario-buyer-2'] = { balance = '1000000000', orders = {} } -- 1000 ARIO
+		_G.ARIOBalances['ant-seller'] = { balance = '0', orders = {} }
 
 		-- Wrap ao.send to track messages and transfers (avoid duplicate field error)
 		local wrappedSend = function(msg)
@@ -60,18 +60,25 @@ describe('Dutch Auction', function()
 			ucm.createOrder({
 				orderId = 'ant-sell-order',
 				dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10', -- ANT
-				swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA', -- ARIO
+				swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE', -- ARIO
 				sender = 'ant-seller',
-				quantity = 1,
-				price = '500000000000',
-				createdAt = '1735689600000',
-				blockheight = '123456789',
+				quantity = '1',
+				price = '500000000', -- 500 ARIO
+				createdAt = 1735689600000,
+				blockheight = 123456789,
 				orderType = 'dutch',
-			expirationTime = '1736035200000',
-			minimumPrice = '100000000000',
-			decreaseInterval = '86400000',
-			msg = { Id = 'test-msg-1', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-		})
+				expirationTime = 1736035200000,
+				minimumPrice = '100000000', -- 100 ARIO
+				decreaseInterval = 86400000,
+				msg = {
+					Id = 'test-msg-1',
+					Owner = 'ant-seller',
+					Timestamp = 1735689600000,
+					Data = '',
+					Tags = { Quantity = '1' },
+					From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+				},
+			})
 
 			-- Validate no transfers occurred (just adding to orderbook)
 			assert.are.equal(0, #transfers)
@@ -95,8 +102,8 @@ describe('Dutch Auction', function()
 			assert.are.equal('ant-sell-order', order.id)
 			assert.are.equal('ant-seller', order.creator)
 			assert.are.equal('1', order.quantity)
-			assert.are.equal('500000000000', order.price)
-			assert.are.equal('100000000000', order.minimumPrice)
+			assert.are.equal('500000000', order.price) -- 500 ARIO
+			assert.are.equal('100000000', order.minimumPrice) -- 100 ARIO
 			assert.are.equal('86400000', order.decreaseInterval)
 			assert.are.equal('dutch', order.orderType)
 			assert.is_not_nil(order.decreaseStep)
@@ -118,12 +125,12 @@ describe('Dutch Auction', function()
 							swapToken = ARIO_TOKEN,
 							quantity = '1',
 							originalQuantity = '1',
-							price = '500000000000',
+							price = '500000000', -- 500 ARIO
 							dateCreated = 1735689600000,
 							expirationTime = 1736035200000,
-							minimumPrice = '100000000000',
+							minimumPrice = '100000000', -- 100 ARIO
 							decreaseInterval = '86400000',
-							decreaseStep = '100000000000',
+							decreaseStep = '100000000', -- 100 ARIO per interval
 							orderType = 'dutch',
 							status = 'active',
 						},
@@ -158,16 +165,23 @@ describe('Dutch Auction', function()
 			end
 			ucm.createOrder({
 				orderId = 'ario-buy-order',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA', -- ARIO
+				dominantToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE', -- ARIO
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10', -- ANT
 				sender = 'ario-buyer',
-				quantity = 500000000000, -- Paying 500B ARIO (as number)
-				createdAt = '1735689600000', -- Same timestamp, so price hasn't decreased yet
-			blockheight = '123456790',
-			orderType = 'dutch',
-			requestedOrderId = 'ant-sell-order',
-			msg = { Id = 'test-msg-2', Owner = 'buyer-1', Timestamp = 1735689601000, Data = '', Tags = { Quantity = '500000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-		})
+				quantity = '500000000', -- Paying 500 ARIO
+				createdAt = 1735689600000, -- Same timestamp, so price hasn't decreased yet
+				blockheight = 123456790,
+				orderType = 'dutch',
+				requestedOrderId = 'ant-sell-order',
+				msg = {
+					Id = 'test-msg-2',
+					Owner = 'buyer-1',
+					Timestamp = 1735689601000,
+					Data = '',
+					Tags = { Quantity = '500000000' },
+					From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
+				},
+			})
 
 			print('DEBUG: Orderbook after buy order')
 			local totalPairs = 0
@@ -202,10 +216,10 @@ describe('Dutch Auction', function()
 			assert.are.equal('xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10', transfers[1].target)
 			assert.are.equal('ario-buyer', transfers[1].recipient)
 
-		-- Check that seller received ARIO in internal balance (after 0.5% fee)
-		local expectedArioToSeller = '497500000000' -- 500B * 995/1000 = 497.5B
-		assert.is_not_nil(ARIOBalances['ant-seller'])
-		assert.are.equal(expectedArioToSeller, ARIOBalances['ant-seller'].balance)
+			-- Check that seller received ARIO in internal balance (after 0.5% fee)
+			local expectedArioToSeller = '497500000' -- 500 ARIO * 995/1000 = 497.5 ARIO
+			assert.is_not_nil(ARIOBalances['ant-seller'])
+			assert.are.equal(expectedArioToSeller, ARIOBalances['ant-seller'].balance)
 
 			-- Check ANT quantity
 			assert.are.equal('1', transfers[1].quantity)
@@ -235,12 +249,12 @@ describe('Dutch Auction', function()
 								swapToken = ARIO_TOKEN,
 								quantity = '1',
 								originalQuantity = '1',
-								price = '500000000000',
+								price = '500000000', -- 500 ARIO
 								dateCreated = 1735689600000,
 								expirationTime = 1736035200000,
-								minimumPrice = '100000000000',
+								minimumPrice = '100000000', -- 100 ARIO
 								decreaseInterval = '86400000', -- 1 day
-								decreaseStep = '100000000000', -- Decreases by 100B per day
+								decreaseStep = '100000000', -- Decreases by 100 ARIO per day
 								orderType = 'dutch',
 								status = 'active',
 							},
@@ -258,28 +272,35 @@ describe('Dutch Auction', function()
 			-- New price: 500B - 100B = 400B
 			ucm.createOrder({
 				orderId = 'ario-buy-order-2',
-				dominantToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+				dominantToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 				swapToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
 				sender = 'ario-buyer-2',
-				quantity = 400000000000, -- Paying reduced price (as number)
-				createdAt = '1735776000000', -- 1 day later (86400000ms)
-			blockheight = '123456791',
-			orderType = 'dutch',
-			requestedOrderId = 'ant-sell-order',
-			msg = { Id = 'test-msg-3', Owner = 'buyer-2', Timestamp = 1735689602000, Data = '', Tags = { Quantity = '400000000000' }, From = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA' },
-		})
+				quantity = '400000000', -- Paying 400 ARIO (reduced price)
+				createdAt = 1735776000000, -- 1 day later (86400000ms)
+				blockheight = 123456791,
+				orderType = 'dutch',
+				requestedOrderId = 'ant-sell-order',
+				msg = {
+					Id = 'test-msg-3',
+					Owner = 'buyer-2',
+					Timestamp = 1735689602000,
+					Data = '',
+					Tags = { Quantity = '400000000' },
+					From = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
+				},
+			})
 
-		-- Validate transfers occurred (only ANT transfer, ARIO goes to internal balance)
-		assert.are.equal(1, #transfers)
+			-- Validate transfers occurred (only ANT transfer, ARIO goes to internal balance)
+			assert.are.equal(1, #transfers)
 
-		-- Buyer should receive 1 ANT
-		assert.are.equal('1', transfers[1].quantity)
+			-- Buyer should receive 1 ANT
+			assert.are.equal('1', transfers[1].quantity)
 
-	-- Check that seller received ARIO in internal balance (after 0.5% fee)
-	local expectedArioToSeller = '398000000000' -- 400B * 995/1000 = 398B
-	assert.is_not_nil(ARIOBalances['ant-seller'])
-	assert.are.equal(expectedArioToSeller, ARIOBalances['ant-seller'].balance)
-	end)
+			-- Check that seller received ARIO in internal balance (after 0.5% fee)
+			local expectedArioToSeller = '398000000' -- 400 ARIO * 995/1000 = 398 ARIO
+			assert.is_not_nil(ARIOBalances['ant-seller'])
+			assert.are.equal(expectedArioToSeller, ARIOBalances['ant-seller'].balance)
+		end)
 	end)
 
 	describe('Dutch auction validation', function()
@@ -288,23 +309,30 @@ describe('Dutch Auction', function()
 				ucm.createOrder({
 					orderId = 'invalid-order',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 					sender = 'test-sender',
-					quantity = 1,
-					price = '500000000000',
-					createdAt = '1735689600000',
-					blockheight = '123456789',
+					quantity = '1',
+					price = '500000000', -- 500 ARIO
+					createdAt = 1735689600000,
+					blockheight = 123456789,
 					orderType = 'dutch',
-				expirationTime = '1736035200000',
-				-- minimumPrice missing
-				decreaseInterval = '86400000',
-				msg = { Id = 'test-msg-4', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-			})
+					expirationTime = 1736035200000,
+					-- minimumPrice missing
+					decreaseInterval = 86400000,
+					msg = {
+						Id = 'test-msg-4',
+						Owner = 'ant-seller',
+						Timestamp = 1735689600000,
+						Data = '',
+						Tags = { Quantity = '1' },
+						From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					},
+				})
 			end)
 
-		-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-		assert.is_true(success)
+			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+			assert.is_true(success)
 			assert.is_true(#sentMessages >= 2, 'Should have at least two messages (refund + error)')
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
@@ -315,26 +343,85 @@ describe('Dutch Auction', function()
 				ucm.createOrder({
 					orderId = 'invalid-order-2',
 					dominantToken = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
-					swapToken = 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
+					swapToken = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
 					sender = 'test-sender',
-					quantity = 1,
-					price = '500000000000',
-					createdAt = '1735689600000',
-					blockheight = '123456789',
+					quantity = '1',
+					price = '500000000', -- 500 ARIO
+					createdAt = 1735689600000,
+					blockheight = 123456789,
 					orderType = 'dutch',
-				expirationTime = '1736035200000',
-				minimumPrice = '100000000000',
-				-- decreaseInterval missing
-				msg = { Id = 'test-msg-5', Owner = 'ant-seller', Timestamp = 1735689600000, Data = '', Tags = { Quantity = '1' }, From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10' },
-			})
+					expirationTime = 1736035200000,
+					minimumPrice = '100000000', -- 100 ARIO
+					-- decreaseInterval missing
+					msg = {
+						Id = 'test-msg-5',
+						Owner = 'ant-seller',
+						Timestamp = 1735689600000,
+						Data = '',
+						Tags = { Quantity = '1' },
+						From = 'xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10',
+					},
+				})
 			end)
 
-		-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
-		-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
-		assert.is_true(success)
+			-- Dutch auction validation sends Transfer (refund) first, then Validation-Error
+			-- Note: refundAndNotifyError no longer throws, so pcall returns true (but messages are still sent)
+			assert.is_true(success)
 			assert.is_true(#sentMessages >= 2, 'Should have at least two messages (refund + error)')
 			assert.are.equal('Transfer', sentMessages[1].Action)
 			assert.are.equal('Validation-Error', sentMessages[2].Action)
+		end)
+	end)
+
+	describe('pruneExpiredAuction', function()
+		local dutch_auction = require('dutch_auction')
+
+		it('should mark order as expired and remove from orderbook', function()
+			_G.OrderIndex = {}
+			_G.Orderbook = {
+				['ant-token'] = {
+					['ario-token'] = {
+						orders = {
+							['dutch-123'] = {
+								id = 'dutch-123',
+								status = 'active',
+								expirationTime = 2000,
+								token = 'ant-token',
+								creator = 'test-creator',
+								quantity = '1',
+								dominantToken = 'ant-token',
+								swapToken = 'ario-token',
+								orderType = 'dutch',
+							},
+						},
+					},
+				},
+			}
+
+			_G.OrderIndex['dutch-123'] = {
+				dominantToken = 'ant-token',
+				swapToken = 'ario-token',
+			}
+
+			local order = _G.Orderbook['ant-token']['ario-token'].orders['dutch-123']
+			local pair = _G.Orderbook['ant-token']['ario-token']
+
+			dutch_auction.pruneExpiredAuction(
+				order,
+				pair,
+				'ant-token',
+				'ario-token',
+				{ Id = 'prune-msg', From = 'test', Owner = 'test', Timestamp = 2000, Tags = {}, Data = '' }
+			)
+
+			-- Order should be marked as expired
+			assert.are.equal('expired', order.status)
+			assert.are.equal(2000, order.endedAt)
+
+			-- Order should be removed from index
+			assert.is_nil(_G.OrderIndex['dutch-123'])
+			-- Pair should be pruned (empty) - this means the order was removed
+			assert.is_nil(_G.Orderbook['ant-token'])
 		end)
 	end)
 end)

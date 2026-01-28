@@ -13,7 +13,7 @@ require('types')
 
 -- Global constants
 ---@type TokenId Process ID for ARIO token (can be overridden before loading process)
-ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID or 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA'
+ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID or 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE'
 
 ---@type Address Treasury address for fee collection
 TREASURY_ADDRESS = TREASURY_ADDRESS or ao.id
@@ -29,19 +29,19 @@ Orderbook = Orderbook or {}
 ---@type table<OrderId, {dominantToken: TokenId, swapToken: TokenId}> Dictionary mapping orderId to pair location
 OrderIndex = OrderIndex or {}
 
-
 ---@type table<IntentId, Intent> Dictionary mapping intentId to intent data
 Intents = Intents or {}
 
 ---@type IntentId Global counter for intent IDs (string integer)
-IntentCounter = IntentCounter or "0"
+IntentCounter = IntentCounter or '0'
 
 -- Pruning schedule tracking
 ---@type table<string, number|nil> Pruning schedule configuration
-Pruning = Pruning or {
-	nextScheduledOrderbookPruning = nil, -- timestamp of next scheduled prune
-	nextScheduledIntentsPruning = nil, -- timestamp of next scheduled intents pruning
-}
+Pruning = Pruning
+	or {
+		nextScheduledOrderbookPruning = nil, -- timestamp of next scheduled prune
+		nextScheduledIntentsPruning = nil, -- timestamp of next scheduled intents pruning
+	}
 
 -- Process metadata
 ---@type string Process name
@@ -72,9 +72,7 @@ AccruedFeesAmount = AccruedFeesAmount or '0'
 ---@type table<Address, {balance: BalanceAmount, orders: table<OrderId, BalanceAmount>}> Dictionary mapping address to account data
 ARIOBalances = ARIOBalances or {}
 
-
 ---@type table<string, boolean> Dictionary mapping module name to boolean indicating if the module whitelisted
 WhitelistedModules = WhitelistedModules or {}
-
 
 return {}

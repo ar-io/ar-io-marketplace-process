@@ -31,7 +31,7 @@ end
 -- Force-load all source modules for coverage tracking
 print('\nForce-loading modules for coverage...')
 local modules_to_load = {
-	'utils',  -- Load utils FIRST so we can mock it before other modules use it
+	'utils', -- Load utils FIRST so we can mock it before other modules use it
 	'types',
 	'intents',
 	'ucm',
@@ -47,24 +47,25 @@ for _, module_name in ipairs(modules_to_load) do
 		print('  ✓ Loaded: ' .. module_name)
 		-- Add mocks to utils module after loading
 		if module_name == 'utils' and type(result) == 'table' then
-			result.isValidAddress = result.isValidAddress or function(address, allowUnsafe)
-				-- Simple mock: just check if address is a string and non-empty
-				if allowUnsafe then
-					return type(address) == 'string' and #address > 0
+			result.isValidAddress = result.isValidAddress
+				or function(address, allowUnsafe)
+					-- Simple mock: just check if address is a string and non-empty
+					if allowUnsafe then
+						return type(address) == 'string' and #address > 0
+					end
+					return type(address) == 'string' and #address > 40
 				end
-				return type(address) == 'string' and #address > 40
-			end
 			print('  ✓ Added isValidAddress mock to utils')
 
-		-- Mock Send to track messages for test assertions (when utils.Send is called)
-		local mockSend = function(_msg, data)
-			-- Validate message first (use the real validator)
-			if result.validateMessage then
-				local validateSuccess, err = pcall(result.validateMessage, data)
-				if not validateSuccess then
-					error(err)
+			-- Mock Send to track messages for test assertions (when utils.Send is called)
+			local mockSend = function(_msg, data)
+				-- Validate message first (use the real validator)
+				if result.validateMessage then
+					local validateSuccess, err = pcall(result.validateMessage, data)
+					if not validateSuccess then
+						error(err)
+					end
 				end
-			end
 
 				-- Track the message in global array
 				-- Create a copy of data with all fields preserved
@@ -99,7 +100,7 @@ for _, module_name in ipairs(modules_to_load) do
 				return data
 			end
 
-			-- Apply mock to both the module return value and global utils
+			-- Apply mocks to both the module return value and global utils
 			result.Send = mockSend
 			if _G.utils then
 				_G.utils.Send = mockSend

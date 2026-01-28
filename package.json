@@ -11,7 +11,7 @@
     "test:integration": "pnpm build && tsx --test --experimental-wasm-memory64 tests/integration/*.test.ts",
     "lint:fix": "luacheck src tests/unit && biome check --write --unsafe",
     "lint:check": "luacheck src tests/unit && biome check --unsafe",
-    "format:fix": "biome format --write",
+    "format:fix": "biome format --write && stylua src tests/unit || exit 0",
     "format:check": "biome format",
     "clean": "./scripts/clean.sh",
     "spawn": "tsx scripts/spawn-marketplace-process.ts",

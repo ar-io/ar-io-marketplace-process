@@ -49,9 +49,14 @@ function ucm.scheduleNextOrderbookPruning(timestamp)
 		Pruning = { nextScheduledOrderbookPruning = nil }
 	end
 
-	-- Schedule if no prune scheduled or if this one is sooner
-	if not Pruning.nextScheduledOrderbookPruning or timestamp < Pruning.nextScheduledOrderbookPruning then
+	if not Pruning.nextScheduledOrderbookPruning then
 		Pruning.nextScheduledOrderbookPruning = timestamp
+	end
+
+	-- Schedule if no prune scheduled or if this one is sooner
+	if timestamp < Pruning.nextScheduledOrderbookPruning then
+		Pruning.nextScheduledOrderbookPruning = timestamp
+		print('Scheduled pruning for ' .. tostring(timestamp))
 	end
 end
 
@@ -62,11 +67,14 @@ end
 function ucm.pruneOrderbook(now, msg)
 	-- Return early if no pruning is scheduled or not time yet
 	if not Pruning or not Pruning.nextScheduledOrderbookPruning or now < Pruning.nextScheduledOrderbookPruning then
+		print('No pruning scheduled or not time yet')
 		return
 	end
 
 	-- Track the next earliest expiration for rescheduling
 	local nextExpiration = nil
+
+	print('Pruning orderbook')
 
 	-- Iterate through all orders and update expired ones
 	for dominantToken, swapTokens in pairs(Orderbook) do
@@ -81,13 +89,13 @@ function ucm.pruneOrderbook(now, msg)
 						if order.orderType == constants.ORDER_TYPES.ENGLISH then
 							english_auction.pruneExpiredAuction(order, pair, dominantToken, swapToken, now, msg)
 						elseif order.orderType == constants.ORDER_TYPES.DUTCH then
-							dutch_auction.pruneExpiredAuction(order)
+							dutch_auction.pruneExpiredAuction(order, pair, dominantToken, swapToken, msg)
 						else
 							-- Fixed price or other order types
-							fixed_price.pruneExpiredOrder(order)
+							fixed_price.pruneExpiredOrder(order, pair, dominantToken, swapToken, msg)
 						end
 					else
-						-- Track the next expiration
+						-- Track the next earliest expiration (minimum timestamp)
 						if not nextExpiration or expirationTime < nextExpiration then
 							nextExpiration = expirationTime
 						end
@@ -97,7 +105,7 @@ function ucm.pruneOrderbook(now, msg)
 		end
 	end
 
-	-- Schedule the next prune
+	-- Schedule the next prune for the earliest remaining expiration
 	Pruning.nextScheduledOrderbookPruning = nextExpiration
 end
 
@@ -222,7 +230,12 @@ function ucm.validateOrderParams(args)
 	-- 2. Validate ARIO is in trade (marketplace requirement)
 	local isArioValid, arioError = utils.validateArioInTrade(args.dominantToken, args.swapToken)
 	if not isArioValid then
-		utils.refundAndNotifyError(args.msg, args.sender, arioError or 'Invalid trade - ARIO must be involved', 'Order-Error')
+		utils.refundAndNotifyError(
+			args.msg,
+			args.sender,
+			arioError or 'Invalid trade - ARIO must be involved',
+			'Order-Error'
+		)
 		return
 	end
 
@@ -235,7 +248,11 @@ function ucm.validateOrderParams(args)
 	-- 4. Check order type is supported
 	if
 		not args.orderType
-		or (args.orderType ~= constants.ORDER_TYPES.FIXED and args.orderType ~= constants.ORDER_TYPES.DUTCH and args.orderType ~= constants.ORDER_TYPES.ENGLISH)
+		or (
+			args.orderType ~= constants.ORDER_TYPES.FIXED
+			and args.orderType ~= constants.ORDER_TYPES.DUTCH
+			and args.orderType ~= constants.ORDER_TYPES.ENGLISH
+		)
 	then
 		utils.refundAndNotifyError(args.msg, args.sender, 'Order type must be "fixed" or "dutch" or "english"')
 		return
@@ -400,7 +417,6 @@ function ucm.createOrder(args)
 		ucm.handleArioOrderAuctions(args, validPair, pair)
 		return
 	end
-
 end
 
 --- Handler: Create-Order (for ARIO orders via direct message using internal balance)
@@ -507,7 +523,10 @@ function ucm.cancelOrderHandler(msg)
 
 	-- Block cancellation of English auctions that have bids
 	assert(
-		not (currentOrderEntry.orderType == constants.ORDER_TYPES.ENGLISH and english_auction.getHighestBid(currentOrderEntry.id)),
+		not (
+				currentOrderEntry.orderType == constants.ORDER_TYPES.ENGLISH
+				and english_auction.getHighestBid(currentOrderEntry.id)
+			),
 		'You cannot cancel an English auction that has bids'
 	)
 
@@ -619,6 +638,11 @@ function ucm.infoHandler(_msg)
 			accruedFees = tostring(utils.getAccruedFees()),
 			arioTokenProcess = ARIO_TOKEN_PROCESS_ID,
 		},
+		fees = {
+			listingFeePerHour = constants.FEE.LISTING_FEE_ARIO,
+			saleTaxNumerator = constants.FEE.AMOUNT_NUMERATOR,
+			saleTaxDenominator = constants.FEE.AMOUNT_DENOMINATOR,
+		},
 		whitelistedModules = utils.keys(WhitelistedModules),
 	})
 end
@@ -657,7 +681,7 @@ function ucm.withdrawFeesHandler(msg)
 	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can withdraw fees')
 
 	local amount = utils.getAccruedFees()
-	assert(amount and amount > 0, 'No fees available to withdraw')
+	assert(amount and bint(amount) > 0, 'No fees available to withdraw')
 
 	-- transfer fees to requester
 	-- Note: Withdraw-Fees does not use intent tracking as it's an admin operation
@@ -741,7 +765,7 @@ function ucm.getOrdersHandler(msg)
 
 	local ordersArray = {}
 
-	-- If trading pair is specified, only look in that specific pair
+	-- If both dominantToken and swapToken are specified, only look in that specific pair
 	if dominantToken and swapToken then
 		local pair = ucm.getPair(dominantToken, swapToken)
 		if pair then
@@ -761,8 +785,48 @@ function ucm.getOrdersHandler(msg)
 				end
 			end
 		end
+	-- If only dominantToken is specified, search all swapTokens under that dominantToken
+	elseif dominantToken then
+		local swapTokens = Orderbook[dominantToken]
+		if swapTokens then
+			for _, pair in pairs(swapTokens) do
+				if idsFilter then
+					for orderId, order in pairs(pair.orders) do
+						if idsFilter[orderId] then
+							table.insert(ordersArray, order)
+						end
+					end
+				else
+					for _, order in pairs(pair.orders) do
+						if ucm.matchesStatusFilter(order, statusFilter) then
+							table.insert(ordersArray, order)
+						end
+					end
+				end
+			end
+		end
+	-- If only swapToken is specified, search that swapToken across all dominantTokens
+	elseif swapToken then
+		for _, swapTokens in pairs(Orderbook) do
+			local pair = swapTokens[swapToken]
+			if pair then
+				if idsFilter then
+					for orderId, order in pairs(pair.orders) do
+						if idsFilter[orderId] then
+							table.insert(ordersArray, order)
+						end
+					end
+				else
+					for _, order in pairs(pair.orders) do
+						if ucm.matchesStatusFilter(order, statusFilter) then
+							table.insert(ordersArray, order)
+						end
+					end
+				end
+			end
+		end
 	else
-		-- No pair specified, search all pairs
+		-- Neither dominantToken nor swapToken specified, search all pairs
 		-- If specific IDs are requested
 		if idsFilter then
 			-- Search for orders by ID
@@ -820,13 +884,15 @@ function ucm.unwhitelistModule(moduleId)
 end
 
 function ucm.whitelistModuleHandler(msg)
+	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can whitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
-    ucm.whitelistModule(moduleId)
+	ucm.whitelistModule(moduleId)
 	return json.encode(WhitelistedModules)
 end
 
 function ucm.unwhitelistModuleHandler(msg)
+	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can unwhitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
 	ucm.unwhitelistModule(moduleId)
