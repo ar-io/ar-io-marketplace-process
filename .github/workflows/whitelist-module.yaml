@@ -1,4 +1,4 @@
-name: Marketplace VAOT Proposal
+name: Marketplace VAOT Proposal Whitelist Module
 
 concurrency:
     group: ${{ github.ref_name }}
