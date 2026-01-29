@@ -1,0 +1,123 @@
+name: Marketplace VAOT Proposal
+
+concurrency:
+    group: ${{ github.ref_name }}
+    cancel-in-progress: true
+
+on:
+    workflow_dispatch:
+        inputs:
+            module-id:
+                type: string
+                description: "The ID of the module to whitelist"
+                required: true
+
+jobs:
+    propose-whitelist-module:
+        runs-on: ubuntu-latest
+        environment: ${{ github.ref_name }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+            - uses: actions/setup-node@v4.0.2
+              with:
+                  node-version-file: ".nvmrc"
+                  cache: "pnpm"
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm propose-whitelist
+              env:
+                  WALLET: ${{ secrets.WALLET }}
+                  MARKETPLACE_PROCESS_ID: ${{ vars.MARKETPLACE_PROCESS_ID }}
+                  VAOT_ID: ${{ vars.VAOT_ID }}
+                  MODULE_ID: ${{ inputs.module-id }}
+            - name: Notify Success
+              if: success()
+              uses: rtCamp/action-slack-notify@v2.3.0
+              env:
+                  SLACK_COLOR: ${{ job.status }}
+                  SLACK_TITLE: Marketplace Process Eval Proposed!
+                  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+                  SLACK_CUSTOM_PAYLOAD: |
+                      {
+                        "attachments": [{
+                          "fallback": "Marketplace Process Whitelist Module Eval Proposed!",
+                          "color": "good",
+                          "title": "Details",
+                          "text": "The Marketplace ${{ github.ref_name == 'main' && 'Testnet' || 'Devnet' }} Process has an Eval update Proposal!",
+                          "fields": [{
+                            "title": "Network",
+                            "value": "${{ github.ref_name == 'main' && 'testnet' || 'devnet' }}",
+                            "short": true
+                          },
+                          {
+                            "title": "Process ID",
+                            "value": "${{ vars.MARKETPLACE_PROCESS_ID }}",
+                            "short": true
+                          },
+                          {
+                            "title": "Module ID",
+                            "value": "${{ inputs.module-id }}",
+                            "short": true
+                          },
+                          {
+                            "title": "View on scan.ar.io",
+                            "value": "https://scan.ar.io/#/entity/${{ vars.MARKETPLACE_PROCESS_ID }}?tab=source-code",
+                            "short": false
+                          },
+                          {
+                            "title": "Vote on this proposal in VAOT",
+                            "value": "https://vaot.ar.io/#/${{ vars.VAOT_ID }}",
+                            "short": false
+                          },
+                          {
+                            "title": "Commit",
+                            "value": "<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                          }
+                          ]
+                        }]
+                      }
+
+            - name: Notify Failure
+              if: failure()
+              uses: rtCamp/action-slack-notify@v2
+              env:
+                  SLACK_COLOR: danger
+                  SLACK_TITLE: Marketplace Process Eval Proposal FAILED!
+                  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+                  SLACK_CUSTOM_PAYLOAD: |
+                      {
+                        "text": "Marketplace Process Whitelist Module Eval Proposal Failed!",
+                        "attachments": [{
+                          "fallback": "Failed to propose Whitelist Module Eval update to Marketplace Process!",
+                          "color": "danger",
+                          "title": "Details",
+                          "text": "The Marketplace ${{ github.ref_name == 'main' && 'Testnet' || 'Devnet' }} Process FAILED to create a Whitelist Module Eval update Proposal!",
+                          "fields": [{
+                            "title": "Network",
+                            "value": "${{ github.ref_name == 'main' && 'testnet' || 'devnet' }}",
+                            "short": true
+                          },
+                          {
+                            "title": "Process ID",
+                            "value": "${{ vars.MARKETPLACE_PROCESS_ID }}",
+                            "short": true
+                          },
+                          {
+                            "title": "Module ID",
+                            "value": "${{ inputs.module-id }}",
+                            "short": true
+                          },
+                          {
+                            "title": "GitHub Action",
+                            "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                            "short": false
+                          },
+                          {
+                            "title": "Commit",
+                            "value": "<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                          }
+                          ]
+                        }]
+                      }
