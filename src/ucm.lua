@@ -38,7 +38,7 @@ function ucm.getOrderById(orderId)
 end
 
 --- Schedule the next orderbook pruning if the given timestamp is sooner than the current scheduled time
---- @param timestamp number The timestamp to schedule pruning for
+--- @param timestamp number|nil The timestamp to schedule pruning for
 function ucm.scheduleNextOrderbookPruning(timestamp)
 	if not timestamp then
 		return
