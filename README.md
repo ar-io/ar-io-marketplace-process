@@ -1,4 +1,4 @@
-# AR.IO Marketplace AO Process
+# ar.io Marketplace AO Process
 
 ## Overview
 
