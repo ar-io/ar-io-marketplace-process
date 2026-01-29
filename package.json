@@ -15,7 +15,8 @@
     "format:check": "biome format",
     "clean": "./scripts/clean.sh",
     "spawn": "tsx scripts/spawn-marketplace-process.ts",
-		"observe": "tsx scripts/observe-marketplace-state.ts"
+		"observe": "tsx scripts/observe-marketplace-state.ts",
+    "propose-eval": "tsx scripts/propose-eval.ts"
   },
   "devDependencies": {
     "@ar.io/sdk": "3.23.0-alpha.5",

@@ -19,7 +19,8 @@ source = {
 dependencies = {
   "lua = 5.3",
   "busted >= 2.0.0",
-  "luacov >= 0.15.0"
+  "luacov >= 0.15.0",
+  "luacheck >= 1.0.0"
 }
 
 build = {
