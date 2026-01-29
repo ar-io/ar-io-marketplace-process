@@ -678,7 +678,7 @@ end
 --- @return string jsonResponse JSON-encoded response with status and withdrawn amount
 function ucm.withdrawFeesHandler(msg)
 	-- Only the process owner can withdraw fees
-	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can withdraw fees')
+	assert(msg.From == Owner, 'Unauthorized: only process owner can withdraw fees')
 
 	local amount = utils.getAccruedFees()
 	assert(amount and bint(amount) > 0, 'No fees available to withdraw')
@@ -884,7 +884,7 @@ function ucm.unwhitelistModule(moduleId)
 end
 
 function ucm.whitelistModuleHandler(msg)
-	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can whitelist modules')
+	assert(msg.From == Owner, 'Unauthorized: only process owner can whitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
 	ucm.whitelistModule(moduleId)
@@ -892,7 +892,7 @@ function ucm.whitelistModuleHandler(msg)
 end
 
 function ucm.unwhitelistModuleHandler(msg)
-	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can unwhitelist modules')
+	assert(msg.From == Owner, 'Unauthorized: only process owner can unwhitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
 	ucm.unwhitelistModule(moduleId)

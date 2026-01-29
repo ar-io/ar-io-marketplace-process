@@ -134,7 +134,7 @@ export const AO_LOADER_OPTIONS: AoLoaderOptions = {
 export const DEFAULT_HANDLE_OPTIONS: DefaultHandleOptions = {
   Id: STUB_MESSAGE_ID,
   Target: PROCESS_ID,
-  // Module: 'ANT',
+  Module: PROCESS_ID, // just a stub
   ['Block-Height']: STUB_BLOCK_HEIGHT,
   // important to set the address to match the FROM address so that that `Authority` check passes. Else the `isTrusted` with throw an error.
   Owner: PROCESS_OWNER,
@@ -165,6 +165,9 @@ export const TEST_DATA_ITEM_SIGNER = createDataItemSigner(TEST_WALLET);
 
 // Test sender address (matches PROCESS_OWNER)
 export const TEST_SENDER = PROCESS_OWNER;
+
+// Non-owner address for authorization tests
+export const UNAUTHORIZED_SENDER = 'unauthorized-user-'.padEnd(43, '9');
 
 // Test token/process IDs
 export const TEST_ANT_TOKEN = 'test-ant-token-'.padEnd(43, '1');

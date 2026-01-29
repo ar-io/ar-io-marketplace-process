@@ -11,6 +11,7 @@ import {
   TEST_ARIO_PROCESS,
   TEST_SENDER,
   TEST_SIGNER,
+  UNAUTHORIZED_SENDER,
 } from '../utils/constants.js';
 import { LocalAO, createLocalProcess } from '../utils/local_ao.js';
 import { MarketplaceProcess } from '../utils/marketplace_process.js';
@@ -461,6 +462,123 @@ describe('Module Whitelist Management', () => {
           TEST_ANT_MODULE_NOT_WHITELISTED,
         ),
         'Second module should still be whitelisted',
+      );
+    });
+  });
+
+  describe('Authorization', () => {
+    it('should reject Whitelist-Module from non-owner', async () => {
+      // Attempt to whitelist a module from an unauthorized user
+      const msgId = await ao_mock.message({
+        processId: marketplaceProcess.process.processId,
+        tags: [
+          { name: 'Action', value: 'Whitelist-Module' },
+          { name: 'Module-Id', value: TEST_ANT_MODULE_WHITELISTED },
+        ],
+        data: '',
+        From: UNAUTHORIZED_SENDER,
+      });
+
+      const result = await ao_mock.result({
+        message: msgId,
+        process: marketplaceProcess.process.processId,
+      });
+
+      // Should have an error
+      assert.ok(result.Error, 'Should have an error for unauthorized access');
+      assert.ok(
+        result.Error.includes('Unauthorized'),
+        'Error should mention unauthorized: ' + result.Error,
+      );
+
+      // Verify module was NOT added
+      const infoResult = await marketplaceProcess.info();
+      assert.ok(
+        !infoResult.whitelistedModules.includes(TEST_ANT_MODULE_WHITELISTED),
+        'Module should NOT be whitelisted by unauthorized user',
+      );
+    });
+
+    it('should reject Unwhitelist-Module from non-owner', async () => {
+      // First, add a module as the owner
+      await marketplaceProcess.process.send({
+        tags: [
+          { name: 'Action', value: 'Whitelist-Module' },
+          { name: 'Module-Id', value: TEST_ANT_MODULE_WHITELISTED },
+        ],
+        signer: TEST_SIGNER,
+      });
+
+      // Verify module was added
+      const infoBeforeResult = await marketplaceProcess.info();
+      assert.ok(
+        infoBeforeResult.whitelistedModules.includes(
+          TEST_ANT_MODULE_WHITELISTED,
+        ),
+        'Module should be whitelisted first',
+      );
+
+      // Attempt to unwhitelist from an unauthorized user
+      const msgId = await ao_mock.message({
+        processId: marketplaceProcess.process.processId,
+        tags: [
+          { name: 'Action', value: 'Unwhitelist-Module' },
+          { name: 'Module-Id', value: TEST_ANT_MODULE_WHITELISTED },
+        ],
+        data: '',
+        From: UNAUTHORIZED_SENDER,
+      });
+
+      const result = await ao_mock.result({
+        message: msgId,
+        process: marketplaceProcess.process.processId,
+      });
+
+      // Should have an error
+      assert.ok(result.Error, 'Should have an error for unauthorized access');
+      assert.ok(
+        result.Error.includes('Unauthorized'),
+        'Error should mention unauthorized: ' + result.Error,
+      );
+
+      // Verify module was NOT removed
+      const infoAfterResult = await marketplaceProcess.info();
+      assert.ok(
+        infoAfterResult.whitelistedModules.includes(
+          TEST_ANT_MODULE_WHITELISTED,
+        ),
+        'Module should still be whitelisted after unauthorized unwhitelist attempt',
+      );
+    });
+
+    it('should allow Whitelist-Module from process owner', async () => {
+      // Add module as the owner using raw message with explicit From
+      const msgId = await ao_mock.message({
+        processId: marketplaceProcess.process.processId,
+        tags: [
+          { name: 'Action', value: 'Whitelist-Module' },
+          { name: 'Module-Id', value: TEST_ANT_MODULE_WHITELISTED },
+        ],
+        data: '',
+        From: PROCESS_OWNER,
+      });
+
+      const result = await ao_mock.result({
+        message: msgId,
+        process: marketplaceProcess.process.processId,
+      });
+
+      // Should NOT have an error
+      assert.ok(
+        !result.Error,
+        'Should not have an error for owner: ' + result.Error,
+      );
+
+      // Verify module was added
+      const infoResult = await marketplaceProcess.info();
+      assert.ok(
+        infoResult.whitelistedModules.includes(TEST_ANT_MODULE_WHITELISTED),
+        'Module should be whitelisted by owner',
       );
     });
   });
