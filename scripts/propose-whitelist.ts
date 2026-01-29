@@ -61,6 +61,7 @@ async function main() {
   // Read the bundled Lua code
   const evalString = `
  	Send({
+  		Target = "${marketplaceProcessId}",
 		Action = "Whitelist-Module",
 		["Module-Id"] = "${moduleId}",
 	}) 
