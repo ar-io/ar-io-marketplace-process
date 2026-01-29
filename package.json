@@ -17,6 +17,7 @@
     "spawn": "tsx scripts/spawn-marketplace-process.ts",
     "observe": "tsx scripts/observe-marketplace-state.ts",
     "propose-eval": "tsx scripts/propose-eval.ts",
+		"propose-whitelist-module": "tsx scripts/propose-whitelist.ts",
     "prepare": "husky"
   },
   "lint-staged": {
