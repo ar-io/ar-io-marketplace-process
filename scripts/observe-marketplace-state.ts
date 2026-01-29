@@ -1,19 +1,19 @@
 import {
-  ARIO,
   ANT,
-  AOProcess,
-  ArNSMarketplaceWrite,
   ANTRegistry,
-  ARIO_MAINNET_PROCESS_ID,
-  createAoSigner,
   ANT_REGISTRY_ID,
+  AOProcess,
+  ARIO,
+  ARIO_MAINNET_PROCESS_ID,
   AoANTInfo,
+  ArNSMarketplaceWrite,
+  createAoSigner,
 } from '@ar.io/sdk';
 import { connect } from '@permaweb/aoconnect';
-import { TEST_SIGNER } from '../tests/utils/constants.js';
-import plimit from 'p-limit';
 import kleur from 'kleur';
 import ora, { type Ora } from 'ora';
+import plimit from 'p-limit';
+import { TEST_SIGNER } from '../tests/utils/constants.js';
 
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
@@ -301,9 +301,7 @@ async function getANTInfo(
   }
 }
 
-async function checkCuStatus(
-  antId: string,
-): Promise<{
+async function checkCuStatus(antId: string): Promise<{
   error: boolean;
   cuName: string;
   status: number;
