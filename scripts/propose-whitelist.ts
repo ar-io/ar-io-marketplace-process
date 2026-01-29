@@ -5,7 +5,7 @@ import { connect, createDataItemSigner } from '@permaweb/aoconnect';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const TX_ID_REGEX = /^[a-zA-Z0-9\-_s+]{43}$/;
+const TX_ID_REGEX = /^[a-zA-Z0-9\-_]{43}$/;
 
 // TODO: this script could be on the ant-process repo and tie into the existing one for publishing new versions, but for the moment
 // its here to avoid muddying the waters with another repo.

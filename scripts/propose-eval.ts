@@ -5,7 +5,7 @@ import { connect, createDataItemSigner } from '@permaweb/aoconnect';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const TX_ID_REGEX = /^[a-zA-Z0-9\-_s+]{43}$/;
+const TX_ID_REGEX = /^[a-zA-Z0-9\-_]{43}$/;
 
 /*
 Example usage:
