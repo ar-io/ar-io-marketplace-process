@@ -11,12 +11,21 @@
     "test:integration": "pnpm build && tsx --test --experimental-wasm-memory64 tests/integration/*.test.ts",
     "lint:fix": "luacheck src tests/unit && biome check --write --unsafe",
     "lint:check": "luacheck src tests/unit && biome check --unsafe",
-    "format:fix": "biome check --write --unsafe && stylua src tests/unit || exit 0",
-    "format:check": "biome format",
+    "format:fix": "biome check --write --unsafe --no-errors-on-unmatched && stylua src tests/unit || exit 0",
+    "format:check": "biome format --no-errors-on-unmatched",
     "clean": "./scripts/clean.sh",
     "spawn": "tsx scripts/spawn-marketplace-process.ts",
-		"observe": "tsx scripts/observe-marketplace-state.ts",
-    "propose-eval": "tsx scripts/propose-eval.ts"
+    "observe": "tsx scripts/observe-marketplace-state.ts",
+    "propose-eval": "tsx scripts/propose-eval.ts",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json}": [
+      "biome check --write --unsafe --no-errors-on-unmatched"
+    ],
+    "*.lua": [
+      "stylua"
+    ]
   },
   "devDependencies": {
     "@ar.io/sdk": "3.23.0-alpha.5",
@@ -39,6 +48,7 @@
     "eslint": "^9.25.1",
     "eslint-plugin-header": "^3.1.1",
     "husky": "^9.1.7",
+    "lint-staged": "^15.2.0",
     "kleur": "^4.1.5",
     "ora": "^9.1.0",
     "p-limit": "^7.2.0",
