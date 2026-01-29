@@ -622,6 +622,7 @@ function ucm.infoHandler(_msg)
 
 	return json.encode({
 		name = Name,
+		owner = Owner,
 		processId = ao.id,
 		activity = {
 			totalOrders = totalOrders,
