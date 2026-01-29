@@ -62,7 +62,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential curl libreadline-dev
-          ./scripts/install-lua-deps.sh
+          bash ./scripts/install-lua-deps.sh
           sudo luarocks install --deps-only ar-io-marketplace-process-0.1.0-1.rockspec
       - name: Run ${{ matrix.check }}
         run: ${{ matrix.command }}
