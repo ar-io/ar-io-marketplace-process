@@ -38,7 +38,7 @@ function ucm.getOrderById(orderId)
 end
 
 --- Schedule the next orderbook pruning if the given timestamp is sooner than the current scheduled time
---- @param timestamp number The timestamp to schedule pruning for
+--- @param timestamp number|nil The timestamp to schedule pruning for
 function ucm.scheduleNextOrderbookPruning(timestamp)
 	if not timestamp then
 		return
@@ -622,6 +622,7 @@ function ucm.infoHandler(_msg)
 
 	return json.encode({
 		name = Name,
+		owner = Owner,
 		processId = ao.id,
 		activity = {
 			totalOrders = totalOrders,
@@ -678,7 +679,7 @@ end
 --- @return string jsonResponse JSON-encoded response with status and withdrawn amount
 function ucm.withdrawFeesHandler(msg)
 	-- Only the process owner can withdraw fees
-	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can withdraw fees')
+	assert(msg.From == Owner, 'Unauthorized: only process owner can withdraw fees')
 
 	local amount = utils.getAccruedFees()
 	assert(amount and bint(amount) > 0, 'No fees available to withdraw')
@@ -884,7 +885,7 @@ function ucm.unwhitelistModule(moduleId)
 end
 
 function ucm.whitelistModuleHandler(msg)
-	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can whitelist modules')
+	assert(msg.From == Owner, 'Unauthorized: only process owner can whitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
 	ucm.whitelistModule(moduleId)
@@ -892,7 +893,7 @@ function ucm.whitelistModuleHandler(msg)
 end
 
 function ucm.unwhitelistModuleHandler(msg)
-	assert(msg.From == msg.Owner, 'Unauthorized: only process owner can unwhitelist modules')
+	assert(msg.From == Owner, 'Unauthorized: only process owner can unwhitelist modules')
 	local moduleId = msg.Tags['Module-Id']
 	assert(moduleId, 'Module-Id is required')
 	ucm.unwhitelistModule(moduleId)

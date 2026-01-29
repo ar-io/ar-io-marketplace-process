@@ -1202,6 +1202,10 @@ describe('ucm helpers', function()
 		describe('whitelistModuleHandler', function()
 			local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
 
+			before_each(function()
+				_G.Owner = PROCESS_OWNER
+			end)
+
 			it('should whitelist via message handler', function()
 				local msg = testGlobals.mockMsg({
 					From = PROCESS_OWNER,
@@ -1235,6 +1239,10 @@ describe('ucm helpers', function()
 
 		describe('unwhitelistModuleHandler', function()
 			local PROCESS_OWNER = 'process-owner-address-12345678901234567890'
+
+			before_each(function()
+				_G.Owner = PROCESS_OWNER
+			end)
 
 			it('should unwhitelist via message handler', function()
 				ucm.whitelistModule(TEST_MODULE_ID)
@@ -1473,6 +1481,7 @@ describe('ucm helpers', function()
 
 		before_each(function()
 			testGlobals.resetState()
+			_G.Owner = PROCESS_OWNER
 			_G.ARIO_TOKEN_PROCESS_ID = 'ario-token-process-1234567890123456789012'
 		end)
 
@@ -1490,7 +1499,7 @@ describe('ucm helpers', function()
 			end)
 
 			assert.is_false(success)
-			assert.is_truthy(err:match('Unauthorized'))
+			assert.is_truthy(err and err:match('Unauthorized'))
 		end)
 
 		it('should reject when no fees available', function()
@@ -1507,7 +1516,7 @@ describe('ucm helpers', function()
 			end)
 
 			assert.is_false(success)
-			assert.is_truthy(err:match('No fees available'))
+			assert.is_truthy(err and err:match('No fees available'))
 		end)
 
 		it('should successfully withdraw fees for owner', function()
@@ -1562,6 +1571,7 @@ describe('ucm helpers', function()
 
 		before_each(function()
 			testGlobals.resetState()
+			_G.Owner = PROCESS_OWNER
 		end)
 
 		it('should reject non-owner callers', function()
@@ -1579,7 +1589,7 @@ describe('ucm helpers', function()
 			end)
 
 			assert.is_false(success)
-			assert.is_truthy(err:match('Unauthorized'))
+			assert.is_truthy(err and err:match('Unauthorized'))
 		end)
 	end)
 
@@ -1589,6 +1599,7 @@ describe('ucm helpers', function()
 
 		before_each(function()
 			testGlobals.resetState()
+			_G.Owner = PROCESS_OWNER
 			-- Pre-whitelist the module for unwhitelist tests
 			_G.WhitelistedModules[VALID_MODULE_ID] = true
 		end)
@@ -1608,7 +1619,7 @@ describe('ucm helpers', function()
 			end)
 
 			assert.is_false(success)
-			assert.is_truthy(err:match('Unauthorized'))
+			assert.is_truthy(err and err:match('Unauthorized'))
 			-- Module should still be whitelisted
 			assert.is_true(_G.WhitelistedModules[VALID_MODULE_ID])
 		end)
