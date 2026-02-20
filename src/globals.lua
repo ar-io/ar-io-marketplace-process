@@ -48,7 +48,7 @@ Pruning = Pruning
 Name = Name or 'ANT Marketplace'
 
 ---@type string|nil Process owner address
-Owner = Owner or nil
+Owner = Owner or ao.env and ao.env.Process and ao.env.Process.Owner or ao.id
 
 -- Accrued fees tracking
 ---@type string Total accrued fees in mARIO (stored as string for bint compatibility)
