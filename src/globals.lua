@@ -47,7 +47,7 @@ Pruning = Pruning
 ---@type string Process name
 Name = Name or 'ANT Marketplace'
 
----@type string|nil Process owner address
+---@type string Process owner address
 Owner = Owner or ao.env and ao.env.Process and ao.env.Process.Owner or "owner"
 
 -- Accrued fees tracking
