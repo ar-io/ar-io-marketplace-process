@@ -18,6 +18,9 @@ ARIO_TOKEN_PROCESS_ID = ARIO_TOKEN_PROCESS_ID or 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6
 ---@type Address Treasury address for fee collection
 TREASURY_ADDRESS = TREASURY_ADDRESS or ao.id
 
+---@type string Process owner address
+Owner = Owner or ao.env and ao.env.Process and ao.env.Process.Owner or "owner"
+
 ---@type Address Authority allowed to push intent resolution (defaults to Owner)
 IntentPushingAuthority = IntentPushingAuthority or Owner
 
@@ -46,9 +49,6 @@ Pruning = Pruning
 -- Process metadata
 ---@type string Process name
 Name = Name or 'ANT Marketplace'
-
----@type string|nil Process owner address
-Owner = Owner or nil
 
 -- Accrued fees tracking
 ---@type string Total accrued fees in mARIO (stored as string for bint compatibility)
